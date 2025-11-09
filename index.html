@@ -1,3 +1,1317 @@
-HTML 
 <!DOCTYPE html>
-<h1>测试成功！如果看到这段文字，说明一切正常。</h1>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>字詞地鼠戰</title>
+<!-- 引入 Tailwind CSS 方便快速美化介面 -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- 引入 Tone.js 用於生成音效 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
+<!-- 新增：引入 SheetJS 用於處理 Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* 自訂字體與基本樣式 */
+body {
+    font-family: 'KaiTi', 'BiauKai', 'DFKai-sb', '標楷體', sans-serif;
+    background-color: #87CEEB; /* 天藍色背景 */
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none; /* IE 10+ */
+    user-select: none; /* Standard syntax */
+    overflow: hidden;
+    position: relative;
+}
+/* 新增：可愛的背景元素 */
+body::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 10%;
+    width: 80px;
+    height: 40px;
+    background: #fff;
+    border-radius: 50px;
+    opacity: 0.9;
+    box-shadow: 20px 8px 0 0 #fff, 180px 40px 0 5px #fff, 220px 30px 0 0 #fff, 300px 50px 0 3px #fff, -80px 80px 0 0 #fff;
+    animation: clouds 80s linear infinite;
+    z-index: -1;
+}
+@keyframes clouds {
+    from { transform: translateX(-150%); }
+    to { transform: translateX(150%); }
+}
+body::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><path d="M0 80 H 80 V 40 C 60 40, 60 60, 40 60 C 20 60, 20 40, 0 40 Z" fill="%234CAF50"/></svg>');
+    background-size: 80px 80px;
+    background-repeat: repeat-x;
+    z-index: -1;
+}
+
+/* 遊戲容器，確保置中 */
+.game-container {
+    width: 100%;
+    max-width: 500px;
+    margin: auto;
+    padding: 1rem;
+    position: relative;
+    z-index: 1;
+}
+/* 地洞的樣式 */
+.hole {
+    width: 100px;
+    height: 100px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><path d="M0 50 C 20 20, 80 20, 100 50 Z" fill="%23A0522D" /><ellipse cx="50" cy="45" rx="48" ry="8" fill="%238B4513" /></svg>');
+    background-size: 110% 100px;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    position: relative;
+    overflow: hidden; /* 修改：將 overflow 設為 hidden，藏住動物 */
+}
+
+/* 動物的容器樣式 */
+.animal-container {
+    position: absolute;
+    bottom: 5px; /* 再次調整位置，讓動物更深入洞口 */
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    transition: transform 0.2s ease-out;
+    width: 90px;
+    height: 90px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 5;
+}
+/* 動物冒出來的狀態 */
+.animal-container.up {
+    transform: translateX(-50%) translateY(0);
+}
+/* 動物SVG樣式 */
+.animal-svg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.2s ease-in;
+}
+/* 動物上的文字 */
+.character {
+    position: relative;
+    font-size: 44px; /* 加大字體 */
+    color: #331C00; /* 加深顏色以增加對比度 */
+    text-shadow: 0px 0px 5px rgba(255,255,255,0.8); /* 新增文字外陰影，更清晰 */
+    background-color: rgba(255, 248, 225, 0.85); /* 調整背景色 */
+    border-radius: 50%;
+    width: 60px; /* 加大圓圈 */
+    height: 60px; /* 加大圓圈 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    margin-bottom: 10px; /* 縮短與動物頭的距離 */
+    z-index: 10;
+    transform: scale(0);
+    transition: transform 0.2s ease-out;
+    border: 2px solid rgba(255, 255, 255, 0.9); /* 新增邊框 */
+}
+.animal-container.up .character {
+    transform: scale(1);
+    transition-delay: 0.05s;
+}
+
+/* 敲擊動畫 */
+.whacked .animal-svg {
+    transform: rotate(20deg) scale(0.9);
+    opacity: 0;
+}
+.whacked::after {
+    content: '⭐️';
+    position: absolute;
+    top: 10px;
+    font-size: 30px;
+    animation: bonk 0.3s ease-out forwards;
+}
+@keyframes bonk {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* 錘子動畫 */
+.hammer {
+    position: absolute;
+    top: -40px;
+    left: 30px;
+    width: 80px;
+    height: 80px;
+    pointer-events: none;
+    z-index: 50;
+    animation: hammer-swing 0.4s ease-out forwards;
+}
+@keyframes hammer-swing {
+    0% { transform: rotate(60deg) scale(0.8); opacity: 0; }
+    30% { transform: rotate(30deg) scale(1); opacity: 1; }
+    60% { transform: rotate(-30deg) translate(20px, 40px); }
+    100% { transform: rotate(-30deg) translate(20px, 40px); opacity: 0; }
+}
+
+/* 分數跳動動畫 */
+.score-pop {
+    animation: pop 0.3s ease-out;
+}
+@keyframes pop {
+    50% { transform: scale(1.3); }
+}
+
+/* 分數彈出動畫 */
+.score-popup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    font-weight: bold;
+    animation: floatUp 0.8s ease-out forwards;
+    pointer-events: none;
+}
+@keyframes floatUp {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -150%) scale(1.2); opacity: 0; }
+}
+/* 設置彈窗的遮罩層 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+/* 技能按鈕樣式 */
+.skill-btn {
+    background-color: #10B981;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.2s;
+    box-shadow: 0 4px #059669;
+    border: none;
+}
+.skill-btn:disabled {
+    background-color: #9CA3AF;
+    color: #E5E7EB;
+    cursor: not-allowed;
+    box-shadow: 0 4px #6B7280;
+}
+.skill-btn:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 2px #059669;
+}
+/* 讀取中的 spinner */
+.loader {
+    border: 4px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 4px solid #3498db;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+/* 自定義題庫樣式 */
+#custom-library-list {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    text-align: left;
+}
+</style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+<div class="game-container text-center">
+<h1 class="text-4xl font-bold text-slate-700 mb-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">字詞地鼠戰</h1>
+
+<!-- 遊戲主畫面 -->
+<div id="game-screen" class="hidden relative">
+<!-- 頂部控制欄 -->
+<div class="flex justify-between items-center mb-2">
+    <h2 id="game-mode-title" class="text-xl font-bold text-slate-700">遊戲中</h2>
+    <button id="save-quit-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition">離開遊戲</button>
+</div>
+<!-- 遊戲資訊欄 -->
+<div class="flex justify-around items-center bg-sky-100 rounded-lg p-3 mb-4 shadow-md border-2 border-sky-300">
+    <div><p class="text-lg text-slate-600">目標字</p><p id="target-char" class="text-5xl font-bold text-sky-600">太</p></div>
+    <div><p class="text-lg text-slate-600">分數</p><p id="score" class="text-3xl font-bold text-green-600">0</p></div>
+    <div id="timer-display"><p class="text-lg text-slate-600">時間</p><p id="timer" class="text-3xl font-bold text-red-600">60</p></div>
+    <div id="combo-display"><p class="text-lg text-slate-600">連擊</p><p id="combo" class="text-3xl font-bold text-orange-500">0</p></div>
+    <div id="hits-display"><p class="text-lg text-slate-600">命中</p><p id="hits" class="text-3xl font-bold text-blue-600">0 / 3</p></div>
+</div>
+
+<!-- 技能欄 -->
+<div id="skills-bar" class="flex justify-center space-x-4 mb-4">
+    <button id="skill-slow" class="skill-btn" disabled>🐢 減速 (<span id="skill-slow-tokens">0</span>)</button>
+</div>
+
+<!-- 遊戲九宮格 -->
+<div id="game-board" class="grid grid-cols-3 gap-4 md:gap-6 relative justify-items-center">
+</div>
+</div>
+
+<!-- 開始畫面 -->
+<div id="start-screen" class="p-6 bg-white rounded-xl shadow-lg relative">
+    <button id="settings-btn" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800 transition">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+    <div id="user-selection-view">
+        <h2 class="text-2xl font-bold text-slate-800 mb-4">選擇學生</h2>
+        <select id="user-select" class="w-full p-2 border border-slate-300 rounded-md mb-3"></select>
+        <div class="flex space-x-2">
+            <input type="text" id="new-user-name" placeholder="輸入新學生姓名" class="flex-grow p-2 border border-slate-300 rounded-md">
+            <button id="add-user-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">新增</button>
+        </div>
+        <button id="confirm-user-btn" class="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">確定</button>
+    </div>
+    <div id="main-menu-view" class="hidden">
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">主選單</h2>
+        <p class="text-lg text-slate-600 mb-4">歡迎, <span id="current-user-name" class="font-bold"></span>!</p>
+        <div class="flex flex-col space-y-3">
+            <button id="practice-mode-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">闖關練習</button>
+            <button id="timed-mode-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">計時比賽</button>
+        </div>
+        <p class="text-slate-500 mt-4 text-lg">最高紀錄：<span id="high-score-start" class="font-bold">0</span></p>
+    </div>
+</div>
+
+<!-- 關卡選擇畫面 -->
+<div id="level-selection-screen" class="modal-overlay hidden">
+    <div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-lg text-center">
+        <h2 class="text-2xl font-bold text-slate-800 mb-4">選擇關卡 (四年級)</h2>
+        <div id="level-grid" class="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-[60vh] overflow-y-auto p-2">
+            <!-- 關卡按鈕將由 JS 動態生成 -->
+        </div>
+        <button id="close-level-selection-btn" class="mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition">返回</button>
+    </div>
+</div>
+
+<!-- 關卡結束/晉級彈窗 -->
+<div id="level-end-screen" class="modal-overlay hidden">
+    <div class="bg-white p-8 rounded-xl shadow-lg text-center w-11/12 max-w-sm">
+        <h2 id="level-end-title" class="text-3xl font-bold text-slate-800 mb-4"></h2>
+        <p id="level-end-score" class="text-xl text-slate-600 mb-6"></p>
+        <div class="flex flex-col space-y-3">
+            <button id="review-mistakes-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition">錯字回憶</button>
+            <button id="next-level-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">下一關</button>
+            <button id="end-game-btn" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">結束遊戲</button>
+        </div>
+    </div>
+</div>
+
+<!-- 錯字回憶彈窗 -->
+<div id="review-screen" class="modal-overlay hidden">
+     <div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-md text-left overflow-y-auto max-h-[80vh]">
+        <h2 class="text-2xl font-bold text-slate-800 mb-4 text-center">錯字回憶</h2>
+        <div id="mistakes-list" class="space-y-3"></div>
+        <button id="close-review-btn" class="w-full mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">關閉</button>
+    </div>
+</div>
+
+<!-- 遊戲結束畫面 -->
+<div id="game-over-screen" class="modal-overlay hidden">
+    <div class="bg-white p-8 rounded-xl shadow-lg text-center w-11/12 max-w-sm">
+        <h2 class="text-3xl font-bold text-slate-800 mb-2">挑戰完成！</h2>
+        <p class="text-xl text-slate-600 mb-4">你的最終得分是：</p>
+        <p id="final-score" class="text-6xl font-extrabold text-yellow-500 mb-6">0</p>
+        <p id="new-high-score-msg" class="hidden text-green-500 font-bold text-lg mb-4">恭喜！刷新最高紀錄！</p>
+        <div id="ai-feedback-container" class="my-4 p-3 bg-blue-50 rounded-lg border border-blue-200 text-blue-800">
+            <p id="ai-feedback-text">AI 夥伴正在為您準備鼓勵的話...</p>
+        </div>
+        <p class="text-slate-600 mb-4">最高紀錄：<span id="high-score-end">0</span></p>
+        <div id="stars" class="flex justify-center text-5xl mb-6"></div>
+        <button id="restart-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition">返回主選單</button>
+    </div>
+</div>
+
+<!-- 設定彈窗 -->
+<div id="settings-screen" class="modal-overlay hidden">
+<div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-md text-center overflow-y-auto max-h-[90vh]">
+<h2 class="text-2xl font-bold text-slate-800 mb-4">遊戲設定</h2>
+<div class="mb-4">
+    <h3 class="text-lg font-semibold text-slate-700 mb-3">匯入/匯出題庫</h3>
+    <div class="flex space-x-2">
+        <button id="import-excel-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">導入題庫 (Excel)</button>
+        <button id="export-excel-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">導出題庫 (Excel)</button>
+    </div>
+    <input type="file" id="excel-upload-input" class="hidden" accept=".xlsx, .xls">
+</div>
+<hr class="my-4 border-slate-200">
+<div class="mb-4">
+    <h3 class="text-lg font-semibold text-slate-700 mb-3">自定義題庫</h3>
+    <div id="custom-library-list"><p class="text-slate-400">尚無自定義題目</p></div>
+    <button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>開始題庫挑戰</button>
+</div>
+<hr class="my-4 border-slate-200">
+<div class="mb-4">
+<h3 class="text-lg font-semibold text-slate-700 mb-3">手動新增題目</h3>
+<textarea id="custom-levels-input" rows="3" class="w-full p-2 border border-slate-300 rounded-md text-left" placeholder="新增題目到題庫...&#10;日:目,曰&#10;免:兔,魚"></textarea>
+<p id="custom-error-msg" class="text-red-500 text-sm mt-2 h-4"></p>
+<button id="add-custom-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition">新增到題庫</button>
+</div>
+<button id="close-settings-btn" class="mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition">關閉</button>
+</div>
+</div>
+
+
+<script>
+// 立即執行函式以避免全域變數汙染
+(function() {
+    // 等待 DOM 完全載入
+    window.onload = function() {
+        // --- DOM 元素獲取 ---
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const settingsScreen = document.getElementById('settings-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const levelEndScreen = document.getElementById('level-end-screen');
+        const reviewScreen = document.getElementById('review-screen');
+        const levelSelectionScreen = document.getElementById('level-selection-screen');
+
+        const gameBoard = document.getElementById('game-board');
+        const settingsBtn = document.getElementById('settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        // 開始畫面
+        const userSelectionView = document.getElementById('user-selection-view');
+        const mainMenuView = document.getElementById('main-menu-view');
+        const userSelect = document.getElementById('user-select');
+        const newUserInput = document.getElementById('new-user-name');
+        const addUserBtn = document.getElementById('add-user-btn');
+        const confirmUserBtn = document.getElementById('confirm-user-btn');
+        const currentUserEl = document.getElementById('current-user-name');
+        const practiceModeBtn = document.getElementById('practice-mode-btn');
+        const timedModeBtn = document.getElementById('timed-mode-btn');
+        const highScoreStartEl = document.getElementById('high-score-start');
+
+        // 遊戲畫面
+        const gameModeTitleEl = document.getElementById('game-mode-title');
+        const saveQuitBtn = document.getElementById('save-quit-btn');
+        const targetCharEl = document.getElementById('target-char');
+        const scoreEl = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer-display');
+        const timerEl = document.getElementById('timer');
+        const comboDisplay = document.getElementById('combo-display');
+        const comboEl = document.getElementById('combo');
+        const hitsDisplay = document.getElementById('hits-display');
+        const hitsEl = document.getElementById('hits');
+        const skillSlowBtn = document.getElementById('skill-slow');
+        const skillSlowTokensEl = document.getElementById('skill-slow-tokens');
+
+        // 關卡選擇畫面
+        const levelGrid = document.getElementById('level-grid');
+        const closeLevelSelectionBtn = document.getElementById('close-level-selection-btn');
+
+        // 結束與回顧畫面
+        const levelEndTitle = document.getElementById('level-end-title');
+        const levelEndScore = document.getElementById('level-end-score');
+        const reviewMistakesBtn = document.getElementById('review-mistakes-btn');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+        const endGameBtn = document.getElementById('end-game-btn');
+        const mistakesListEl = document.getElementById('mistakes-list');
+        const closeReviewBtn = document.getElementById('close-review-btn');
+        const finalScoreEl = document.getElementById('final-score');
+        const newHighScoreMsgEl = document.getElementById('new-high-score-msg');
+        const highScoreEndEl = document.getElementById('high-score-end');
+        const starsEl = document.getElementById('stars');
+        const aiFeedbackText = document.getElementById('ai-feedback-text');
+        
+        // 設定畫面
+        const customLibraryList = document.getElementById('custom-library-list');
+        const playLibraryBtn = document.getElementById('play-library-btn');
+        const customLevelsInput = document.getElementById('custom-levels-input');
+        const customErrorMsg = document.getElementById('custom-error-msg');
+        const addCustomBtn = document.getElementById('add-custom-btn');
+        const importExcelBtn = document.getElementById('import-excel-btn');
+        const exportExcelBtn = document.getElementById('export-excel-btn');
+        const excelUploadInput = document.getElementById('excel-upload-input');
+
+        let holes = [];
+
+        // --- 遊戲狀態與設定 ---
+        let gameState = {};
+        let currentUser = null;
+        let gameData = {};
+        let timerId = null, animalIntervalId = null;
+        let allMistakesInGame = [];
+
+        // --- 內建四年級關卡 ---
+        const gradeFourLevels = [
+            { target: '抄', distractors: ['沙', '妙', '紗'] }, { target: '沙', distractors: ['抄', '妙', '紗'] },
+            { target: '券', distractors: ['卷', '倦', '捲'] }, { target: '卷', distractors: ['券', '倦', '捲'] },
+            { target: '池', distractors: ['施', '弛', '馳'] }, { target: '施', distractors: ['池', '弛', '馳'] },
+            { target: '奄', distractors: ['掩', '淹', '庵'] }, { target: '掩', distractors: ['奄', '淹', '庵'] },
+            { target: '廷', distractors: ['延', '誕', '蜒'] }, { target: '延', distractors: ['廷', '誕', '蜒'] },
+            { target: '滔', distractors: ['稻', '蹈', '焰'] }, { target: '稻', distractors: ['滔', '蹈', '焰'] },
+            { target: '頒', distractors: ['頌', '領', '預'] }, { target: '頌', distractors: ['頒', '領', '預'] },
+            { target: '愉', distractors: ['偷', '喻', '輸'] }, { target: '偷', distractors: ['愉', '喻', '輸'] },
+            { target: '相', distractors: ['箱', '廂', '霜'] }, { target: '箱', distractors: ['相', '廂', '霜'] },
+            { target: '搖', distractors: ['遙', '瑤', '謠'] }, { target: '遙', distractors: ['搖', '瑤', '謠'] },
+            { target: '油', distractors: ['抽', '迪', '袖'] }, { target: '抽', distractors: ['油', '迪', '袖'] },
+            { target: '增', distractors: ['贈', '憎', '僧'] }, { target: '贈', distractors: ['增', '憎', '僧'] },
+            { target: '作', distractors: ['昨', '詐', '乍'] }, { target: '昨', distractors: ['作', '詐', '乍'] },
+            { target: '識', distractors: ['織', '職', '幟'] }, { target: '織', distractors: ['識', '職', '幟'] },
+            { target: '占', distractors: ['店', '佔', '沾'] }, { target: '店', distractors: ['占', '佔', '沾'] },
+            { target: '某', distractors: ['謀', '媒', '煤'] }, { target: '謀', distractors: ['某', '媒', '煤'] },
+            { target: '則', distractors: ['測', '側', '惻'] }, { target: '測', distractors: ['則', '側', '惻'] },
+            { target: '矣', distractors: ['唉', '埃', '挨'] }, { target: '唉', distractors: ['矣', '埃', '挨'] },
+            { target: '容', distractors: ['溶', '熔', '榕'] }, { target: '溶', distractors: ['容', '熔', '榕'] },
+            { target: '宗', distractors: ['綜', '淙', '崇'] }, { target: '綜', distractors: ['宗', '淙', '崇'] },
+            { target: '紙', distractors: ['低', '底', '抵'] }, { target: '低', distractors: ['紙', '底', '抵'] },
+            { target: '那', distractors: ['哪', '挪', '娜'] }, { target: '哪', distractors: ['那', '挪', '娜'] },
+            { target: '淑', distractors: ['椒', '寂', '督'] }, { target: '椒', distractors: ['淑', '寂', '督'] },
+            { target: '官', distractors: ['宮', '營', '侶'] }, { target: '宮', distractors: ['官', '營', '侶'] },
+            { target: '語', distractors: ['梧', '悟', '捂'] }, { target: '梧', distractors: ['語', '悟', '捂'] },
+            { target: '奴', distractors: ['努', '怒', '恕'] }, { target: '努', distractors: ['奴', '怒', '恕'] },
+            { target: '歡', distractors: ['勸', '觀', '灌'] }, { target: '勸', distractors: ['歡', '觀', '灌'] },
+            { target: '推', distractors: ['堆', '稚', '惟'] }, { target: '堆', distractors: ['推', '稚', '惟'] },
+            { target: '屈', distractors: ['掘', '倔', '崛'] }, { target: '掘', distractors: ['屈', '倔', '崛'] },
+            { target: '援', distractors: ['緩', '暖', '媛'] }, { target: '緩', distractors: ['援', '暖', '媛'] },
+            { target: '幻', distractors: ['幼', '拗', '坳'] }, { target: '幼', distractors: ['幻', '拗', '坳'] },
+            { target: '贊', distractors: ['讚', '鑽', '攢'] }, { target: '讚', distractors: ['贊', '鑽', '攢'] },
+            { target: '章', distractors: ['障', '彰', '蟑'] }, { target: '障', distractors: ['章', '彰', '蟑'] },
+            { target: '珠', distractors: ['株', '殊', '蛛'] }, { target: '株', distractors: ['珠', '殊', '蛛'] },
+            { target: '斬', distractors: ['漸', '嶄', '暫'] }, { target: '漸', distractors: ['斬', '嶄', '暫'] },
+            { target: '供', distractors: ['哄', '洪', '拱'] }, { target: '哄', distractors: ['供', '洪', '拱'] }
+        ];
+        
+        const animalSVGs = {
+            mole: `<svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50 95 C 80 100, 85 70, 85 50 C 85 20, 75 5, 50 5 C 25 5, 15 20, 15 50 C 15 70, 20 100, 50 95 Z" fill="#8D6E63"/><circle cx="35" cy="45" r="5" fill="black"/><circle cx="65" cy="45" r="5" fill="black"/><path d="M45 60 Q 50 70, 55 60" stroke="black" fill="none" stroke-width="3" stroke-linecap="round"/><ellipse cx="50" cy="30" rx="15" ry="8" fill="#FBC02D"/></svg>`,
+            rabbit: `<svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 50,90 C 75,95 80,70 80,50 C 80,25 70,10 50,10 C 30,10 20,25 20,50 C 20,70 25,95 50,90 Z" fill="white" stroke="#E0E0E0" stroke-width="2" /><path d="M 35,15 C 30,0 45,0 40,15 C 40,30 35,30 35,15 Z" fill="white" stroke="#E0E0E0" stroke-width="2" transform="rotate(-15 37 15)"/><path d="M 65,15 C 70,0 55,0 60,15 C 60,30 65,30 65,15 Z" fill="white" stroke="#E0E0E0" stroke-width="2" transform="rotate(15 63 15)"/><circle cx="40" cy="50" r="4" fill="black"/><circle cx="60" cy="50" r="4" fill="black"/><path d="M 48 60 L 52 60 M 50 60 L 50 65" stroke="#FF8A80" stroke-width="2" stroke-linecap="round"/></svg>`,
+            cat: `<svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M20 90 C 10 70, 10 30, 30 20 L 50 10 L 70 20 C 90 30, 90 70, 80 90 Z" fill="#FFC107" /><path d="M30 20 L 20 5 L 40 15 Z" fill="#FF9800" /><path d="M70 20 L 80 5 L 60 15 Z" fill="#FF9800"/><circle cx="38" cy="55" r="5" fill="black"/><circle cx="62" cy="55" r="5" fill="black"/><path d="M45 65 Q 50 75, 55 65" stroke="black" fill="none" stroke-width="2" stroke-linecap="round"/></svg>`,
+            bear: `<svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="55" r="35" fill="#A1887F"/><circle cx="30" cy="25" r="12" fill="#A1887F"/><circle cx="70" cy="25" r="12" fill="#A1887F"/><circle cx="30" cy="25" r="8" fill="#D7CCC8"/><circle cx="70" cy="25" r="8" fill="#D7CCC8"/><circle cx="50" cy="60" r="15" fill="#D7CCC8"/><circle cx="38" cy="50" r="4" fill="black"/><circle cx="62" cy="50" r="4" fill="black"/><path d="M50 65 C 45 72, 55 72, 50 65 Z" fill="black"/></svg>`
+        };
+
+        // 音效
+        let correctSound, incorrectSound, levelUpSound;
+        try {
+            correctSound = new Tone.Synth().toDestination();
+            incorrectSound = new Tone.Synth({ oscillator: { type: 'square' } }).toDestination();
+            levelUpSound = new Tone.Synth({ oscillator: { type: 'sawtooth' } }).toDestination();
+        } catch(e) { console.warn("Tone.js 初始化失敗，音效將被禁用。") }
+        
+        // --- 核心遊戲邏輯 ---
+        
+        function createBoard() {
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const hole = document.createElement('div');
+                hole.classList.add('hole');
+                const animalContainer = document.createElement('div');
+                animalContainer.classList.add('animal-container');
+                animalContainer.innerHTML = `
+                    <div class="animal-svg-wrapper"></div>
+                    <div class="character"></div>
+                `;
+                hole.appendChild(animalContainer);
+                gameBoard.appendChild(hole);
+                animalContainer.addEventListener('click', handleWhack);
+            }
+        }
+
+        function startGame(mode, levels, startIndex = 0) {
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            allMistakesInGame = [];
+
+            let gameLevels = levels;
+            // In timed mode, we shuffle for replayability.
+            if (mode === 'timed') {
+                gameLevels = [...levels].sort(() => Math.random() - 0.5);
+            }
+
+            // Restore skills if continuing, otherwise start fresh
+            const initialSkills = (gameData.users[currentUser].skillTokens) 
+                                ? gameData.users[currentUser].skillTokens 
+                                : 0;
+            
+            gameState = {
+                mode: mode,
+                levelList: gameLevels,
+                currentLevelIndex: startIndex,
+                score: 0,
+                combo: 0,
+                timeLeft: 60,
+                slowSkillTokens: initialSkills,
+                correctHitsThisLevel: 0,
+                mistakesThisLevel: [],
+                gameSpeed: 1200, // 固定速度
+                peepDuration: 1800, // 固定速度
+            };
+
+            // 根據模式調整UI
+            if (mode === 'practice') {
+                timerDisplay.classList.add('hidden');
+                hitsDisplay.classList.remove('hidden');
+                comboDisplay.classList.add('hidden');
+                saveQuitBtn.textContent = '離開遊戲';
+            } else { // timed
+                timerDisplay.classList.remove('hidden');
+                hitsDisplay.classList.add('hidden');
+                comboDisplay.classList.remove('hidden');
+                gameModeTitleEl.textContent = '計時比賽 (四年級)';
+                saveQuitBtn.textContent = '儲存並離開';
+                timerId = setInterval(updateTimer, 1000);
+            }
+            
+            setupLevel();
+        }
+
+        function setupLevel() {
+            if (gameState.currentLevelIndex >= gameState.levelList.length) {
+                if (gameState.mode === 'timed') {
+                    // In timed mode, just loop back
+                    gameState.currentLevelIndex = 0;
+                } else {
+                    // In practice mode, end game
+                    endGame(false);
+                    return;
+                }
+            }
+            gameState.correctHitsThisLevel = 0;
+            gameState.mistakesThisLevel = [];
+            
+            updateUI();
+
+            clearInterval(animalIntervalId);
+            animalIntervalId = setInterval(peep, gameState.gameSpeed);
+        }
+
+        function updateTimer() {
+            gameState.timeLeft--;
+            if (gameState.timeLeft <= 0) {
+                clearInterval(timerId);
+                timerId = null;
+                showLevelEndScreen(true); // 時間到，強制結束
+            }
+            updateUI();
+        }
+
+        function handleWhack(e) {
+            const animalContainer = e.currentTarget;
+            if (correctSound && Tone.context.state !== 'running') Tone.context.resume();
+            if (!animalContainer.classList.contains('up')) return;
+            
+            animalContainer.classList.remove('up');
+            animalContainer.classList.add('whacked');
+            
+            const currentLevel = gameState.levelList[gameState.currentLevelIndex];
+            if (animalContainer.dataset.char === currentLevel.target) {
+                gameState.combo++;
+                const points = 10 + Math.min(gameState.combo, 10);
+                gameState.score += points;
+                gameState.correctHitsThisLevel++;
+                if (correctSound) correctSound.triggerAttackRelease('C5', '8n');
+                showScorePopup(`+${points}`, animalContainer, 'text-green-500');
+                showHammerAnimation(animalContainer);
+                
+                if (gameState.mode === 'practice' && gameState.correctHitsThisLevel >= 3) {
+                    showLevelEndScreen(false); // 晉級
+                } else if (gameState.mode === 'timed') {
+                    // Reward skill on combo
+                    if (gameState.combo > 0 && gameState.combo % 5 === 0) {
+                        gameState.slowSkillTokens++;
+                    }
+                    switchToNextTarget();
+                }
+
+            } else {
+                gameState.combo = 0;
+                gameState.score = Math.max(0, gameState.score - 5);
+                const mistake = {
+                    target: currentLevel.target,
+                    wrong: animalContainer.dataset.char
+                };
+                gameState.mistakesThisLevel.push(mistake);
+                allMistakesInGame.push(mistake);
+
+                if (incorrectSound) incorrectSound.triggerAttackRelease('A2', '8n');
+                showScorePopup('-5', animalContainer, 'text-red-500');
+            }
+            updateUI();
+        }
+
+        function switchToNextTarget() {
+            gameState.currentLevelIndex++;
+            if (gameState.currentLevelIndex >= gameState.levelList.length) {
+                // Reshuffle and start from the beginning if we went through all characters
+                gameState.levelList = [...gradeFourLevels].sort(() => Math.random() - 0.5);
+                gameState.currentLevelIndex = 0;
+            }
+            // Manually call setupLevel to update target character and UI immediately
+            setupLevel();
+        }
+        
+        function peep() {
+            if (!holes || holes.length === 0) return;
+            const hole = holes[Math.floor(Math.random() * holes.length)];
+            const animalContainer = hole.querySelector('.animal-container');
+            const characterEl = animalContainer.querySelector('.character');
+            const animalSVGEl = animalContainer.querySelector('.animal-svg-wrapper');
+            
+            const currentLevel = gameState.levelList[gameState.currentLevelIndex];
+            if (!currentLevel) return; // Game might have ended
+            const char = Math.random() < 0.4 ? currentLevel.target : currentLevel.distractors[Math.floor(Math.random() * currentLevel.distractors.length)];
+            
+            // 隨機選擇動物
+            const animalKeys = Object.keys(animalSVGs);
+            const randomAnimal = animalKeys[Math.floor(Math.random() * animalKeys.length)];
+            animalSVGEl.innerHTML = animalSVGs[randomAnimal];
+            
+            characterEl.textContent = char;
+            animalContainer.dataset.char = char;
+            animalContainer.classList.add('up');
+            animalContainer.classList.remove('whacked');
+            
+            setTimeout(() => {
+                if(animalContainer) animalContainer.classList.remove('up');
+            }, gameState.peepDuration);
+        }
+
+        function showLevelEndScreen(isTimeUp) {
+            clearInterval(animalIntervalId);
+            animalIntervalId = null;
+            if (isTimeUp) {
+                levelEndTitle.textContent = "時間到！";
+                nextLevelBtn.classList.add('hidden');
+            } else {
+                levelEndTitle.textContent = `第 ${Math.floor(gameState.currentLevelIndex / 2) + 1} 關完成！`;
+                nextLevelBtn.classList.remove('hidden');
+            }
+            levelEndScore.textContent = `目前分數：${gameState.score}`;
+            reviewMistakesBtn.disabled = gameState.mistakesThisLevel.length === 0;
+            levelEndScreen.classList.remove('hidden');
+        }
+
+        function proceedToNextLevel() {
+            levelEndScreen.classList.add('hidden');
+            gameState.currentLevelIndex++;
+            gameState.slowSkillTokens++;
+            setupLevel();
+        }
+
+        function endGame(isQuit) {
+            clearInterval(timerId);
+            timerId = null;
+            clearInterval(animalIntervalId);
+            animalIntervalId = null;
+
+            gameScreen.classList.add('hidden');
+            
+            // Save skills before exiting
+            if (currentUser && gameData.users[currentUser]) {
+                gameData.users[currentUser].skillTokens = gameState.slowSkillTokens;
+            }
+
+            if (!isQuit) {
+                if (currentUser && gameData.users[currentUser]) {
+                    gameData.users[currentUser].savedTimedGame = null; // Clear saved game on normal finish
+                }
+                gameOverScreen.classList.remove('hidden');
+                finalScoreEl.textContent = gameState.score;
+                updateHighScore(gameState.score);
+                displayStars(gameState.score);
+                if (gameState.mode === 'timed') {
+                    getAIFeedback();
+                } else {
+                    aiFeedbackText.parentElement.classList.add('hidden');
+                }
+            }
+            
+            saveGameData();
+
+            if(isQuit) {
+                showMainMenu();
+            }
+        }
+        
+        // --- UI 更新與輔助函式 ---
+
+        function updateUI() {
+            scoreEl.textContent = gameState.score;
+            scoreEl.classList.add('score-pop');
+            scoreEl.addEventListener('animationend', () => scoreEl.classList.remove('score-pop'), { once: true });
+
+            comboEl.textContent = gameState.combo;
+            skillSlowTokensEl.textContent = gameState.slowSkillTokens;
+            skillSlowBtn.disabled = gameState.slowSkillTokens <= 0;
+            
+            if (gameState.mode === 'practice') {
+                hitsEl.textContent = `${gameState.correctHitsThisLevel} / 3`;
+                const totalWeeks = Math.ceil(gradeFourLevels.length / 2);
+                const currentWeek = Math.floor(gameState.currentLevelIndex / 2) + 1;
+                gameModeTitleEl.textContent = `闖關練習 (四年級 - 第 ${currentWeek} / ${totalWeeks} 關)`;
+            } else {
+                timerEl.textContent = gameState.timeLeft;
+            }
+            const currentLevel = gameState.levelList[gameState.currentLevelIndex];
+            if(currentLevel) targetCharEl.textContent = currentLevel.target;
+        }
+
+        function activateSlowSkill() {
+            if (gameState.slowSkillTokens > 0) {
+                gameState.slowSkillTokens--;
+                updateUI(); 
+
+                const originalSpeed = gameState.gameSpeed;
+                const originalPeepDuration = gameState.peepDuration;
+
+                const slowSpeed = originalSpeed + 500;
+                const slowPeepDuration = originalPeepDuration + 700;
+
+                clearInterval(animalIntervalId);
+                animalIntervalId = setInterval(peep, slowSpeed);
+                
+                const originalPeep = window.peep; // Store global peep
+                
+                const slowPeep = function() {
+                     if (!holes || holes.length === 0) return;
+                    const hole = holes[Math.floor(Math.random() * holes.length)];
+                    const animalContainer = hole.querySelector('.animal-container');
+                    const characterEl = animalContainer.querySelector('.character');
+                    const animalSVGEl = animalContainer.querySelector('.animal-svg-wrapper');
+                    
+                    const currentLevel = gameState.levelList[gameState.currentLevelIndex];
+                    if (!currentLevel) return; // Game might have ended
+                    const char = Math.random() < 0.4 ? currentLevel.target : currentLevel.distractors[Math.floor(Math.random() * currentLevel.distractors.length)];
+                    
+                    const animalKeys = Object.keys(animalSVGs);
+                    const randomAnimal = animalKeys[Math.floor(Math.random() * animalKeys.length)];
+                    animalSVGEl.innerHTML = animalSVGs[randomAnimal];
+                    
+                    characterEl.textContent = char;
+                    animalContainer.dataset.char = char;
+                    animalContainer.classList.add('up');
+                    animalContainer.classList.remove('whacked');
+                    
+                    setTimeout(() => {
+                        if(animalContainer) animalContainer.classList.remove('up');
+                    }, slowPeepDuration);
+                };
+
+                // Override peep for 5 seconds
+                const intervalId = setInterval(slowPeep, slowSpeed);
+                clearInterval(animalIntervalId);
+                animalIntervalId = intervalId;
+
+
+                setTimeout(() => {
+                    if (animalIntervalId) { // Check if game is still running
+                        clearInterval(animalIntervalId);
+                        animalIntervalId = setInterval(peep, originalSpeed);
+                    }
+                }, 5000); 
+            }
+        }
+
+        function showHammerAnimation(element) {
+            const hammer = document.createElement('div');
+            hammer.classList.add('hammer');
+            hammer.innerHTML = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(45 50 50)"><rect x="40" y="0" width="20" height="60" rx="5" fill="#A1887F"/><rect x="25" y="55" width="50" height="30" rx="8" fill="#795548"/></g></svg>`;
+            element.parentElement.appendChild(hammer);
+            hammer.addEventListener('animationend', () => hammer.remove());
+        }
+
+        function showScorePopup(text, element, colorClass) {
+            const popup = document.createElement('div');
+            popup.textContent = text;
+            popup.className = `score-popup ${colorClass}`;
+            element.parentElement.appendChild(popup);
+            popup.addEventListener('animationend', () => popup.remove());
+        }
+        
+        function displayStars(finalScore) {
+            starsEl.innerHTML = '';
+            let starCount = 0;
+            if (finalScore >= 300) starCount = 3;
+            else if (finalScore >= 150) starCount = 2;
+            else if (finalScore > 0) starCount = 1;
+            for (let i = 0; i < 3; i++) {
+                const star = document.createElement('span');
+                star.textContent = i < starCount ? '★' : '☆';
+                star.className = i < starCount ? 'text-yellow-400' : 'text-gray-300';
+                starsEl.appendChild(star);
+            }
+        }
+        
+        // --- 學生用戶與數據管理 ---
+        
+        function loadGameData() {
+            gameData = JSON.parse(localStorage.getItem('whackACharGameData') || '{"users":{}}');
+        }
+        
+        function saveGameData() {
+            localStorage.setItem('whackACharGameData', JSON.stringify(gameData));
+        }
+
+        function loadUserProfiles() {
+            userSelect.innerHTML = '';
+            if (!gameData.users || Object.keys(gameData.users).length === 0) {
+                userSelect.innerHTML = '<option>請新增學生</option>';
+                confirmUserBtn.disabled = true;
+                return;
+            }
+            Object.keys(gameData.users).forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                userSelect.appendChild(option);
+            });
+            confirmUserBtn.disabled = false;
+        }
+
+        function addUser() {
+            const name = newUserInput.value.trim();
+            if (name && !gameData.users[name]) {
+                gameData.users[name] = {
+                    highScore: 0,
+                    customLibrary: {},
+                    skillTokens: 0,
+                    savedTimedGame: null
+                };
+                saveGameData();
+                loadUserProfiles();
+                userSelect.value = name;
+                newUserInput.value = '';
+            }
+        }
+
+        function confirmUser() {
+            currentUser = userSelect.value;
+            if (currentUser && gameData.users[currentUser]) {
+                showMainMenu();
+            }
+        }
+
+        function showMainMenu() {
+            userSelectionView.classList.add('hidden');
+            mainMenuView.classList.remove('hidden');
+            startScreen.classList.remove('hidden');
+            gameScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            currentUserEl.textContent = currentUser;
+            updateHighScoreDisplay();
+
+            // Check for a saved timed game
+            if (gameData.users[currentUser]?.savedTimedGame) {
+                timedModeBtn.textContent = '繼續計時比賽';
+                timedModeBtn.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+                timedModeBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+            } else {
+                timedModeBtn.textContent = '計時比賽';
+                timedModeBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                timedModeBtn.classList.add('bg-orange-500', 'hover:bg-orange-600');
+            }
+        }
+
+        function updateHighScore(currentScore) {
+            if (currentScore > gameData.users[currentUser].highScore) {
+                gameData.users[currentUser].highScore = currentScore;
+                saveGameData();
+                newHighScoreMsgEl.classList.remove('hidden');
+            } else {
+                newHighScoreMsgEl.classList.add('hidden');
+            }
+            updateHighScoreDisplay();
+        }
+
+        function updateHighScoreDisplay() {
+             const userHighScore = gameData.users[currentUser]?.highScore || 0;
+             highScoreStartEl.textContent = userHighScore;
+             highScoreEndEl.textContent = userHighScore;
+        }
+        
+        // --- AI 識別與題庫 ---
+        
+        async function callGeminiAPI(payload) {
+             const apiKey = ""; // API Key is handled by the environment
+             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+             try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) {
+                    console.error("API Error Response:", await response.text());
+                    throw new Error(`AI API 請求失敗，狀態碼: ${response.status}`);
+                }
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+                if (!candidate) {
+                    // This can happen if the prompt is blocked entirely.
+                    throw new Error('AI 未能生成回應。請檢查您的輸入內容。');
+                }
+                // If finishReason is SAFETY or other, there might not be any content.
+                if (candidate.finishReason !== 'STOP' && candidate.finishReason !== 'MAX_TOKENS') {
+                     console.warn(`AI 因 ${candidate.finishReason} 而停止。`);
+                     // Return empty content instead of throwing an error for cases like safety blocks
+                     return payload.generationConfig?.responseMimeType === 'application/json' ? '[]' : '';
+                }
+                const content = candidate.content?.parts?.[0]?.text;
+                // If content is undefined, it's a valid empty response.
+                if (typeof content === 'undefined') {
+                    return payload.generationConfig?.responseMimeType === 'application/json' ? '[]' : '';
+                }
+                return content;
+             } catch(error) {
+                console.error("呼叫 Gemini API 失敗:", error);
+                throw error;
+             }
+        }
+        
+        async function getCharDefinitions(chars) {
+            const uniqueChars = [...new Set(chars)];
+            const payload = {
+                contents: [{ parts: [{ text: `請為以下每個繁體中文字提供一個簡短的核心定義（15字以內）。以 JSON 物件格式返回，key 為漢字，value 為定義。漢字列表：${uniqueChars.join('、')}` }] }],
+                generationConfig: { responseMimeType: "application/json" }
+            };
+            try {
+                const jsonText = await callGeminiAPI(payload);
+                return JSON.parse(jsonText);
+            } catch (error) {
+                return uniqueChars.reduce((obj, char) => {
+                    obj[char] = "查詢失敗";
+                    return obj;
+                }, {});
+            }
+        }
+        
+        async function getAIFeedback() {
+            aiFeedbackText.parentElement.classList.remove('hidden');
+            aiFeedbackText.textContent = 'AI 夥伴正在為您準備鼓勵的話...';
+            try {
+                const mistakeString = allMistakesInGame.length > 0
+                    ? `他在這些字上犯了錯：${[...new Set(allMistakesInGame.map(m => `「${m.target}」錯打成「${m.wrong}」`))].join('、')}。`
+                    : "他沒有犯任何錯誤。";
+
+                const prompt = `你是一個親切的遊戲動物夥伴。一個學生剛剛完成了「字詞地鼠戰」遊戲，請用繁體中文給他一段簡短（約 50 字）、有趣且充滿鼓勵的話。他的最終分數是：${gameState.score} 分。${mistakeString}請根據這些資訊給予個人化的回饋。例如，如果他錯了很多字，可以鼓勵他再接再厲；如果分數很高，可以大力稱讚。開頭可以用一些可愛的語氣詞，例如「哇喔！」或「嘿！你真棒！」。`;
+                const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                const feedback = await callGeminiAPI(payload);
+                aiFeedbackText.textContent = feedback;
+            } catch (error) {
+                aiFeedbackText.textContent = '哇！你真是太棒了，繼續努力喔！';
+            }
+        }
+
+        function getLevelsFromText(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            return lines.map(line => {
+                const parts = line.split(/[:：]/);
+                if(parts.length !== 2) return null;
+                const target = parts[0].trim();
+                const distractors = parts[1].trim().split(/[,，\s]+/).filter(Boolean);
+                if(target.length !== 1 || distractors.length === 0) return null;
+                return { target, distractors };
+            }).filter(Boolean);
+        }
+
+        function loadCustomLibrary() {
+            const library = gameData.users[currentUser]?.customLibrary || {};
+            customLibraryList.innerHTML = '';
+            const keys = Object.keys(library);
+            if(keys.length === 0) {
+                customLibraryList.innerHTML = '<p class="text-slate-400">尚無自定義題目</p>';
+                playLibraryBtn.disabled = true;
+                return;
+            }
+            keys.forEach(key => {
+                const level = library[key];
+                const div = document.createElement('div');
+                div.classList.add('flex', 'items-center');
+                div.innerHTML = `<input type="checkbox" id="lib-${level.target}" data-level='${JSON.stringify(level)}' class="mr-2"><label for="lib-${level.target}">${level.target}: ${level.distractors.join(',')}</label>`;
+                customLibraryList.appendChild(div);
+            });
+            playLibraryBtn.disabled = false;
+        }
+
+        function saveLevelsToLibrary(levels) {
+            if (!currentUser || !gameData.users[currentUser]) {
+                console.error("錯誤：沒有選擇目前使用者，無法儲存題庫。");
+                return false;
+            }
+            if (!gameData.users[currentUser].customLibrary) {
+                 gameData.users[currentUser].customLibrary = {};
+            }
+            levels.forEach(level => {
+                if (!gameData.users[currentUser].customLibrary[level.target]) {
+                    gameData.users[currentUser].customLibrary[level.target] = level;
+                }
+            });
+            saveGameData();
+            return true;
+        }
+        
+        function populateLevelSelectionGrid() {
+            levelGrid.innerHTML = '';
+            const weeklyTargets = gradeFourLevels.filter((_, index) => index % 2 === 0);
+            weeklyTargets.forEach((level, index) => {
+                const button = document.createElement('button');
+                button.classList.add('p-2', 'border', 'rounded-lg', 'hover:bg-blue-100', 'transition');
+                button.innerHTML = `<p class="font-bold">第 ${index + 1} 關</p><p class="text-sm text-slate-500">${level.target}, ${level.distractors[0]}...</p>`;
+                button.dataset.startIndex = index * 2;
+                button.addEventListener('click', (e) => {
+                    const startIndex = parseInt(e.currentTarget.dataset.startIndex);
+                    levelSelectionScreen.classList.add('hidden');
+                    startGame('practice', gradeFourLevels, startIndex);
+                });
+                levelGrid.appendChild(button);
+            });
+        }
+
+        function resumeGame(savedGameState) {
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            allMistakesInGame = []; // For simplicity, don't resume mistakes list
+
+            gameState = savedGameState;
+
+            // Re-setup UI and intervals
+            if (gameState.mode === 'timed') {
+                timerDisplay.classList.remove('hidden');
+                hitsDisplay.classList.add('hidden');
+                comboDisplay.classList.remove('hidden');
+                gameModeTitleEl.textContent = '計時比賽 (四年級)';
+                saveQuitBtn.textContent = '儲存並離開';
+                timerId = setInterval(updateTimer, 1000);
+            } else {
+                // This path is not expected for saved games in the current logic
+                timerDisplay.classList.add('hidden');
+                hitsDisplay.classList.remove('hidden');
+                comboDisplay.classList.add('hidden');
+                saveQuitBtn.textContent = '離開遊戲';
+            }
+
+            updateUI();
+            animalIntervalId = setInterval(peep, gameState.gameSpeed);
+        }
+
+        function handleImport(file) {
+            if (!file) return;
+            customErrorMsg.textContent = '';
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    const newLevels = jsonData.map(row => {
+                        if (!row || row.length === 0 || !row[0]) return null;
+                        return {
+                            target: String(row[0]).trim(),
+                            distractors: row.slice(1).map(d => String(d).trim()).filter(Boolean)
+                        };
+                    }).filter(level => level && level.target.length === 1 && level.distractors.length > 0);
+
+                    if (newLevels.length > 0) {
+                        if (saveLevelsToLibrary(newLevels)) {
+                            loadCustomLibrary();
+                            alert(`成功導入 ${newLevels.length} 題！`);
+                        } else {
+                            alert('導入失敗，請先選擇一位學生！');
+                        }
+                    } else {
+                        alert('Excel 檔案中沒有找到有效格式的題目。');
+                    }
+                } catch (error) {
+                    console.error("導入 Excel 失敗:", error);
+                    alert("讀取檔案失敗，請確認格式是否正確。");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            excelUploadInput.value = ''; // Reset file input
+        }
+
+        function handleExport() {
+            if (!currentUser || !gameData.users[currentUser]) {
+                alert("請先選擇一位學生！");
+                return;
+            }
+            const library = gameData.users[currentUser].customLibrary;
+            if (Object.keys(library).length === 0) {
+                alert("自定義題庫是空的！");
+                return;
+            }
+
+            const dataForSheet = [['目標字', '干擾字1', '干擾字2', '干擾字3']];
+            Object.values(library).forEach(level => {
+                dataForSheet.push([level.target, ...level.distractors]);
+            });
+
+            const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "題庫");
+            XLSX.writeFile(workbook, `${currentUser}_題庫.xlsx`);
+        }
+        
+        // --- 事件監聽器 ---
+
+        // 主流程按鈕
+        addUserBtn.addEventListener('click', addUser);
+        confirmUserBtn.addEventListener('click', confirmUser);
+        practiceModeBtn.addEventListener('click', () => {
+            levelSelectionScreen.classList.remove('hidden');
+        });
+        timedModeBtn.addEventListener('click', () => {
+            const savedGame = gameData.users[currentUser]?.savedTimedGame;
+            if (savedGame) {
+                // Clear saved game once loaded
+                gameData.users[currentUser].savedTimedGame = null;
+                saveGameData();
+                // Restore game from saved state
+                resumeGame(savedGame);
+            } else {
+                startGame('timed', gradeFourLevels);
+            }
+        });
+        saveQuitBtn.addEventListener('click', () => {
+             // Stop all game loops
+            clearInterval(timerId);
+            timerId = null;
+            clearInterval(animalIntervalId);
+            animalIntervalId = null;
+            gameScreen.classList.add('hidden');
+
+            // Save data
+            if (currentUser && gameData.users[currentUser]) {
+                gameData.users[currentUser].skillTokens = gameState.slowSkillTokens;
+                if (gameState.mode === 'timed') {
+                    gameData.users[currentUser].savedTimedGame = gameState;
+                }
+                saveGameData();
+            }
+            
+            // Go to main menu
+            showMainMenu();
+        });
+        restartBtn.addEventListener('click', showMainMenu);
+
+        // 關卡結束流程
+        nextLevelBtn.addEventListener('click', proceedToNextLevel);
+        endGameBtn.addEventListener('click', () => {
+            levelEndScreen.classList.add('hidden');
+            endGame(false);
+        });
+        reviewMistakesBtn.addEventListener('click', async () => {
+            mistakesListEl.innerHTML = '<div class="loader mx-auto"></div>';
+            reviewScreen.classList.remove('hidden');
+
+            const charsToDefine = new Set();
+            gameState.mistakesThisLevel.forEach(m => {
+                charsToDefine.add(m.target);
+                charsToDefine.add(m.wrong);
+            });
+            
+            const definitions = await getCharDefinitions(Array.from(charsToDefine));
+
+            mistakesListEl.innerHTML = '';
+            if (gameState.mistakesThisLevel.length > 0) {
+                 gameState.mistakesThisLevel.forEach(m => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `<p class="font-bold">目標「${m.target}」，錯打成「${m.wrong}」</p>
+                                     <p class="text-sm text-slate-600 pl-4">${m.target}: ${definitions[m.target] || '...'}</p>
+                                     <p class="text-sm text-slate-600 pl-4">${m.wrong}: ${definitions[m.wrong] || '...'}</p>`;
+                    mistakesListEl.appendChild(div);
+                 });
+            } else {
+                 mistakesListEl.innerHTML = '<p>沒有錯誤！</p>';
+            }
+        });
+        closeReviewBtn.addEventListener('click', () => reviewScreen.classList.add('hidden'));
+
+        // 關卡選擇
+        closeLevelSelectionBtn.addEventListener('click', () => levelSelectionScreen.classList.add('hidden'));
+
+        // 設定頁面
+        settingsBtn.addEventListener('click', () => {
+            if (!currentUser) {
+                alert("請先選擇一位學生！");
+                return;
+            }
+            loadCustomLibrary();
+            settingsScreen.classList.remove('hidden');
+        });
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsScreen.classList.add('hidden');
+            customErrorMsg.textContent = '';
+        });
+        
+        
+        addCustomBtn.addEventListener('click', () => {
+            const text = customLevelsInput.value.trim();
+            if (!text) return;
+            const newLevels = getLevelsFromText(text);
+            if (newLevels && newLevels.length > 0) {
+                if (saveLevelsToLibrary(newLevels)) {
+                    loadCustomLibrary();
+                    customLevelsInput.value = '';
+                    customErrorMsg.textContent = '成功新增！';
+                    setTimeout(() => customErrorMsg.textContent = '', 2000);
+                } else {
+                    customErrorMsg.textContent = '請先選擇一位學生！';
+                    setTimeout(() => customErrorMsg.textContent = '', 2000);
+                }
+            }
+        });
+        playLibraryBtn.addEventListener('click', () => {
+            const selectedLevels = [];
+            customLibraryList.querySelectorAll('input:checked').forEach(cb => {
+                selectedLevels.push(JSON.parse(cb.dataset.level));
+            });
+            if (selectedLevels.length > 0) {
+                settingsScreen.classList.add('hidden');
+                // 從題庫開始預設為練習模式
+                startGame('practice', selectedLevels);
+            } else {
+                alert('請至少選擇一個題目');
+            }
+        });
+        
+        importExcelBtn.addEventListener('click', () => excelUploadInput.click());
+        excelUploadInput.addEventListener('change', (e) => handleImport(e.target.files[0]));
+        exportExcelBtn.addEventListener('click', handleExport);
+        
+        skillSlowBtn.addEventListener('click', activateSlowSkill);
+
+        // --- 初始化 ---
+        function init() {
+             // 設定 PDF.js worker 的路徑，確保在 DOM 載入後執行
+            if (typeof window.pdfjsLib !== 'undefined') {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
+            }
+            createBoard();
+            holes = Array.from(document.querySelectorAll('.hole'));
+            loadGameData();
+            loadUserProfiles();
+            populateLevelSelectionGrid();
+        }
+
+        init();
+    };
+})();
+</script>
+</body>
+</html>
+
