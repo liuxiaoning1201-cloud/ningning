@@ -1,0 +1,675 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2575.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="zh-Hant"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1">&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1">&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1">&lt;title&gt;字詞地鼠戰&lt;/title&gt;</p>
+<p class="p1">&lt;!-- 引入 Tailwind CSS 方便快速美化介面 --&gt;</p>
+<p class="p1">&lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;</p>
+<p class="p1">&lt;!-- 引入 Tone.js 用於生成音效 --&gt;</p>
+<p class="p1">&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1">&lt;!-- 新增：引入 SheetJS 用於處理 Excel --&gt;</p>
+<p class="p1">&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"&gt;&lt;/script&gt;</p>
+<p class="p1">&lt;style&gt;</p>
+<p class="p1">/* 自訂字體與基本樣式 */</p>
+<p class="p1">body {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>font-family: 'KaiTi', 'BiauKai', 'DFKai-sb', '標楷體', sans-serif;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-color: #87CEEB; /* 天藍色背景 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>-webkit-user-select: none; /* Safari */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>-ms-user-select: none; /* IE 10+ */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>user-select: none; /* Standard syntax */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>overflow: hidden;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: relative;</p>
+<p class="p1">}</p>
+<p class="p1">/* 新增：可愛的背景元素 */</p>
+<p class="p1">body::before {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>content: '';</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: absolute;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>top: 10%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>left: 10%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 80px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 40px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background: #fff;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border-radius: 50px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>opacity: 0.9;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>box-shadow: 20px 8px 0 0 #fff, 180px 40px 0 5px #fff, 220px 30px 0 0 #fff, 300px 50px 0 3px #fff, -80px 80px 0 0 #fff;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>animation: clouds 80s linear infinite;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>z-index: -1;</p>
+<p class="p1">}</p>
+<p class="p1">@keyframes clouds {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>from { transform: translateX(-150%); }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>to { transform: translateX(150%); }</p>
+<p class="p1">}</p>
+<p class="p1">body::after {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>content: '';</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: absolute;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>bottom: 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>left: 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 100px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background: url('data:image/svg+xml;utf8,&lt;svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"&gt;&lt;path d="M0 80 H 80 V 40 C 60 40, 60 60, 40 60 C 20 60, 20 40, 0 40 Z" fill="%234CAF50"/&gt;&lt;/svg&gt;');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-size: 80px 80px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-repeat: repeat-x;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>z-index: -1;</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* 遊戲容器，確保置中 */</p>
+<p class="p1">.game-container {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>max-width: 500px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>margin: auto;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>padding: 1rem;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: relative;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>z-index: 1;</p>
+<p class="p1">}</p>
+<p class="p1">/* 地洞的樣式 */</p>
+<p class="p1">.hole {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 100px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 100px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-image: url('data:image/svg+xml;utf8,&lt;svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"&gt;&lt;path d="M0 50 C 20 20, 80 20, 100 50 Z" fill="%23A0522D" /&gt;&lt;ellipse cx="50" cy="45" rx="48" ry="8" fill="%238B4513" /&gt;&lt;/svg&gt;');</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-size: 110% 100px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-position: center bottom;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-repeat: no-repeat;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: relative;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>overflow: hidden; /* 修改：將 overflow 設為 hidden，藏住動物 */</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* 動物的容器樣式 */</p>
+<p class="p1">.animal-container {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: absolute;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>bottom: 5px; /* 再次調整位置，讓動物更深入洞口 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>left: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transform: translateX(-50%) translateY(100%);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transition: transform 0.2s ease-out;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 90px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 90px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>cursor: pointer;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>justify-content: center;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>align-items: flex-end;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>z-index: 5;</p>
+<p class="p1">}</p>
+<p class="p1">/* 動物冒出來的狀態 */</p>
+<p class="p1">.animal-container.up {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transform: translateX(-50%) translateY(0);</p>
+<p class="p1">}</p>
+<p class="p1">/* 動物SVG樣式 */</p>
+<p class="p1">.animal-svg {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: absolute;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transition: transform 0.2s ease-in;</p>
+<p class="p1">}</p>
+<p class="p1">/* 動物上的文字 */</p>
+<p class="p1">.character {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: relative;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>font-size: 44px; /* 加大字體 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>color: #331C00; /* 加深顏色以增加對比度 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>text-shadow: 0px 0px 5px rgba(255,255,255,0.8); /* 新增文字外陰影，更清晰 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-color: rgba(255, 248, 225, 0.85); /* 調整背景色 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border-radius: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 60px; /* 加大圓圈 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 60px; /* 加大圓圈 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>justify-content: center;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>align-items: center;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>font-weight: bold;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>margin-bottom: 10px; /* 縮短與動物頭的距離 */</p>
+<p class="p1"><span class="Apple-converted-space">    </span>z-index: 10;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transform: scale(0);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transition: transform 0.2s ease-out;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border: 2px solid rgba(255, 255, 255, 0.9); /* 新增邊框 */</p>
+<p class="p1">}</p>
+<p class="p1">.animal-container.up .character {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transform: scale(1);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transition-delay: 0.05s;</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* 敲擊動畫 */</p>
+<p class="p1">.whacked .animal-svg {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transform: rotate(20deg) scale(0.9);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>opacity: 0;</p>
+<p class="p1">}</p>
+<p class="p1">.whacked::after {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>content: '⭐️';</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: absolute;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>top: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>font-size: 30px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>animation: bonk 0.3s ease-out forwards;</p>
+<p class="p1">}</p>
+<p class="p1">@keyframes bonk {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>0% { transform: scale(0.5); opacity: 1; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>100% { transform: scale(1.5); opacity: 0; }</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* 錘子動畫 */</p>
+<p class="p1">.hammer {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: absolute;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>top: -40px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>left: 30px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 80px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 80px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>pointer-events: none;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>z-index: 50;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>animation: hammer-swing 0.4s ease-out forwards;</p>
+<p class="p1">}</p>
+<p class="p1">@keyframes hammer-swing {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>0% { transform: rotate(60deg) scale(0.8); opacity: 0; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>30% { transform: rotate(30deg) scale(1); opacity: 1; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>60% { transform: rotate(-30deg) translate(20px, 40px); }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>100% { transform: rotate(-30deg) translate(20px, 40px); opacity: 0; }</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* 分數跳動動畫 */</p>
+<p class="p1">.score-pop {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>animation: pop 0.3s ease-out;</p>
+<p class="p1">}</p>
+<p class="p1">@keyframes pop {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>50% { transform: scale(1.3); }</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">/* 分數彈出動畫 */</p>
+<p class="p1">.score-popup {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: absolute;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>top: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>left: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transform: translate(-50%, -50%);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>font-size: 24px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>font-weight: bold;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>animation: floatUp 0.8s ease-out forwards;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>pointer-events: none;</p>
+<p class="p1">}</p>
+<p class="p1">@keyframes floatUp {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>100% { transform: translate(-50%, -150%) scale(1.2); opacity: 0; }</p>
+<p class="p1">}</p>
+<p class="p1">/* 設置彈窗的遮罩層 */</p>
+<p class="p1">.modal-overlay {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>position: fixed;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>top: 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>left: 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-color: rgba(0, 0, 0, 0.5);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>justify-content: center;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>align-items: center;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>z-index: 1000;</p>
+<p class="p1">}</p>
+<p class="p1">/* 技能按鈕樣式 */</p>
+<p class="p1">.skill-btn {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-color: #10B981;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>color: white;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>padding: 8px 16px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border-radius: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>font-weight: bold;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transition: all 0.2s;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>box-shadow: 0 4px #059669;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border: none;</p>
+<p class="p1">}</p>
+<p class="p1">.skill-btn:disabled {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>background-color: #9CA3AF;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>color: #E5E7EB;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>cursor: not-allowed;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>box-shadow: 0 4px #6B7280;</p>
+<p class="p1">}</p>
+<p class="p1">.skill-btn:active:not(:disabled) {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>transform: translateY(2px);</p>
+<p class="p1"><span class="Apple-converted-space">    </span>box-shadow: 0 2px #059669;</p>
+<p class="p1">}</p>
+<p class="p1">/* 讀取中的 spinner */</p>
+<p class="p1">.loader {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border: 4px solid #f3f3f3;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border-radius: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border-top: 4px solid #3498db;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>width: 24px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>height: 24px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>animation: spin 1s linear infinite;</p>
+<p class="p1">}</p>
+<p class="p1">@keyframes spin {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>0% { transform: rotate(0deg); }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>100% { transform: rotate(360deg); }</p>
+<p class="p1">}</p>
+<p class="p1">/* 自定義題庫樣式 */</p>
+<p class="p1">#custom-library-list {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>max-height: 150px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>overflow-y: auto;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border: 1px solid #e2e8f0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>border-radius: 0.375rem;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>padding: 0.5rem;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>text-align: left;</p>
+<p class="p1">}</p>
+<p class="p1">&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body class="flex items-center justify-center min-h-screen"&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;div class="game-container text-center"&gt;</p>
+<p class="p1">&lt;h1 class="text-4xl font-bold text-slate-700 mb-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.2);"&gt;字詞地鼠戰&lt;/h1&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 遊戲主畫面 --&gt;</p>
+<p class="p1">&lt;div id="game-screen" class="hidden relative"&gt;</p>
+<p class="p1">&lt;!-- 頂部控制欄 --&gt;</p>
+<p class="p1">&lt;div class="flex justify-between items-center mb-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h2 id="game-mode-title" class="text-xl font-bold text-slate-700"&gt;遊戲中&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;button id="save-quit-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition"&gt;離開遊戲&lt;/button&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p1">&lt;!-- 遊戲資訊欄 --&gt;</p>
+<p class="p1">&lt;div class="flex justify-around items-center bg-sky-100 rounded-lg p-3 mb-4 shadow-md border-2 border-sky-300"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div&gt;&lt;p class="text-lg text-slate-600"&gt;目標字&lt;/p&gt;&lt;p id="target-char" class="text-5xl font-bold text-sky-600"&gt;太&lt;/p&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div&gt;&lt;p class="text-lg text-slate-600"&gt;分數&lt;/p&gt;&lt;p id="score" class="text-3xl font-bold text-green-600"&gt;0&lt;/p&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="timer-display"&gt;&lt;p class="text-lg text-slate-600"&gt;時間&lt;/p&gt;&lt;p id="timer" class="text-3xl font-bold text-red-600"&gt;60&lt;/p&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="combo-display"&gt;&lt;p class="text-lg text-slate-600"&gt;連擊&lt;/p&gt;&lt;p id="combo" class="text-3xl font-bold text-orange-500"&gt;0&lt;/p&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="hits-display"&gt;&lt;p class="text-lg text-slate-600"&gt;命中&lt;/p&gt;&lt;p id="hits" class="text-3xl font-bold text-blue-600"&gt;0 / 3&lt;/p&gt;&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 技能欄 --&gt;</p>
+<p class="p1">&lt;div id="skills-bar" class="flex justify-center space-x-4 mb-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;button id="skill-slow" class="skill-btn" disabled&gt;🐢 減速 (&lt;span id="skill-slow-tokens"&gt;0&lt;/span&gt;)&lt;/button&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 遊戲九宮格 --&gt;</p>
+<p class="p1">&lt;div id="game-board" class="grid grid-cols-3 gap-4 md:gap-6 relative justify-items-center"&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 開始畫面 --&gt;</p>
+<p class="p1">&lt;div id="start-screen" class="p-6 bg-white rounded-xl shadow-lg relative"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;button id="settings-btn" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800 transition"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"&gt;&lt;circle cx="12" cy="12" r="3"&gt;&lt;/circle&gt;&lt;path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"&gt;&lt;/path&gt;&lt;/svg&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="user-selection-view"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-2xl font-bold text-slate-800 mb-4"&gt;選擇學生&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;select id="user-select" class="w-full p-2 border border-slate-300 rounded-md mb-3"&gt;&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="flex space-x-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;input type="text" id="new-user-name" placeholder="輸入新學生姓名" class="flex-grow p-2 border border-slate-300 rounded-md"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="add-user-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition"&gt;新增&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="confirm-user-btn" class="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition"&gt;確定&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="main-menu-view" class="hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-2xl font-bold text-slate-800 mb-2"&gt;主選單&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p class="text-lg text-slate-600 mb-4"&gt;歡迎, &lt;span id="current-user-name" class="font-bold"&gt;&lt;/span&gt;!&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="flex flex-col space-y-3"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="practice-mode-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition"&gt;闖關練習&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="timed-mode-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition"&gt;計時比賽&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p class="text-slate-500 mt-4 text-lg"&gt;最高紀錄：&lt;span id="high-score-start" class="font-bold"&gt;0&lt;/span&gt;&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 關卡選擇畫面 --&gt;</p>
+<p class="p1">&lt;div id="level-selection-screen" class="modal-overlay hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-lg text-center"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-2xl font-bold text-slate-800 mb-4"&gt;選擇關卡 (四年級)&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="level-grid" class="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-[60vh] overflow-y-auto p-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;!-- 關卡按鈕將由 JS 動態生成 --&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="close-level-selection-btn" class="mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition"&gt;返回&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 關卡結束/晉級彈窗 --&gt;</p>
+<p class="p1">&lt;div id="level-end-screen" class="modal-overlay hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="bg-white p-8 rounded-xl shadow-lg text-center w-11/12 max-w-sm"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 id="level-end-title" class="text-3xl font-bold text-slate-800 mb-4"&gt;&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p id="level-end-score" class="text-xl text-slate-600 mb-6"&gt;&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="flex flex-col space-y-3"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="review-mistakes-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition"&gt;錯字回憶&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="next-level-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition"&gt;下一關&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;button id="end-game-btn" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition"&gt;結束遊戲&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 錯字回憶彈窗 --&gt;</p>
+<p class="p1">&lt;div id="review-screen" class="modal-overlay hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">     </span>&lt;div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-md text-left overflow-y-auto max-h-[80vh]"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-2xl font-bold text-slate-800 mb-4 text-center"&gt;錯字回憶&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="mistakes-list" class="space-y-3"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="close-review-btn" class="w-full mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition"&gt;關閉&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 遊戲結束畫面 --&gt;</p>
+<p class="p1">&lt;div id="game-over-screen" class="modal-overlay hidden"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="bg-white p-8 rounded-xl shadow-lg text-center w-11/12 max-w-sm"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 class="text-3xl font-bold text-slate-800 mb-2"&gt;挑戰完成！&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p class="text-xl text-slate-600 mb-4"&gt;你的最終得分是：&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p id="final-score" class="text-6xl font-extrabold text-yellow-500 mb-6"&gt;0&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p id="new-high-score-msg" class="hidden text-green-500 font-bold text-lg mb-4"&gt;恭喜！刷新最高紀錄！&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="ai-feedback-container" class="my-4 p-3 bg-blue-50 rounded-lg border border-blue-200 text-blue-800"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;p id="ai-feedback-text"&gt;AI 夥伴正在為您準備鼓勵的話...&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p class="text-slate-600 mb-4"&gt;最高紀錄：&lt;span id="high-score-end"&gt;0&lt;/span&gt;&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="stars" class="flex justify-center text-5xl mb-6"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="restart-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition"&gt;返回主選單&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;!-- 設定彈窗 --&gt;</p>
+<p class="p1">&lt;div id="settings-screen" class="modal-overlay hidden"&gt;</p>
+<p class="p1">&lt;div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-md text-center overflow-y-auto max-h-[90vh]"&gt;</p>
+<p class="p1">&lt;h2 class="text-2xl font-bold text-slate-800 mb-4"&gt;遊戲設定&lt;/h2&gt;</p>
+<p class="p1">&lt;div class="mb-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h3 class="text-lg font-semibold text-slate-700 mb-3"&gt;匯入/匯出題庫&lt;/h3&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="flex space-x-2"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="import-excel-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition"&gt;導入題庫 (Excel)&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button id="export-excel-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition"&gt;導出題庫 (Excel)&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;input type="file" id="excel-upload-input" class="hidden" accept=".xlsx, .xls"&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p1">&lt;hr class="my-4 border-slate-200"&gt;</p>
+<p class="p1">&lt;div class="mb-4"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;h3 class="text-lg font-semibold text-slate-700 mb-3"&gt;自定義題庫&lt;/h3&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="custom-library-list"&gt;&lt;p class="text-slate-400"&gt;尚無自定義題目&lt;/p&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled&gt;開始題庫挑戰&lt;/button&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p1">&lt;hr class="my-4 border-slate-200"&gt;</p>
+<p class="p1">&lt;div class="mb-4"&gt;</p>
+<p class="p1">&lt;h3 class="text-lg font-semibold text-slate-700 mb-3"&gt;手動新增題目&lt;/h3&gt;</p>
+<p class="p1">&lt;textarea id="custom-levels-input" rows="3" class="w-full p-2 border border-slate-300 rounded-md text-left" placeholder="新增題目到題庫...&amp;#10;日:目,曰&amp;#10;免:兔,魚"&gt;&lt;/textarea&gt;</p>
+<p class="p1">&lt;p id="custom-error-msg" class="text-red-500 text-sm mt-2 h-4"&gt;&lt;/p&gt;</p>
+<p class="p1">&lt;button id="add-custom-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition"&gt;新增到題庫&lt;/button&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p1">&lt;button id="close-settings-btn" class="mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition"&gt;關閉&lt;/button&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p2"><br></p>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1">// 立即執行函式以避免全域變數汙染</p>
+<p class="p1">(function() {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>// 等待 DOM 完全載入</p>
+<p class="p1"><span class="Apple-converted-space">    </span>window.onload = function() {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>// --- DOM 元素獲取 ---</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const startScreen = document.getElementById('start-screen');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const gameScreen = document.getElementById('game-screen');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const settingsScreen = document.getElementById('settings-screen');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const gameOverScreen = document.getElementById('game-over-screen');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const levelEndScreen = document.getElementById('level-end-screen');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const reviewScreen = document.getElementById('review-screen');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const levelSelectionScreen = document.getElementById('level-selection-screen');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const gameBoard = document.getElementById('game-board');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const settingsBtn = document.getElementById('settings-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const closeSettingsBtn = document.getElementById('close-settings-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const restartBtn = document.getElementById('restart-btn');</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 開始畫面</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const userSelectionView = document.getElementById('user-selection-view');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const mainMenuView = document.getElementById('main-menu-view');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const userSelect = document.getElementById('user-select');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const newUserInput = document.getElementById('new-user-name');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const addUserBtn = document.getElementById('add-user-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const confirmUserBtn = document.getElementById('confirm-user-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const currentUserEl = document.getElementById('current-user-name');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const practiceModeBtn = document.getElementById('practice-mode-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const timedModeBtn = document.getElementById('timed-mode-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const highScoreStartEl = document.getElementById('high-score-start');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 遊戲畫面</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const gameModeTitleEl = document.getElementById('game-mode-title');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const saveQuitBtn = document.getElementById('save-quit-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const targetCharEl = document.getElementById('target-char');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const scoreEl = document.getElementById('score');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const timerDisplay = document.getElementById('timer-display');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const timerEl = document.getElementById('timer');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const comboDisplay = document.getElementById('combo-display');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const comboEl = document.getElementById('combo');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const hitsDisplay = document.getElementById('hits-display');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const hitsEl = document.getElementById('hits');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const skillSlowBtn = document.getElementById('skill-slow');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const skillSlowTokensEl = document.getElementById('skill-slow-tokens');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 關卡選擇畫面</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const levelGrid = document.getElementById('level-grid');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const closeLevelSelectionBtn = document.getElementById('close-level-selection-btn');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 結束與回顧畫面</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const levelEndTitle = document.getElementById('level-end-title');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const levelEndScore = document.getElementById('level-end-score');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const reviewMistakesBtn = document.getElementById('review-mistakes-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const nextLevelBtn = document.getElementById('next-level-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const endGameBtn = document.getElementById('end-game-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const mistakesListEl = document.getElementById('mistakes-list');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const closeReviewBtn = document.getElementById('close-review-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const finalScoreEl = document.getElementById('final-score');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const newHighScoreMsgEl = document.getElementById('new-high-score-msg');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const highScoreEndEl = document.getElementById('high-score-end');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const starsEl = document.getElementById('stars');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const aiFeedbackText = document.getElementById('ai-feedback-text');</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 設定畫面</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const customLibraryList = document.getElementById('custom-library-list');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const playLibraryBtn = document.getElementById('play-library-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const customLevelsInput = document.getElementById('custom-levels-input');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const customErrorMsg = document.getElementById('custom-error-msg');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const addCustomBtn = document.getElementById('add-custom-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const importExcelBtn = document.getElementById('import-excel-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const exportExcelBtn = document.getElementById('export-excel-btn');</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const excelUploadInput = document.getElementById('excel-upload-input');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>let holes = [];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// --- 遊戲狀態與設定 ---</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let gameState = {};</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let currentUser = null;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let gameData = {};</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let timerId = null, animalIntervalId = null;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let allMistakesInGame = [];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// --- 內建四年級關卡 ---</p>
+<p class="p1"><span class="Apple-converted-space">        </span>const gradeFourLevels = [</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '抄', distractors: ['沙', '妙', '紗'] }, { target: '沙', distractors: ['抄', '妙', '紗'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '券', distractors: ['卷', '倦', '捲'] }, { target: '卷', distractors: ['券', '倦', '捲'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '池', distractors: ['施', '弛', '馳'] }, { target: '施', distractors: ['池', '弛', '馳'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '奄', distractors: ['掩', '淹', '庵'] }, { target: '掩', distractors: ['奄', '淹', '庵'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '廷', distractors: ['延', '誕', '蜒'] }, { target: '延', distractors: ['廷', '誕', '蜒'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '滔', distractors: ['稻', '蹈', '焰'] }, { target: '稻', distractors: ['滔', '蹈', '焰'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '頒', distractors: ['頌', '領', '預'] }, { target: '頌', distractors: ['頒', '領', '預'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '愉', distractors: ['偷', '喻', '輸'] }, { target: '偷', distractors: ['愉', '喻', '輸'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '相', distractors: ['箱', '廂', '霜'] }, { target: '箱', distractors: ['相', '廂', '霜'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '搖', distractors: ['遙', '瑤', '謠'] }, { target: '遙', distractors: ['搖', '瑤', '謠'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '油', distractors: ['抽', '迪', '袖'] }, { target: '抽', distractors: ['油', '迪', '袖'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '增', distractors: ['贈', '憎', '僧'] }, { target: '贈', distractors: ['增', '憎', '僧'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '作', distractors: ['昨', '詐', '乍'] }, { target: '昨', distractors: ['作', '詐', '乍'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '識', distractors: ['織', '職', '幟'] }, { target: '織', distractors: ['識', '職', '幟'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '占', distractors: ['店', '佔', '沾'] }, { target: '店', distractors: ['占', '佔', '沾'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '某', distractors: ['謀', '媒', '煤'] }, { target: '謀', distractors: ['某', '媒', '煤'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '則', distractors: ['測', '側', '惻'] }, { target: '測', distractors: ['則', '側', '惻'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '矣', distractors: ['唉', '埃', '挨'] }, { target: '唉', distractors: ['矣', '埃', '挨'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '容', distractors: ['溶', '熔', '榕'] }, { target: '溶', distractors: ['容', '熔', '榕'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '宗', distractors: ['綜', '淙', '崇'] }, { target: '綜', distractors: ['宗', '淙', '崇'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '紙', distractors: ['低', '底', '抵'] }, { target: '低', distractors: ['紙', '底', '抵'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '那', distractors: ['哪', '挪', '娜'] }, { target: '哪', distractors: ['那', '挪', '娜'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '淑', distractors: ['椒', '寂', '督'] }, { target: '椒', distractors: ['淑', '寂', '督'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '官', distractors: ['宮', '營', '侶'] }, { target: '宮', distractors: ['官', '營', '侶'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '語', distractors: ['梧', '悟', '捂'] }, { target: '梧', distractors: ['語', '悟', '捂'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '奴', distractors: ['努', '怒', '恕'] }, { target: '努', distractors: ['奴', '怒', '恕'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '歡', distractors: ['勸', '觀', '灌'] }, { target: '勸', distractors: ['歡', '觀', '灌'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '推', distractors: ['堆', '稚', '惟'] }, { target: '堆', distractors: ['推', '稚', '惟'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '屈', distractors: ['掘', '倔', '崛'] }, { target: '掘', distractors: ['屈', '倔', '崛'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '援', distractors: ['緩', '暖', '媛'] }, { target: '緩', distractors: ['援', '暖', '媛'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '幻', distractors: ['幼', '拗', '坳'] }, { target: '幼', distractors: ['幻', '拗', '坳'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '贊', distractors: ['讚', '鑽', '攢'] }, { target: '讚', distractors: ['贊', '鑽', '攢'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '章', distractors: ['障', '彰', '蟑'] }, { target: '障', distractors: ['章', '彰', '蟑'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '珠', distractors: ['株', '殊', '蛛'] }, { target: '株', distractors: ['珠', '殊', '蛛'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '斬', distractors: ['漸', '嶄', '暫'] }, { target: '漸', distractors: ['斬', '嶄', '暫'] },</p>
+<p class="p1"><span class="Apple-converted-space">            </span>{ target: '供', distractors: ['哄', '洪', '拱'] }, { target: '哄', distractors: ['供', '洪', '拱'] }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>];</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const animalSVGs = {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>mole: `&lt;svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"&gt;&lt;path d="M50 95 C 80 100, 85 70, 85 50 C 85 20, 75 5, 50 5 C 25 5, 15 20, 15 50 C 15 70, 20 100, 50 95 Z" fill="#8D6E63"/&gt;&lt;circle cx="35" cy="45" r="5" fill="black"/&gt;&lt;circle cx="65" cy="45" r="5" fill="black"/&gt;&lt;path d="M45 60 Q 50 70, 55 60" stroke="black" fill="none" stroke-width="3" stroke-linecap="round"/&gt;&lt;ellipse cx="50" cy="30" rx="15" ry="8" fill="#FBC02D"/&gt;&lt;/svg&gt;`,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>rabbit: `&lt;svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"&gt;&lt;path d="M 50,90 C 75,95 80,70 80,50 C 80,25 70,10 50,10 C 30,10 20,25 20,50 C 20,70 25,95 50,90 Z" fill="white" stroke="#E0E0E0" stroke-width="2" /&gt;&lt;path d="M 35,15 C 30,0 45,0 40,15 C 40,30 35,30 35,15 Z" fill="white" stroke="#E0E0E0" stroke-width="2" transform="rotate(-15 37 15)"/&gt;&lt;path d="M 65,15 C 70,0 55,0 60,15 C 60,30 65,30 65,15 Z" fill="white" stroke="#E0E0E0" stroke-width="2" transform="rotate(15 63 15)"/&gt;&lt;circle cx="40" cy="50" r="4" fill="black"/&gt;&lt;circle cx="60" cy="50" r="4" fill="black"/&gt;&lt;path d="M 48 60 L 52 60 M 50 60 L 50 65" stroke="#FF8A80" stroke-width="2" stroke-linecap="round"/&gt;&lt;/svg&gt;`,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>cat: `&lt;svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"&gt;&lt;path d="M20 90 C 10 70, 10 30, 30 20 L 50 10 L 70 20 C 90 30, 90 70, 80 90 Z" fill="#FFC107" /&gt;&lt;path d="M30 20 L 20 5 L 40 15 Z" fill="#FF9800" /&gt;&lt;path d="M70 20 L 80 5 L 60 15 Z" fill="#FF9800"/&gt;&lt;circle cx="38" cy="55" r="5" fill="black"/&gt;&lt;circle cx="62" cy="55" r="5" fill="black"/&gt;&lt;path d="M45 65 Q 50 75, 55 65" stroke="black" fill="none" stroke-width="2" stroke-linecap="round"/&gt;&lt;/svg&gt;`,</p>
+<p class="p1"><span class="Apple-converted-space">            </span>bear: `&lt;svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"&gt;&lt;circle cx="50" cy="55" r="35" fill="#A1887F"/&gt;&lt;circle cx="30" cy="25" r="12" fill="#A1887F"/&gt;&lt;circle cx="70" cy="25" r="12" fill="#A1887F"/&gt;&lt;circle cx="30" cy="25" r="8" fill="#D7CCC8"/&gt;&lt;circle cx="70" cy="25" r="8" fill="#D7CCC8"/&gt;&lt;circle cx="50" cy="60" r="15" fill="#D7CCC8"/&gt;&lt;circle cx="38" cy="50" r="4" fill="black"/&gt;&lt;circle cx="62" cy="50" r="4" fill="black"/&gt;&lt;path d="M50 65 C 45 72, 55 72, 50 65 Z" fill="black"/&gt;&lt;/svg&gt;`</p>
+<p class="p1"><span class="Apple-converted-space">        </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// 音效</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let correctSound, incorrectSound, levelUpSound;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>correctSound = new Tone.Synth().toDestination();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>incorrectSound = new Tone.Synth({ oscillator: { type: 'square' } }).toDestination();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>levelUpSound = new Tone.Synth({ oscillator: { type: 'sawtooth' } }).toDestination();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>} catch(e) { console.warn("Tone.js 初始化失敗，音效將被禁用。") }</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>// --- 核心遊戲邏輯 ---</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function createBoard() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gameBoard.innerHTML = '';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (let i = 0; i &lt; 9; i++) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const hole = document.createElement('div');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>hole.classList.add('hole');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const animalContainer = document.createElement('div');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>animalContainer.classList.add('animal-container');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>animalContainer.innerHTML = `</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="animal-svg-wrapper"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;div class="character"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>hole.appendChild(animalContainer);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameBoard.appendChild(hole);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>animalContainer.addEventListener('click', handleWhack);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function startGame(mode, levels, startIndex = 0) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>startScreen.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gameScreen.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>allMistakesInGame = [];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>let gameLevels = levels;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>// In timed mode, we shuffle for replayability.</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (mode === 'timed') {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameLevels = [...levels].sort(() =&gt; Math.random() - 0.5);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Restore skills if continuing, otherwise start fresh</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const initialSkills = (gameData.users[currentUser].skillTokens)<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                                </span>? gameData.users[currentUser].skillTokens<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                                </span>: 0;</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>gameState = {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>mode: mode,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>levelList: gameLevels,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>currentLevelIndex: startIndex,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>score: 0,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>combo: 0,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>timeLeft: 60,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>slowSkillTokens: initialSkills,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>correctHitsThisLevel: 0,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>mistakesThisLevel: [],</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameSpeed: 1200, // 固定速度</p>
+<p class="p1"><span class="Apple-converted-space">                </span>peepDuration: 1800, // 固定速度</p>
+<p class="p1"><span class="Apple-converted-space">            </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// 根據模式調整UI</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (mode === 'practice') {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>timerDisplay.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>hitsDisplay.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>comboDisplay.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>saveQuitBtn.textContent = '離開遊戲';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>} else { // timed</p>
+<p class="p1"><span class="Apple-converted-space">                </span>timerDisplay.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>hitsDisplay.classList.add('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>comboDisplay.classList.remove('hidden');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameModeTitleEl.textContent = '計時比賽 (四年級)';</p>
+<p class="p1"><span class="Apple-converted-space">                </span>saveQuitBtn.textContent = '儲存並離開';</p>
+<p class="p1"><span class="Apple-converted-space">                </span>timerId = setInterval(updateTimer, 1000);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>setupLevel();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function setupLevel() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (gameState.currentLevelIndex &gt;= gameState.levelList.length) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (gameState.mode === 'timed') {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>// In timed mode, just loop back</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>gameState.currentLevelIndex = 0;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>// In practice mode, end game</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>endGame(false);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gameState.correctHitsThisLevel = 0;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gameState.mistakesThisLevel = [];</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>updateUI();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>clearInterval(animalIntervalId);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>animalIntervalId = setInterval(peep, gameState.gameSpeed);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function updateTimer() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gameState.timeLeft--;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (gameState.timeLeft &lt;= 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>clearInterval(timerId);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>timerId = null;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showLevelEndScreen(true); // 時間到，強制結束</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>updateUI();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function handleWhack(e) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const animalContainer = e.currentTarget;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (correctSound &amp;&amp; Tone.context.state !== 'running') Tone.context.resume();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (!animalContainer.classList.contains('up')) return;</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>animalContainer.classList.remove('up');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>animalContainer.classList.add('whacked');</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const currentLevel = gameState.levelList[gameState.currentLevelIndex];</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (animalContainer.dataset.char === currentLevel.target) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameState.combo++;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const points = 10 + Math.min(gameState.combo, 10);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameState.score += points;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameState.correctHitsThisLevel++;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (correctSound) correctSound.triggerAttackRelease('C5', '8n');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showScorePopup(`+${points}`, animalContainer, 'text-green-500');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showHammerAnimation(animalContainer);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (gameState.mode === 'practice' &amp;&amp; gameState.correctHitsThisLevel &gt;= 3) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>showLevelEndScreen(false); // 晉級</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else if (gameState.mode === 'timed') {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>// Reward skill on combo</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (gameState.combo &gt; 0 &amp;&amp; gameState.combo % 5 === 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>gameState.slowSkillTokens++;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>switchToNextTarget();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameState.combo = 0;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameState.score = Math.max(0, gameState.score - 5);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const mistake = {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>target: currentLevel.target,</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>wrong: animalContainer.dataset.char</p>
+<p class="p1"><span class="Apple-converted-space">                </span>};</p>
+<p class="p1"><span class="Apple-converted-space">                </span>gameState.mistakesThisLevel.push(mistake);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>allMistakesInGame.push(mistake);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (incorrectSound) incorrectSound.triggerAttackRelease('A2', '8n');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>showScorePopup('-5', animalContainer, 'text-red-500');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>updateUI();</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function switchToNextTarget() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>gameState.currentLevelIndex++;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (gameState.currentLevelIndex &gt;= gameState.levelList.length)<span class="Apple-converted-space"> </span></p>
+</body>
+</html>
