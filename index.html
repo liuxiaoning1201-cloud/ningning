@@ -513,6 +513,10 @@ body::after {
             levelUpSound = new Tone.Synth({ oscillator: { type: 'sawtooth' } }).toDestination();
         } catch(e) { console.warn("Tone.js 初始化失敗，音效將被禁用。") }
         
+        // 獲勝音效
+        const winnerSound = new Audio('assets/winner-game-sound-404167.mp3');
+        winnerSound.volume = 0.7; // 設置音量為 70%
+        
         // --- 核心遊戲邏輯 ---
         
         function createBoard() {
@@ -700,6 +704,9 @@ body::after {
             } else {
                 levelEndTitle.textContent = `第 ${Math.floor(gameState.currentLevelIndex / 2) + 1} 關完成！`;
                 nextLevelBtn.classList.remove('hidden');
+                // 播放獲勝音效
+                winnerSound.currentTime = 0; // 重置到開頭
+                winnerSound.play().catch(e => console.warn("播放獲勝音效失敗:", e));
             }
             levelEndScore.textContent = `目前分數：${gameState.score}`;
             reviewMistakesBtn.disabled = gameState.mistakesThisLevel.length === 0;
@@ -734,6 +741,11 @@ body::after {
                 finalScoreEl.textContent = gameState.score;
                 updateHighScore(gameState.score);
                 displayStars(gameState.score);
+                // 在練習模式完成所有關卡時播放獲勝音效
+                if (gameState.mode === 'practice') {
+                    winnerSound.currentTime = 0; // 重置到開頭
+                    winnerSound.play().catch(e => console.warn("播放獲勝音效失敗:", e));
+                }
                 if (gameState.mode === 'timed') {
                     getAIFeedback();
                 } else {
