@@ -77,69 +77,100 @@ body::after {
 /* 動物的容器樣式 */
 .animal-container {
     position: absolute;
-    bottom: 5px; /* 再次調整位置，讓動物更深入洞口 */
+    bottom: 0;
     left: 50%;
     transform: translateX(-50%) translateY(100%);
-    transition: transform 0.2s ease-out;
-    width: 90px;
-    height: 90px;
+    width: 100px;
+    height: 120px;
     cursor: pointer;
     display: flex;
-    justify-content: center;
-    align-items: flex-end;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
     z-index: 5;
 }
-/* 動物冒出來的狀態 */
+/* 動物冒出來的狀態 - 使用動畫實現彈跳效果 */
 .animal-container.up {
-    transform: translateX(-50%) translateY(0);
+    animation: molePopUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
-/* 動物SVG樣式 */
-.animal-svg {
-    position: absolute;
-    width: 100%;
-    height: 100%;
+/* 當移除.up類時，使用transition平滑下降 */
+.animal-container:not(.up) {
+    transition: transform 0.25s ease-in;
+}
+@keyframes molePopUp {
+    0% {
+        transform: translateX(-50%) translateY(100%);
+    }
+    65% {
+        transform: translateX(-50%) translateY(12px); /* 稍微超過，產生彈跳效果 */
+    }
+    85% {
+        transform: translateX(-50%) translateY(22px); /* 回彈一點 */
+    }
+    100% {
+        transform: translateX(-50%) translateY(20px); /* 最終穩定位置 */
+    }
+}
+/* 地鼠圖片樣式 */
+.mole-image {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
     transition: transform 0.2s ease-in;
+    filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
 }
-/* 動物上的文字 */
+/* 動物上的文字 - 顯示在地鼠嘴前 */
 .character {
-    position: relative;
-    font-size: 44px; /* 加大字體 */
-    color: #331C00; /* 加深顏色以增加對比度 */
-    text-shadow: 0px 0px 5px rgba(255,255,255,0.8); /* 新增文字外陰影，更清晰 */
-    background-color: rgba(255, 248, 225, 0.85); /* 調整背景色 */
+    position: absolute;
+    font-size: 40px;
+    color: #331C00;
+    text-shadow: 2px 2px 4px rgba(255,255,255,0.9), -1px -1px 2px rgba(0,0,0,0.3);
+    background-color: rgba(255, 248, 225, 0.95);
     border-radius: 50%;
-    width: 60px; /* 加大圓圈 */
-    height: 60px; /* 加大圓圈 */
+    width: 56px;
+    height: 56px;
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: bold;
-    margin-bottom: 10px; /* 縮短與動物頭的距離 */
-    z-index: 10;
-    transform: scale(0);
-    transition: transform 0.2s ease-out;
-    border: 2px solid rgba(255, 255, 255, 0.9); /* 新增邊框 */
+    top: -10px; /* 文字在地鼠嘴前的位置，稍微向上 */
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: 3px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 15;
+    pointer-events: none; /* 讓點擊事件穿透到地鼠 */
 }
 .animal-container.up .character {
-    transform: scale(1);
-    transition-delay: 0.05s;
+    transform: translateX(-50%) scale(1);
+    transition-delay: 0.05s; /* 極短延遲，幾乎與地鼠同時出現 */
 }
 
 /* 敲擊動畫 */
-.whacked .animal-svg {
-    transform: rotate(20deg) scale(0.9);
+.whacked .mole-image {
+    transform: rotate(15deg) scale(0.85);
     opacity: 0;
+    transition: all 0.3s ease-out;
+}
+.whacked .character {
+    transform: translateX(-50%) scale(0.8) rotate(-10deg);
+    opacity: 0.7;
 }
 .whacked::after {
     content: '⭐️';
     position: absolute;
-    top: 10px;
-    font-size: 30px;
-    animation: bonk 0.3s ease-out forwards;
+    top: 5px;
+    font-size: 32px;
+    animation: bonk 0.4s ease-out forwards;
+    z-index: 20;
 }
 @keyframes bonk {
-    0% { transform: scale(0.5); opacity: 1; }
-    100% { transform: scale(1.5); opacity: 0; }
+    0% { transform: scale(0.3) rotate(0deg); opacity: 1; }
+    50% { transform: scale(1.3) rotate(180deg); opacity: 1; }
+    100% { transform: scale(1.6) rotate(360deg); opacity: 0; }
 }
 
 /* 錘子動畫 */
@@ -497,13 +528,6 @@ body::after {
             { target: '斬', distractors: ['漸', '嶄', '暫'] }, { target: '漸', distractors: ['斬', '嶄', '暫'] },
             { target: '供', distractors: ['哄', '洪', '拱'] }, { target: '哄', distractors: ['供', '洪', '拱'] }
         ];
-        
-        const animalSVGs = {
-            mole: `<svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50 95 C 80 100, 85 70, 85 50 C 85 20, 75 5, 50 5 C 25 5, 15 20, 15 50 C 15 70, 20 100, 50 95 Z" fill="#8D6E63"/><circle cx="35" cy="45" r="5" fill="black"/><circle cx="65" cy="45" r="5" fill="black"/><path d="M45 60 Q 50 70, 55 60" stroke="black" fill="none" stroke-width="3" stroke-linecap="round"/><ellipse cx="50" cy="30" rx="15" ry="8" fill="#FBC02D"/></svg>`,
-            rabbit: `<svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M 50,90 C 75,95 80,70 80,50 C 80,25 70,10 50,10 C 30,10 20,25 20,50 C 20,70 25,95 50,90 Z" fill="white" stroke="#E0E0E0" stroke-width="2" /><path d="M 35,15 C 30,0 45,0 40,15 C 40,30 35,30 35,15 Z" fill="white" stroke="#E0E0E0" stroke-width="2" transform="rotate(-15 37 15)"/><path d="M 65,15 C 70,0 55,0 60,15 C 60,30 65,30 65,15 Z" fill="white" stroke="#E0E0E0" stroke-width="2" transform="rotate(15 63 15)"/><circle cx="40" cy="50" r="4" fill="black"/><circle cx="60" cy="50" r="4" fill="black"/><path d="M 48 60 L 52 60 M 50 60 L 50 65" stroke="#FF8A80" stroke-width="2" stroke-linecap="round"/></svg>`,
-            cat: `<svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M20 90 C 10 70, 10 30, 30 20 L 50 10 L 70 20 C 90 30, 90 70, 80 90 Z" fill="#FFC107" /><path d="M30 20 L 20 5 L 40 15 Z" fill="#FF9800" /><path d="M70 20 L 80 5 L 60 15 Z" fill="#FF9800"/><circle cx="38" cy="55" r="5" fill="black"/><circle cx="62" cy="55" r="5" fill="black"/><path d="M45 65 Q 50 75, 55 65" stroke="black" fill="none" stroke-width="2" stroke-linecap="round"/></svg>`,
-            bear: `<svg class="animal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="55" r="35" fill="#A1887F"/><circle cx="30" cy="25" r="12" fill="#A1887F"/><circle cx="70" cy="25" r="12" fill="#A1887F"/><circle cx="30" cy="25" r="8" fill="#D7CCC8"/><circle cx="70" cy="25" r="8" fill="#D7CCC8"/><circle cx="50" cy="60" r="15" fill="#D7CCC8"/><circle cx="38" cy="50" r="4" fill="black"/><circle cx="62" cy="50" r="4" fill="black"/><path d="M50 65 C 45 72, 55 72, 50 65 Z" fill="black"/></svg>`
-        };
 
         // 音效
         let correctSound, incorrectSound, levelUpSound;
@@ -527,7 +551,7 @@ body::after {
                 const animalContainer = document.createElement('div');
                 animalContainer.classList.add('animal-container');
                 animalContainer.innerHTML = `
-                    <div class="animal-svg-wrapper"></div>
+                    <img src="assets/地鼠.jpeg" alt="地鼠" class="mole-image">
                     <div class="character"></div>
                 `;
                 hole.appendChild(animalContainer);
@@ -674,24 +698,28 @@ body::after {
             const hole = holes[Math.floor(Math.random() * holes.length)];
             const animalContainer = hole.querySelector('.animal-container');
             const characterEl = animalContainer.querySelector('.character');
-            const animalSVGEl = animalContainer.querySelector('.animal-svg-wrapper');
             
             const currentLevel = gameState.levelList[gameState.currentLevelIndex];
             if (!currentLevel) return; // Game might have ended
             const char = Math.random() < 0.4 ? currentLevel.target : currentLevel.distractors[Math.floor(Math.random() * currentLevel.distractors.length)];
             
-            // 隨機選擇動物
-            const animalKeys = Object.keys(animalSVGs);
-            const randomAnimal = animalKeys[Math.floor(Math.random() * animalKeys.length)];
-            animalSVGEl.innerHTML = animalSVGs[randomAnimal];
-            
+            // 設置文字並顯示地鼠
             characterEl.textContent = char;
             animalContainer.dataset.char = char;
-            animalContainer.classList.add('up');
             animalContainer.classList.remove('whacked');
             
+            // 重置動畫狀態，確保每次都能正常顯示
+            animalContainer.style.animation = 'none';
+            void animalContainer.offsetWidth; // 強制重繪，觸發重排
+            animalContainer.style.animation = '';
+            
+            // 地鼠和文字同時出現
+            animalContainer.classList.add('up');
+            
             setTimeout(() => {
-                if(animalContainer) animalContainer.classList.remove('up');
+                if(animalContainer && animalContainer.classList.contains('up')) {
+                    animalContainer.classList.remove('up');
+                }
             }, gameState.peepDuration);
         }
 
@@ -794,44 +822,44 @@ body::after {
                 const slowSpeed = originalSpeed + 500;
                 const slowPeepDuration = originalPeepDuration + 700;
 
-                clearInterval(animalIntervalId);
-                animalIntervalId = setInterval(peep, slowSpeed);
-                
-                const originalPeep = window.peep; // Store global peep
-                
+                // 創建減速版本的peep函數
                 const slowPeep = function() {
-                     if (!holes || holes.length === 0) return;
+                    if (!holes || holes.length === 0) return;
                     const hole = holes[Math.floor(Math.random() * holes.length)];
                     const animalContainer = hole.querySelector('.animal-container');
                     const characterEl = animalContainer.querySelector('.character');
-                    const animalSVGEl = animalContainer.querySelector('.animal-svg-wrapper');
                     
                     const currentLevel = gameState.levelList[gameState.currentLevelIndex];
-                    if (!currentLevel) return; // Game might have ended
+                    if (!currentLevel) return;
                     const char = Math.random() < 0.4 ? currentLevel.target : currentLevel.distractors[Math.floor(Math.random() * currentLevel.distractors.length)];
                     
-                    const animalKeys = Object.keys(animalSVGs);
-                    const randomAnimal = animalKeys[Math.floor(Math.random() * animalKeys.length)];
-                    animalSVGEl.innerHTML = animalSVGs[randomAnimal];
-                    
+                    // 設置文字並顯示地鼠
                     characterEl.textContent = char;
                     animalContainer.dataset.char = char;
-                    animalContainer.classList.add('up');
                     animalContainer.classList.remove('whacked');
                     
+                    // 重置動畫狀態
+                    animalContainer.style.animation = 'none';
+                    void animalContainer.offsetWidth;
+                    animalContainer.style.animation = '';
+                    
+                    // 地鼠和文字同時出現
+                    animalContainer.classList.add('up');
+                    
                     setTimeout(() => {
-                        if(animalContainer) animalContainer.classList.remove('up');
+                        if(animalContainer && animalContainer.classList.contains('up')) {
+                            animalContainer.classList.remove('up');
+                        }
                     }, slowPeepDuration);
                 };
 
-                // Override peep for 5 seconds
-                const intervalId = setInterval(slowPeep, slowSpeed);
+                // 使用減速版本替換原來的peep
                 clearInterval(animalIntervalId);
-                animalIntervalId = intervalId;
+                animalIntervalId = setInterval(slowPeep, slowSpeed);
 
-
+                // 5秒後恢復原速度
                 setTimeout(() => {
-                    if (animalIntervalId) { // Check if game is still running
+                    if (animalIntervalId) {
                         clearInterval(animalIntervalId);
                         animalIntervalId = setInterval(peep, originalSpeed);
                     }
