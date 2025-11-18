@@ -240,37 +240,36 @@ body::after {
     text-align: left;
 }
 
-/* 地鼠探頭動畫樣式 - 底部平鋪透視效果 */
+/* 地鼠探頭動畫樣式 - 底部平鋪 */
 .mole-animation-bottom {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 200px;
+    height: 120px;
     pointer-events: none;
-    z-index: 0;
+    z-index: 0; /* 確保在背景層，不覆蓋文字和按鈕 */
     overflow: hidden;
-    opacity: 0.4; /* 透視模式：降低透明度 */
+    border-radius: 0 0 0.75rem 0.75rem; /* 與 start-screen 的 rounded-xl 匹配 */
 }
 
 .mole-animation-bottom video {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    object-position: bottom;
-    transform: scaleX(-1); /* 如果需要鏡像效果可以取消這行 */
+    object-fit: cover; /* 平鋪填滿整個寬度 */
+    object-position: center bottom; /* 對齊底部 */
+    opacity: 1; /* 完全不透明 */
 }
 
-/* 確保內容在動畫上方 */
-#start-screen > *:not(.mole-animation-bottom) {
+/* 確保 start-screen 的內容在動畫之上 */
+#start-screen {
     position: relative;
-    z-index: 10;
+    z-index: 1; /* 確保內容在動畫之上 */
 }
 
-#user-selection-view,
-#main-menu-view {
+#start-screen > * {
     position: relative;
-    z-index: 10;
+    z-index: 2; /* 確保所有子元素都在動畫之上 */
 }
 </style>
 </head>
@@ -307,15 +306,15 @@ body::after {
 
 <!-- 開始畫面 -->
 <div id="start-screen" class="p-6 bg-white rounded-xl shadow-lg relative">
-    <button id="settings-btn" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800 transition z-20">
-        ⚙️
-    </button>
-    <!-- 地鼠動畫 - 底部平鋪 -->
+    <!-- 地鼠探頭動畫 - 底部平鋪 -->
     <div class="mole-animation-bottom">
         <video autoplay loop muted playsinline>
             <source src="assets/動畫效果/地鼠探頭.mp4" type="video/mp4">
         </video>
     </div>
+    <button id="settings-btn" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800 transition z-10">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
     <div id="user-selection-view">
         <h2 class="text-2xl font-bold text-slate-800 mb-4">選擇學生</h2>
         <select id="user-select" class="w-full p-2 border border-slate-300 rounded-md mb-3"></select>
