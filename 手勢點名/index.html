@@ -93,13 +93,8 @@
             animation: blink 3s infinite;
         }
 
-        .eye.left {
-            left: 30px;
-        }
-
-        .eye.right {
-            right: 30px;
-        }
+        .eye.left { left: 30px; }
+        .eye.right { right: 30px; }
 
         .eye::after {
             content: '';
@@ -126,12 +121,8 @@
 
         /* 跳動動畫 */
         @keyframes jump {
-            0%, 100% {
-                transform: translateY(0);
-            }
-            50% {
-                transform: translateY(-15px);
-            }
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
         }
 
         .gift-box:not(.opened) {
@@ -140,12 +131,8 @@
 
         /* 眨眼動畫 */
         @keyframes blink {
-            0%, 90%, 100% {
-                height: 20px;
-            }
-            95% {
-                height: 2px;
-            }
+            0%, 90%, 100% { height: 20px; }
+            95% { height: 2px; }
         }
 
         /* 姓名顯示 */
@@ -170,44 +157,52 @@
         }
 
         @keyframes float {
-            0% {
-                transform: translateX(-50%) translateY(0);
-            }
-            50% {
-                transform: translateX(-50%) translateY(-20px);
-            }
-            100% {
-                transform: translateX(-50%) translateY(0);
-                opacity: 0;
-            }
+            0% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-20px); }
+            100% { transform: translateX(-50%) translateY(0); opacity: 0; }
         }
 
         /* 攝像頭預覽 - 右下角小視窗 */
-        #video {
+        .video-container {
             position: fixed;
             bottom: 20px;
             right: 20px;
             width: 200px;
             height: 150px;
             border-radius: 15px;
+            overflow: hidden;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
             display: none;
             z-index: 1000;
-            object-fit: cover;
             border: 3px solid rgba(255, 107, 157, 0.5);
+            background: #000;
+        }
+
+        .video-container.active {
+            display: block;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             transform: scaleX(-1);
         }
 
-        #canvas {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            width: 200px;
-            height: 150px;
-            border-radius: 15px;
-            z-index: 1001;
-            display: none;
-            transform: scaleX(-1);
+        .hand-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+        }
+
+        .hand-indicator.detected {
+            background: rgba(0, 255, 0, 0.7);
         }
 
         /* 按鈕樣式 */
@@ -230,13 +225,9 @@
             box-shadow: 0 8px 20px rgba(255, 107, 157, 0.5);
         }
 
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #ffb3c6 0%, #ffc0d9 100%);
-        }
+        .btn:active { transform: translateY(0); }
+        .btn-secondary { background: linear-gradient(135deg, #ffb3c6 0%, #ffc0d9 100%); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* 卡片樣式 */
         .card {
@@ -249,7 +240,6 @@
             margin: 20px;
         }
 
-        /* 標題樣式 */
         h1 {
             color: #ff1744;
             font-size: 42px;
@@ -265,27 +255,12 @@
             margin-bottom: 20px;
         }
 
-        /* 設置頁面樣式 */
-        .settings-container {
-            display: none;
-        }
+        .settings-container { display: none; }
+        .settings-container.active { display: block; }
+        .game-container { display: block; }
+        .game-container.hidden { display: none; }
 
-        .settings-container.active {
-            display: block;
-        }
-
-        .game-container {
-            display: block;
-        }
-
-        .game-container.hidden {
-            display: none;
-        }
-
-        /* 名單輸入區域 */
-        .name-input-area {
-            margin: 20px 0;
-        }
+        .name-input-area { margin: 20px 0; }
 
         textarea {
             width: 100%;
@@ -323,7 +298,6 @@
             font-weight: bold;
         }
 
-        /* 狀態提示 */
         .status-message {
             text-align: center;
             padding: 15px;
@@ -333,55 +307,18 @@
             font-size: 18px;
         }
 
-        .status-message.info {
-            background: #e3f2fd;
-            color: #1976d2;
-        }
+        .status-message.info { background: #e3f2fd; color: #1976d2; }
+        .status-message.success { background: #e8f5e9; color: #388e3c; }
+        .status-message.warning { background: #fff3e0; color: #f57c00; }
+        .status-message.error { background: #ffebee; color: #c62828; }
 
-        .status-message.success {
-            background: #e8f5e9;
-            color: #388e3c;
-        }
-
-        .status-message.warning {
-            background: #fff3e0;
-            color: #f57c00;
-        }
-
-        .status-message.error {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        /* 響應式設計 */
         @media (max-width: 640px) {
-            .gift-box {
-                width: 150px;
-                height: 150px;
-            }
-
-            .box-body {
-                width: 135px;
-                height: 105px;
-            }
-
-            .box-lid {
-                width: 150px;
-                height: 45px;
-            }
-
-            h1 {
-                font-size: 32px;
-            }
-
-            .card {
-                padding: 20px;
-            }
-
-            #video, #canvas {
-                width: 150px;
-                height: 112px;
-            }
+            .gift-box { width: 150px; height: 150px; }
+            .box-body { width: 135px; height: 105px; }
+            .box-lid { width: 150px; height: 45px; }
+            h1 { font-size: 32px; }
+            .card { padding: 20px; }
+            .video-container { width: 150px; height: 112px; }
         }
     </style>
 </head>
@@ -404,17 +341,24 @@
             </div>
 
             <div id="status-message" class="status-message info">
-                請將手對準鏡頭來開啟禮盒！
+                點擊下方按鈕開始點名
             </div>
-
-            <video id="video" autoplay playsinline muted></video>
-            <canvas id="canvas"></canvas>
 
             <div style="text-align: center; margin-top: 20px;">
-                <button class="btn" id="start-camera-btn">開始點名</button>
-                <button class="btn btn-secondary" id="settings-btn">名單設置</button>
+                <button class="btn" id="start-camera-btn">📷 開啟攝像頭</button>
+                <button class="btn btn-secondary" id="settings-btn">⚙️ 名單設置</button>
             </div>
+            
+            <p style="text-align: center; margin-top: 15px; color: #999; font-size: 14px;">
+                💡 提示：點擊禮盒也可以直接抽選
+            </p>
         </div>
+    </div>
+
+    <!-- 攝像頭視窗 -->
+    <div class="video-container" id="video-container">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="hand-indicator" id="hand-indicator">未偵測</div>
     </div>
 
     <!-- 設置頁面 -->
@@ -427,8 +371,8 @@
             </div>
 
             <div style="text-align: center;">
-                <button class="btn" id="save-names-btn">儲存名單</button>
-                <button class="btn btn-secondary" id="back-btn">返回</button>
+                <button class="btn" id="save-names-btn">💾 儲存名單</button>
+                <button class="btn btn-secondary" id="back-btn">↩️ 返回</button>
             </div>
 
             <div class="name-list" id="name-list">
@@ -437,32 +381,25 @@
         </div>
     </div>
 
-    <!-- 載入 MediaPipe -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469404/hands.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
-
     <script>
-        // 全局變數
-        let hands = null;
-        let camera = null;
+        // ===== 全局變數 =====
+        let stream = null;
         let isBoxOpened = false;
         let lastTriggerTime = 0;
-        const TRIGGER_COOLDOWN = 3000; // 3秒冷卻時間
-        const AUTO_CLOSE_DELAY = 5000; // 5秒後自動關閉
+        const TRIGGER_COOLDOWN = 3000;
+        const AUTO_CLOSE_DELAY = 5000;
         let nameList = [];
         let autoCloseTimer = null;
-        let isMediaPipeReady = false;
-        let isCameraRunning = false;
+        let handDetectionInterval = null;
 
-        // DOM 元素
+        // ===== DOM 元素 =====
         const gameContainer = document.getElementById('game-container');
         const settingsContainer = document.getElementById('settings-container');
         const giftBox = document.getElementById('gift-box');
         const nameDisplay = document.getElementById('name-display');
         const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
+        const videoContainer = document.getElementById('video-container');
+        const handIndicator = document.getElementById('hand-indicator');
         const startCameraBtn = document.getElementById('start-camera-btn');
         const settingsBtn = document.getElementById('settings-btn');
         const saveNamesBtn = document.getElementById('save-names-btn');
@@ -471,87 +408,162 @@
         const nameListEl = document.getElementById('name-list');
         const statusMessage = document.getElementById('status-message');
 
-        // 更新狀態訊息
+        // ===== 狀態更新 =====
         function updateStatus(message, type = 'info') {
             statusMessage.textContent = message;
             statusMessage.className = `status-message ${type}`;
-            console.log(`[狀態] ${message}`);
         }
 
-        // 初始化 MediaPipe Hands
-        async function initHands() {
-            updateStatus('正在載入手勢識別模型...', 'info');
-            
+        // ===== 攝像頭控制 =====
+        async function startCamera() {
+            if (nameList.length === 0) {
+                alert('請先在設置頁面添加學生名單！');
+                return;
+            }
+
             try {
-                // 檢查 MediaPipe 是否已載入
-                if (typeof Hands === 'undefined') {
-                    console.error('MediaPipe Hands 未載入');
-                    updateStatus('手勢識別載入失敗，請刷新頁面重試', 'error');
-                    return false;
-                }
+                updateStatus('正在開啟攝像頭...', 'info');
+                startCameraBtn.disabled = true;
+                startCameraBtn.textContent = '開啟中...';
 
-                hands = new Hands({
-                    locateFile: (file) => {
-                        console.log(`載入 MediaPipe 檔案: ${file}`);
-                        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469404/${file}`;
-                    }
+                // 使用原生 API 請求攝像頭
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    },
+                    audio: false
                 });
 
-                hands.setOptions({
-                    maxNumHands: 2,
-                    modelComplexity: 1,
-                    minDetectionConfidence: 0.5,
-                    minTrackingConfidence: 0.5
-                });
+                video.srcObject = stream;
+                await video.play();
 
-                hands.onResults(onHandsResults);
+                videoContainer.classList.add('active');
+                startCameraBtn.textContent = '🛑 關閉攝像頭';
+                startCameraBtn.disabled = false;
                 
-                isMediaPipeReady = true;
-                console.log('MediaPipe Hands 初始化成功');
-                return true;
+                updateStatus('攝像頭已開啟！將手掌放入畫面中觸發點名', 'success');
+
+                // 開始手部偵測（使用簡單的動態檢測）
+                startHandDetection();
+
             } catch (error) {
-                console.error('MediaPipe 初始化錯誤:', error);
-                updateStatus('手勢識別初始化失敗: ' + error.message, 'error');
-                return false;
+                console.error('攝像頭錯誤:', error);
+                let errorMsg = '無法開啟攝像頭';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMsg = '請允許使用攝像頭權限';
+                } else if (error.name === 'NotFoundError') {
+                    errorMsg = '找不到攝像頭設備';
+                } else if (error.name === 'NotReadableError') {
+                    errorMsg = '攝像頭被其他應用程式佔用';
+                }
+                
+                updateStatus(errorMsg, 'error');
+                startCameraBtn.textContent = '📷 開啟攝像頭';
+                startCameraBtn.disabled = false;
             }
         }
 
-        // 處理手勢識別結果
-        function onHandsResults(results) {
-            // 繪製到 canvas（用於調試）
-            ctx.save();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.srcObject = null;
+            videoContainer.classList.remove('active');
+            startCameraBtn.textContent = '📷 開啟攝像頭';
             
-            // 檢測是否有手出現
-            let handDetected = false;
+            if (handDetectionInterval) {
+                clearInterval(handDetectionInterval);
+                handDetectionInterval = null;
+            }
             
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                handDetected = true;
-                console.log(`檢測到 ${results.multiHandLandmarks.length} 隻手`);
-                
-                // 繪製手部關鍵點（用於調試）
-                for (const landmarks of results.multiHandLandmarks) {
-                    if (typeof drawConnectors !== 'undefined' && typeof HAND_CONNECTIONS !== 'undefined') {
-                        drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
+            updateStatus('點擊下方按鈕開始點名', 'info');
+        }
+
+        function toggleCamera() {
+            if (stream) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        }
+
+        // ===== 簡單動態檢測（基於畫面變化） =====
+        let lastImageData = null;
+        let motionCount = 0;
+        const MOTION_THRESHOLD = 30;
+        const MOTION_FRAMES_NEEDED = 5;
+
+        function startHandDetection() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = 160;
+            canvas.height = 120;
+
+            handDetectionInterval = setInterval(() => {
+                if (!video.videoWidth) return;
+
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+
+                if (lastImageData) {
+                    let diffCount = 0;
+                    const threshold = 30;
+
+                    // 只檢測中間區域（更可能是手的位置）
+                    const startX = Math.floor(canvas.width * 0.2);
+                    const endX = Math.floor(canvas.width * 0.8);
+                    const startY = Math.floor(canvas.height * 0.2);
+                    const endY = Math.floor(canvas.height * 0.8);
+
+                    for (let y = startY; y < endY; y++) {
+                        for (let x = startX; x < endX; x++) {
+                            const i = (y * canvas.width + x) * 4;
+                            const diff = Math.abs(data[i] - lastImageData[i]) +
+                                        Math.abs(data[i + 1] - lastImageData[i + 1]) +
+                                        Math.abs(data[i + 2] - lastImageData[i + 2]);
+                            if (diff > threshold) {
+                                diffCount++;
+                            }
+                        }
                     }
-                    if (typeof drawLandmarks !== 'undefined') {
-                        drawLandmarks(ctx, landmarks, {color: '#FF0000', lineWidth: 1, radius: 3});
+
+                    const totalPixels = (endX - startX) * (endY - startY);
+                    const motionPercent = (diffCount / totalPixels) * 100;
+
+                    // 檢測顯著的動作（5% - 40% 的畫面變化）
+                    if (motionPercent > 5 && motionPercent < 40) {
+                        motionCount++;
+                        handIndicator.textContent = '偵測中...';
+                        handIndicator.classList.add('detected');
+
+                        if (motionCount >= MOTION_FRAMES_NEEDED) {
+                            const currentTime = Date.now();
+                            if (!isBoxOpened && (currentTime - lastTriggerTime) >= TRIGGER_COOLDOWN) {
+                                handIndicator.textContent = '已觸發！';
+                                openGiftBox();
+                                lastTriggerTime = currentTime;
+                                motionCount = 0;
+                            }
+                        }
+                    } else {
+                        motionCount = Math.max(0, motionCount - 1);
+                        if (motionCount === 0) {
+                            handIndicator.textContent = '等待動作';
+                            handIndicator.classList.remove('detected');
+                        }
                     }
                 }
-            }
 
-            ctx.restore();
-
-            // 處理禮盒開關邏輯
-            const currentTime = Date.now();
-            if (handDetected && !isBoxOpened && (currentTime - lastTriggerTime) >= TRIGGER_COOLDOWN) {
-                console.log('觸發禮盒開啟！');
-                openGiftBox();
-                lastTriggerTime = currentTime;
-            }
+                lastImageData = new Uint8ClampedArray(data);
+            }, 100);
         }
 
-        // 開啟禮盒
+        // ===== 禮盒控制 =====
         function openGiftBox() {
             if (nameList.length === 0) {
                 updateStatus('請先在設置頁面添加學生名單！', 'warning');
@@ -561,34 +573,30 @@
             isBoxOpened = true;
             giftBox.classList.add('opened');
             
-            // 隨機抽取一個名字
             const randomName = nameList[Math.floor(Math.random() * nameList.length)];
             nameDisplay.textContent = randomName;
             nameDisplay.classList.add('show');
 
-            // 播放 Confetti 特效
             triggerConfetti();
-
-            // 更新狀態
             updateStatus(`🎉 恭喜 ${randomName} 被選中！`, 'success');
 
-            // 清除之前的自動關閉計時器
-            if (autoCloseTimer) {
-                clearTimeout(autoCloseTimer);
-            }
+            if (autoCloseTimer) clearTimeout(autoCloseTimer);
 
-            // 5秒後自動關閉
             autoCloseTimer = setTimeout(() => {
                 closeGiftBox();
             }, AUTO_CLOSE_DELAY);
         }
 
-        // 關閉禮盒
         function closeGiftBox() {
             isBoxOpened = false;
             giftBox.classList.remove('opened');
             nameDisplay.classList.remove('show');
-            updateStatus('請將手對準鏡頭來開啟禮盒！', 'info');
+            
+            if (stream) {
+                updateStatus('攝像頭已開啟！將手掌放入畫面中觸發點名', 'success');
+            } else {
+                updateStatus('點擊下方按鈕開始點名', 'info');
+            }
             
             if (autoCloseTimer) {
                 clearTimeout(autoCloseTimer);
@@ -596,142 +604,37 @@
             }
         }
 
-        // 觸發 Confetti 特效
+        // ===== Confetti 特效 =====
         function triggerConfetti() {
-            if (typeof confetti === 'undefined') {
-                console.warn('Confetti 未載入');
-                return;
-            }
+            if (typeof confetti === 'undefined') return;
 
             const duration = 3000;
             const animationEnd = Date.now() + duration;
             const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 999 };
 
-            function randomInRange(min, max) {
-                return Math.random() * (max - min) + min;
-            }
-
-            const interval = setInterval(function() {
+            const interval = setInterval(() => {
                 const timeLeft = animationEnd - Date.now();
-
-                if (timeLeft <= 0) {
-                    return clearInterval(interval);
-                }
+                if (timeLeft <= 0) return clearInterval(interval);
 
                 const particleCount = 50 * (timeLeft / duration);
-
                 confetti({
                     ...defaults,
                     particleCount,
-                    origin: { x: randomInRange(0.1, 0.9), y: Math.random() - 0.2 }
+                    origin: { x: Math.random(), y: Math.random() - 0.2 }
                 });
             }, 250);
         }
 
-        // 開始攝像頭
-        async function startCamera() {
-            if (nameList.length === 0) {
-                alert('請先在設置頁面添加學生名單！');
-                return;
-            }
-
-            startCameraBtn.textContent = '載入中...';
-            startCameraBtn.disabled = true;
-            updateStatus('正在啟動攝像頭...', 'info');
-
-            try {
-                // 初始化 MediaPipe（如果尚未初始化）
-                if (!isMediaPipeReady) {
-                    const success = await initHands();
-                    if (!success) {
-                        startCameraBtn.textContent = '開始點名';
-                        startCameraBtn.disabled = false;
-                        return;
-                    }
-                }
-
-                // 檢查 Camera 是否可用
-                if (typeof Camera === 'undefined') {
-                    console.error('MediaPipe Camera 未載入');
-                    updateStatus('攝像頭模組載入失敗，請刷新頁面', 'error');
-                    startCameraBtn.textContent = '開始點名';
-                    startCameraBtn.disabled = false;
-                    return;
-                }
-
-                // 設置 canvas 尺寸
-                canvas.width = 640;
-                canvas.height = 480;
-
-                // 創建攝像頭
-                camera = new Camera(video, {
-                    onFrame: async () => {
-                        if (hands && isCameraRunning) {
-                            try {
-                                await hands.send({ image: video });
-                            } catch (e) {
-                                console.error('處理影像錯誤:', e);
-                            }
-                        }
-                    },
-                    width: 640,
-                    height: 480
-                });
-
-                await camera.start();
-                isCameraRunning = true;
-
-                video.style.display = 'block';
-                canvas.style.display = 'block';
-
-                startCameraBtn.textContent = '停止點名';
-                updateStatus('請將手對準鏡頭來開啟禮盒！', 'info');
-                console.log('攝像頭已啟動');
-
-            } catch (error) {
-                console.error('啟動攝像頭錯誤:', error);
-                updateStatus('攝像頭啟動失敗: ' + error.message, 'error');
-                startCameraBtn.textContent = '開始點名';
-                startCameraBtn.disabled = false;
-            }
-        }
-
-        // 停止攝像頭
-        function stopCamera() {
-            isCameraRunning = false;
-            if (camera) {
-                camera.stop();
-                camera = null;
-            }
-            video.style.display = 'none';
-            canvas.style.display = 'none';
-            startCameraBtn.textContent = '開始點名';
-            startCameraBtn.disabled = false;
-            updateStatus('點名已停止', 'info');
-        }
-
-        // 切換攝像頭狀態
-        function toggleCamera() {
-            if (isCameraRunning) {
-                stopCamera();
-            } else {
-                startCamera();
-            }
-        }
-
-        // 載入名單
+        // ===== 名單管理 =====
         function loadNameList() {
             const saved = localStorage.getItem('nameList');
             if (saved) {
                 nameList = JSON.parse(saved);
                 updateNameListDisplay();
-                if (nameInput.value === '') {
-                    nameInput.value = nameList.join('\n');
-                }
+                nameInput.value = nameList.join('\n');
             }
         }
 
-        // 儲存名單
         function saveNameList() {
             const text = nameInput.value.trim();
             if (!text) {
@@ -748,7 +651,6 @@
             alert(`成功儲存 ${nameList.length} 個名字！`);
         }
 
-        // 更新名單顯示
         function updateNameListDisplay() {
             if (nameList.length === 0) {
                 nameListEl.innerHTML = '<p style="text-align: center; color: #999;">尚無名單</p>';
@@ -759,26 +661,25 @@
             }
         }
 
-        // 切換到設置頁面
+        // ===== 頁面切換 =====
         function showSettings() {
             gameContainer.classList.add('hidden');
             settingsContainer.classList.add('active');
             stopCamera();
         }
 
-        // 切換到遊戲頁面
         function showGame() {
             settingsContainer.classList.remove('active');
             gameContainer.classList.remove('hidden');
         }
 
-        // 事件監聽器
+        // ===== 事件監聽器 =====
         startCameraBtn.addEventListener('click', toggleCamera);
         settingsBtn.addEventListener('click', showSettings);
         saveNamesBtn.addEventListener('click', saveNameList);
         backBtn.addEventListener('click', showGame);
 
-        // 點擊禮盒也可以觸發（作為備用方案）
+        // 點擊禮盒直接觸發
         giftBox.addEventListener('click', () => {
             const currentTime = Date.now();
             if (!isBoxOpened && (currentTime - lastTriggerTime) >= TRIGGER_COOLDOWN) {
@@ -787,27 +688,8 @@
             }
         });
 
-        // 初始化
-        window.addEventListener('load', () => {
-            console.log('頁面載入完成');
-            loadNameList();
-            
-            // 檢查 MediaPipe 是否載入
-            setTimeout(() => {
-                if (typeof Hands !== 'undefined') {
-                    console.log('MediaPipe Hands 可用');
-                } else {
-                    console.warn('MediaPipe Hands 未載入');
-                    updateStatus('手勢識別模組載入中，請稍候...', 'warning');
-                }
-                
-                if (typeof Camera !== 'undefined') {
-                    console.log('MediaPipe Camera 可用');
-                } else {
-                    console.warn('MediaPipe Camera 未載入');
-                }
-            }, 1000);
-        });
+        // ===== 初始化 =====
+        loadNameList();
     </script>
 </body>
 </html>
