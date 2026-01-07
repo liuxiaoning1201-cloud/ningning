@@ -349,7 +349,12 @@
                 <button class="btn btn-secondary" id="settings-btn">⚙️ 名單設置</button>
             </div>
             
-            <p style="text-align: center; margin-top: 15px; color: #999; font-size: 14px;">
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn btn-secondary" id="reset-btn" style="padding: 10px 20px; font-size: 14px;">🔄 重置抽取記錄</button>
+                <p id="remaining-count" style="margin-top: 10px; color: #666; font-size: 14px;">尚未載入名單</p>
+            </div>
+            
+            <p style="text-align: center; margin-top: 10px; color: #999; font-size: 14px;">
                 💡 提示：點擊禮盒也可以直接抽選
             </p>
         </div>
@@ -389,8 +394,13 @@
         const TRIGGER_COOLDOWN = 3000;
         const AUTO_CLOSE_DELAY = 5000;
         let nameList = [];
+        let remainingNames = []; // 尚未被抽取的學生名單
         let autoCloseTimer = null;
         let handDetectionInterval = null;
+
+        // ===== 音效 =====
+        const wowSound = new Audio('wow-171498.mp3');
+        wowSound.volume = 0.8;
 
         // ===== DOM 元素 =====
         const gameContainer = document.getElementById('game-container');
@@ -570,15 +580,34 @@
                 return;
             }
 
+            // 如果所有學生都已抽取過，重置名單
+            if (remainingNames.length === 0) {
+                remainingNames = [...nameList];
+                // 使用 Fisher-Yates 洗牌算法打亂順序
+                for (let i = remainingNames.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [remainingNames[i], remainingNames[j]] = [remainingNames[j], remainingNames[i]];
+                }
+            }
+
             isBoxOpened = true;
             giftBox.classList.add('opened');
             
-            const randomName = nameList[Math.floor(Math.random() * nameList.length)];
+            // 從尚未抽取的名單中取出一個
+            const randomName = remainingNames.pop();
             nameDisplay.textContent = randomName;
             nameDisplay.classList.add('show');
 
+            // 播放音效
+            wowSound.currentTime = 0;
+            wowSound.play().catch(e => console.log('音效播放失敗:', e));
+
             triggerConfetti();
-            updateStatus(`🎉 恭喜 ${randomName} 被選中！`, 'success');
+            
+            // 顯示剩餘人數
+            const remaining = remainingNames.length;
+            const total = nameList.length;
+            updateStatus(`🎉 恭喜 ${randomName} 被選中！（剩餘 ${remaining}/${total} 人）`, 'success');
 
             if (autoCloseTimer) clearTimeout(autoCloseTimer);
 
@@ -591,6 +620,16 @@
             isBoxOpened = false;
             giftBox.classList.remove('opened');
             nameDisplay.classList.remove('show');
+            
+            // 更新剩餘人數顯示
+            const remainingCountEl = document.getElementById('remaining-count');
+            if (remainingCountEl) {
+                if (nameList.length === 0) {
+                    remainingCountEl.textContent = '尚未載入名單';
+                } else {
+                    remainingCountEl.textContent = `剩餘 ${remainingNames.length} / ${nameList.length} 位學生`;
+                }
+            }
             
             if (stream) {
                 updateStatus('攝像頭已開啟！將手掌放入畫面中觸發點名', 'success');
@@ -630,6 +669,12 @@
             const saved = localStorage.getItem('nameList');
             if (saved) {
                 nameList = JSON.parse(saved);
+                remainingNames = [...nameList]; // 初始化未抽取名單
+                // 打亂順序
+                for (let i = remainingNames.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [remainingNames[i], remainingNames[j]] = [remainingNames[j], remainingNames[i]];
+                }
                 updateNameListDisplay();
                 nameInput.value = nameList.join('\n');
             }
@@ -646,9 +691,26 @@
                 .map(name => name.trim())
                 .filter(name => name.length > 0);
 
+            // 重置未抽取名單並打亂順序
+            remainingNames = [...nameList];
+            for (let i = remainingNames.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remainingNames[i], remainingNames[j]] = [remainingNames[j], remainingNames[i]];
+            }
+
             localStorage.setItem('nameList', JSON.stringify(nameList));
             updateNameListDisplay();
             alert(`成功儲存 ${nameList.length} 個名字！`);
+        }
+        
+        // 重置抽取記錄（手動重置）
+        function resetPickedNames() {
+            remainingNames = [...nameList];
+            for (let i = remainingNames.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remainingNames[i], remainingNames[j]] = [remainingNames[j], remainingNames[i]];
+            }
+            updateStatus(`已重置！共 ${nameList.length} 位學生等待抽取`, 'info');
         }
 
         function updateNameListDisplay() {
@@ -674,10 +736,17 @@
         }
 
         // ===== 事件監聽器 =====
+        const resetBtn = document.getElementById('reset-btn');
+        const remainingCountEl = document.getElementById('remaining-count');
+
         startCameraBtn.addEventListener('click', toggleCamera);
         settingsBtn.addEventListener('click', showSettings);
         saveNamesBtn.addEventListener('click', saveNameList);
         backBtn.addEventListener('click', showGame);
+        resetBtn.addEventListener('click', () => {
+            resetPickedNames();
+            updateRemainingCount();
+        });
 
         // 點擊禮盒直接觸發
         giftBox.addEventListener('click', () => {
@@ -688,8 +757,18 @@
             }
         });
 
+        // 更新剩餘人數顯示
+        function updateRemainingCount() {
+            if (nameList.length === 0) {
+                remainingCountEl.textContent = '尚未載入名單';
+            } else {
+                remainingCountEl.textContent = `剩餘 ${remainingNames.length} / ${nameList.length} 位學生`;
+            }
+        }
+
         // ===== 初始化 =====
         loadNameList();
+        updateRemainingCount();
     </script>
 </body>
 </html>
