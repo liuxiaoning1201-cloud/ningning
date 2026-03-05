@@ -5,6 +5,6 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "launch": "node launch.js"
   }
 }

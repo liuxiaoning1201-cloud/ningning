@@ -142,18 +142,22 @@
         })
       });
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err || '請求失敗');
+        const errMsg = data.error || (typeof data === 'string' ? data : '請求失敗');
+        throw new Error(errMsg);
       }
-      const data = await response.json();
       const reply = data.reply || data.content || '無法取得回覆。';
       chatHistory.push({ role: 'assistant', content: reply });
       removeLoading();
       addSystemMessage(messagesEl, reply);
     } catch (err) {
       removeLoading();
-      addSystemMessage(messagesEl, '回覆失敗：' + (err.message || '請檢查 API 設定與網路連線。'));
+      let msg = err.message || '請檢查 API 設定與網路連線。';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        msg = '無法連線至後端，請確認：1) 後端已執行 node server.js  2) API 網址正確（http://localhost:3001）';
+      }
+      addSystemMessage(messagesEl, '回覆失敗：' + msg);
     }
     btn.disabled = false;
   }
@@ -194,13 +198,44 @@ ${worksText}
     renderAuthorList('authorList', e.target.value, selectAuthor);
   });
 
+  // 測試連線
+  document.getElementById('testConnectionBtn').addEventListener('click', async () => {
+    const apiBase = (document.getElementById('apiBaseUrl').value || '').trim();
+    const statusEl = document.getElementById('connectionStatus');
+    if (!apiBase) {
+      statusEl.textContent = '請先輸入 API 網址';
+      statusEl.style.color = '#c45c5c';
+      return;
+    }
+    statusEl.textContent = '連線中...';
+    statusEl.style.color = 'inherit';
+    try {
+      const res = await fetch(apiBase + '/health');
+      const data = await res.json();
+      if (data.ok && data.hasKey) {
+        statusEl.textContent = '✓ 連線成功，金鑰已載入';
+        statusEl.style.color = '#2e7d32';
+      } else if (data.ok && !data.hasKey) {
+        statusEl.textContent = '⚠ 後端運行中，但未載入 API 金鑰';
+        statusEl.style.color = '#ed6c02';
+      } else {
+        statusEl.textContent = '✗ 連線異常';
+        statusEl.style.color = '#c45c5c';
+      }
+    } catch (err) {
+      statusEl.textContent = '✗ 連線失敗：' + (err.message || '請確認後端已啟動');
+      statusEl.style.color = '#c45c5c';
+    }
+  });
+
   // 載入時渲染作者
   renderAuthorList('authorList', '', selectAuthor);
 
-  // 儲存 API 網址
+  // 儲存 API 網址，首次使用預設 localhost:3001
   const savedApi = localStorage.getItem(API_BASE_KEY);
-  if (savedApi) document.getElementById('apiBaseUrl').value = savedApi;
-  document.getElementById('apiBaseUrl').addEventListener('blur', e => {
+  const apiInput = document.getElementById('apiBaseUrl');
+  apiInput.value = savedApi || 'http://localhost:3001';
+  apiInput.addEventListener('blur', e => {
     localStorage.setItem(API_BASE_KEY, e.target.value);
   });
 

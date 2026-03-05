@@ -14,22 +14,31 @@
 
 用瀏覽器開啟 `index.html`，即可使用「作者朋友圈」功能。發文、點贊、評論會儲存在瀏覽器本地。
 
-### 2. 啟用聊天功能（需後端）
+### 2. 啟用聊天功能（DeepSeek API 已預設）
 
-1. 進入 `詩人的朋友圈` 目錄
-2. 設定環境變數並啟動後端：
-   ```bash
-   OPENAI_API_KEY=sk-你的金鑰 node server.js
-   ```
-3. 用瀏覽器開啟 `index.html`，在左側輸入 API 網址：`http://localhost:3001`
-4. 選擇作者後即可開始對話
-
-### 3. 使用其他 LLM 服務
-
-若使用支援 OpenAI 相容格式的 API（如 Azure OpenAI、通義千問等），可設定：
+**方式一：一鍵啟動（推薦）**
 
 ```bash
-OPENAI_API_BASE=https://你的API網址/v1 OPENAI_API_KEY=你的金鑰 node server.js
+cd 詩人的朋友圈
+node launch.js
+```
+
+會自動啟動後端與網頁伺服器，並開啟瀏覽器。API 網址已預設為 `http://localhost:3001`。
+
+**方式二：手動啟動**
+
+1. 終端機一：`cd 詩人的朋友圈` → `node server.js`
+2. 終端機二：`cd ningning` → `python3 -m http.server 8080`
+3. 瀏覽器開啟：`http://localhost:8080/詩人的朋友圈/index.html`
+
+### 3. 更換或設定 API 金鑰
+
+編輯 `.env` 檔案，修改 `OPENAI_API_KEY`。若使用其他 LLM 服務，可同時修改：
+
+```
+OPENAI_API_BASE=https://api.deepseek.com/v1
+OPENAI_API_KEY=你的金鑰
+OPENAI_MODEL=deepseek-chat
 ```
 
 ## 20 位核心作者

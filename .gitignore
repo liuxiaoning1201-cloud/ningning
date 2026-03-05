@@ -1,0 +1,4 @@
+# API 金鑰與敏感資料
+.env
+*.env
+!*.env.example
