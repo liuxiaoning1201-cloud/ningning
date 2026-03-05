@@ -142,9 +142,22 @@
         })
       });
 
-      const data = await response.json().catch(() => ({}));
+      const rawText = await response.text();
+      let data = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch (_) {
+        if (!response.ok) data = { error: rawText.slice(0, 200) || '伺服器回傳非 JSON' };
+      }
+
       if (!response.ok) {
-        const errMsg = data.error || (typeof data === 'string' ? data : '請求失敗');
+        let errMsg = data.error || '';
+        if (!errMsg) {
+          if (response.status === 404) errMsg = 'API 未找到。請使用「node launch.js」啟動（含 API 代理），勿單獨用 Python 伺服器。';
+          else if (response.status === 502) errMsg = '後端未啟動，請在終端機執行：cd 詩人的朋友圈 && node server.js';
+          else if (response.status >= 500) errMsg = '伺服器錯誤，請檢查 .env 中的 API 金鑰是否正確。';
+          else errMsg = '請求失敗 (HTTP ' + response.status + ')';
+        }
         throw new Error(errMsg);
       }
       const reply = data.reply || data.content || '無法取得回覆。';
@@ -155,7 +168,7 @@
       removeLoading();
       let msg = err.message || '請檢查 API 設定與網路連線。';
       if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        msg = '無法連線至後端，請確認：1) 後端已執行 node server.js  2) API 網址正確（http://localhost:3001）';
+        msg = '無法連線。請執行：cd 詩人的朋友圈 && node launch.js';
       }
       addSystemMessage(messagesEl, '回覆失敗：' + msg);
     }

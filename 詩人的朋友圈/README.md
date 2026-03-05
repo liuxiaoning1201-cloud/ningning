@@ -16,20 +16,32 @@
 
 ### 2. 啟用聊天功能（DeepSeek API 已預設）
 
-**方式一：一鍵啟動（推薦）**
+**方式一：Node 一鍵啟動（推薦）**
 
 ```bash
 cd 詩人的朋友圈
 node launch.js
 ```
 
-會自動啟動後端與網頁伺服器，並開啟瀏覽器。API 透過同源代理（/api），聊天功能會自動連線，無需手動設定。
+**方式二：Flask 後端（Python）**
 
-**方式二：手動啟動**
+```bash
+cd 詩人的朋友圈
+pip install -r requirements.txt
+python app.py
+```
 
-1. 終端機一：`cd 詩人的朋友圈` → `node server.js`
-2. 終端機二：`cd ningning` → `python3 -m http.server 8080`
+然後將 API 網址設為 `http://localhost:3001`。
+
+**方式三：Python 代理（無 Node 時）**
+
+1. 終端機一：`cd 詩人的朋友圈` → `python app.py`（或 `node server.js`）
+2. 終端機二：`cd 詩人的朋友圈` → `python3 launch_with_proxy.py`
 3. 瀏覽器開啟：`http://localhost:8080/詩人的朋友圈/index.html`
+
+**方式四：僅網頁（無聊天）**
+
+`python3 -m http.server 8080` 後開啟頁面，聊天會顯示錯誤提示。
 
 ### 3. 更換或設定 API 金鑰
 
