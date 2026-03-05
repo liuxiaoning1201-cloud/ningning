@@ -2,8 +2,10 @@
  * 詩人的朋友圈 - 主應用邏輯
  */
 (function() {
-  const API_BASE_KEY = 'poets_api_base';
   const MOMENTS_KEY = 'poets_moments';
+  const DEEPSEEK_KEY = 'sk-a082925b9cb644449be8fa0e54a8f46c';
+  const DEEPSEEK_API = 'https://api.deepseek.com/v1/chat/completions';
+  const PROXY_URL = 'https://corsproxy.io/?' + encodeURIComponent(DEEPSEEK_API);
 
   let currentAuthor = null;
   let chatHistory = [];
@@ -123,54 +125,27 @@
     btn.disabled = true;
     addLoadingMessage(messagesEl);
 
-    const apiBase = (document.getElementById('apiBaseUrl').value || '').trim();
-    if (!apiBase) {
-      removeLoading();
-      addSystemMessage(messagesEl, '請先在左側設定 API 代理網址（例如 http://localhost:3001），並確保後端服務已啟動。');
-      btn.disabled = false;
-      return;
-    }
-
     try {
       const systemPrompt = buildSystemPrompt(currentAuthor);
-      const response = await fetch(apiBase + '/chat', {
+      const msgs = [{ role: 'system', content: systemPrompt }, ...chatHistory];
+      const response = await fetch(PROXY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system: systemPrompt,
-          messages: chatHistory
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + DEEPSEEK_KEY
+        },
+        body: JSON.stringify({ model: 'deepseek-chat', messages: msgs, max_tokens: 1024 })
       });
 
-      const rawText = await response.text();
-      let data = {};
-      try {
-        data = rawText ? JSON.parse(rawText) : {};
-      } catch (_) {
-        if (!response.ok) data = { error: rawText.slice(0, 200) || '伺服器回傳非 JSON' };
-      }
-
-      if (!response.ok) {
-        let errMsg = data.error || '';
-        if (!errMsg) {
-          if (response.status === 404) errMsg = 'API 未找到。請使用「node launch.js」啟動（含 API 代理），勿單獨用 Python 伺服器。';
-          else if (response.status === 502) errMsg = '後端未啟動，請在終端機執行：cd 詩人的朋友圈 && node server.js';
-          else if (response.status >= 500) errMsg = '伺服器錯誤，請檢查 .env 中的 API 金鑰是否正確。';
-          else errMsg = '請求失敗 (HTTP ' + response.status + ')';
-        }
-        throw new Error(errMsg);
-      }
-      const reply = data.reply || data.content || '無法取得回覆。';
+      const data = await response.json();
+      if (data.error) throw new Error(data.error?.message || JSON.stringify(data.error));
+      const reply = data.choices?.[0]?.message?.content || '無法取得回覆。';
       chatHistory.push({ role: 'assistant', content: reply });
       removeLoading();
       addSystemMessage(messagesEl, reply);
     } catch (err) {
       removeLoading();
-      let msg = err.message || '請檢查 API 設定與網路連線。';
-      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        msg = '無法連線。請執行：cd 詩人的朋友圈 && node launch.js';
-      }
-      addSystemMessage(messagesEl, '回覆失敗：' + msg);
+      addSystemMessage(messagesEl, '回覆失敗：' + (err.message || '網路錯誤，請稍後再試'));
     }
     btn.disabled = false;
   }
@@ -211,49 +186,8 @@ ${worksText}
     renderAuthorList('authorList', e.target.value, selectAuthor);
   });
 
-  // 測試連線
-  document.getElementById('testConnectionBtn').addEventListener('click', async () => {
-    const apiBase = (document.getElementById('apiBaseUrl').value || '').trim();
-    const statusEl = document.getElementById('connectionStatus');
-    if (!apiBase) {
-      statusEl.textContent = '請先輸入 API 網址';
-      statusEl.style.color = '#c45c5c';
-      return;
-    }
-    statusEl.textContent = '連線中...';
-    statusEl.style.color = 'inherit';
-    try {
-      const res = await fetch(apiBase + '/health');
-      const data = await res.json();
-      if (data.ok && data.hasKey) {
-        statusEl.textContent = '✓ 連線成功，金鑰已載入';
-        statusEl.style.color = '#2e7d32';
-      } else if (data.ok && !data.hasKey) {
-        statusEl.textContent = '⚠ 後端運行中，但未載入 API 金鑰';
-        statusEl.style.color = '#ed6c02';
-      } else {
-        statusEl.textContent = '✗ 連線異常';
-        statusEl.style.color = '#c45c5c';
-      }
-    } catch (err) {
-      statusEl.textContent = '✗ 連線失敗：' + (err.message || '請確認後端已啟動');
-      statusEl.style.color = '#c45c5c';
-    }
-  });
-
   // 載入時渲染作者
   renderAuthorList('authorList', '', selectAuthor);
-
-  // API 網址：若透過 launch.js 啟動，使用同源 /api 代理，無需跨域
-  const savedApi = localStorage.getItem(API_BASE_KEY);
-  const apiInput = document.getElementById('apiBaseUrl');
-  const defaultApi = (typeof location !== 'undefined' && location.origin && location.protocol !== 'file:')
-    ? location.origin + '/api'  // 同源代理，一鍵啟動時自動連線
-    : 'http://localhost:3001';
-  apiInput.value = savedApi || defaultApi;
-  apiInput.addEventListener('blur', e => {
-    localStorage.setItem(API_BASE_KEY, e.target.value);
-  });
 
   // ========== 朋友圈功能 ==========
   function loadMoments() {

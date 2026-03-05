@@ -707,8 +707,8 @@ export const mansionDetails: MansionDetail[] = [
     name: '斗',
     pinyin: 'dǒu',
     meaning: '斗宿',
-    description: '北方玄武的第一宿，象徵方向和指引。斗宿主宰冬季的開始，預示著新的循環。',
-    story: '斗宿代表北斗星，是古代導航和時間測量的重要工具。',
+    description: '北方玄武的第一宿，又名南斗，即觀星者常說的茶壼的柄和蓋部份。斗宿主宰冬季的開始，象徵方向和指引。',
+    story: '中國人一向有「南斗注生，北斗注死」的說法。三國時魏國術士管輅見顏超有早夭相，教他備酒肉於卯日往桑樹下，見兩人下棋只管侍候。北坐者為北斗，南坐者為南斗。南斗取文書將顏超的十九歲改為九十歲，顏超遂得延壽。南斗星君廟主延壽度人。',
     direction: '北方',
     symbol: '♑'
   },
@@ -717,8 +717,8 @@ export const mansionDetails: MansionDetail[] = [
     name: '牛',
     pinyin: 'niú',
     meaning: '牛宿',
-    description: '北方玄武的第二宿，象徵勤勞和耕作。牛宿主宰冬季的勤勞，預示著農業的發展。',
-    story: '牛宿代表牛郎星，與織女星相對，象徵夫妻的分離和相思。',
+    description: '北方玄武的第二宿。河鼓又名牽牛，河鼓二（天鷹座α星）便是著名的牛郎星，河鼓一和三則是牛郎肩挑著的兩個孩子。',
+    story: '織女為天帝孫女（天孫），負織造雲錦之責。自嫁與河西牛郎後，織乃中斷，天帝大怒，責令與牛郎分離，只准每年七夕相會一次。烏鵲於天河上會為之搭橋，名為鵲橋。',
     direction: '北方',
     symbol: '♑'
   },
@@ -727,8 +727,8 @@ export const mansionDetails: MansionDetail[] = [
     name: '女',
     pinyin: 'nǚ',
     meaning: '女宿',
-    description: '北方玄武的第三宿，象徵柔和和陰性。女宿主宰冬季的柔和，預示著陰性力量的展現。',
-    story: '女宿代表織女星，與牛郎星相對，象徵愛情和相思。',
+    description: '北方玄武的第三宿，對應織女星。女宿主宰冬季的柔和，象徵愛情與相思。',
+    story: '織女與牛郎的傳說初見於《古詩十九首》，至《荊楚歲時記》時內容已有所發展。《風俗通義》記牛郎織女相會時，烏鵲於天河上搭鵲橋。',
     direction: '北方',
     symbol: '♑'
   },
@@ -803,12 +803,12 @@ export const mansionDetails: MansionDetail[] = [
     symbol: '♉'
   },
   {
-    id: 'ang',
+    id: 'mao',
     name: '昴',
     pinyin: 'mǎo',
     meaning: '昴宿',
     description: '西方白虎的第四宿，象徵高昂和上升。昴宿主宰秋季的高昂，預示著事物的發展。',
-    story: '昴宿象徵高昂和力量，代表秋季的活力。',
+    story: '昴宿象徵高昂和力量，代表秋季的活力。昴宿對應西方星空的昴星團（七姊妹星團）。',
     direction: '西方',
     symbol: '♉'
   },

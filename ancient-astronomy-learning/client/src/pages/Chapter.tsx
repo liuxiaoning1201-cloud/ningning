@@ -251,29 +251,19 @@ export default function Chapter() {
               whileInView={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
               viewport={{ once: true }}
-              className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6"
+              className="mt-12 p-6 bg-accent/10 border-2 border-accent rounded-lg text-center"
             >
-              <div className="p-6 bg-accent/10 border-2 border-accent rounded-lg text-center">
-                <p className="text-foreground mb-4">測試你對四象的理解</p>
-                <Link href="/chapter/quiz-four-symbols">
-                  <span className="inline-block px-6 py-3 bg-accent text-background font-semibold rounded-lg hover:bg-gold-light transition-colors cursor-pointer">
-                    參加測驗
-                  </span>
-                </Link>
-              </div>
-              <div className="p-6 bg-accent/10 border-2 border-accent rounded-lg text-center">
-                <p className="text-foreground mb-4">與星宿連線配對</p>
-                <Link href="/chapter/matching-twenty-eight">
-                  <span className="inline-block px-6 py-3 bg-accent text-background font-semibold rounded-lg hover:bg-gold-light transition-colors cursor-pointer">
-                    開始遊戲
-                  </span>
-                </Link>
-              </div>
+              <p className="text-foreground mb-4">與星宿連線配對，測試你對四象與二十八宿的認識</p>
+              <Link href="/chapter/matching-four-symbols">
+                <span className="inline-block px-6 py-3 bg-accent text-background font-semibold rounded-lg hover:bg-gold-light transition-colors cursor-pointer">
+                  開始連線遊戲
+                </span>
+              </Link>
             </motion.div>
           </div>
         );
 
-      case 'twenty-eight':
+      case 'twenty-eight-mansions':
         return (
           <div className="space-y-6">
             <motion.div
@@ -353,7 +343,7 @@ export default function Chapter() {
               </table>
             </motion.div>
 
-            {/* 按四象分類顯示星宿 */}
+            {/* 按四象分類顯示星宿（可展開查看詳細） */}
             {['東方', '北方', '西方', '南方'].map((direction: string) => {
               const filteredMansions = twentyEightMansions.filter((m: any) => m.direction === direction);
               const directionMap: Record<string, { name: string; engName: string; color: string; short: string }> = {
@@ -376,16 +366,23 @@ export default function Chapter() {
                   <h3 className="text-xl font-bold mb-4" style={{ color: dirInfo.color }}>
                     {dirInfo.short}方 · {dirInfo.name}七宿 <span className="text-sm font-normal text-muted-foreground">({dirInfo.engName})</span>
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {filteredMansions.map((mansion: any) => (
-                      <div
-                        key={mansion.id}
-                        className="bg-night-sky-lighter rounded-lg p-3 text-center border border-border/50 hover:border-accent transition-colors"
-                      >
-                        <p className="text-lg font-bold text-accent">{mansion.chineseName}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{mansion.name}</p>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredMansions.map((mansion: any) => {
+                      const detail = mansionDetails.find((d: any) => d.id === mansion.id);
+                      return (
+                        <ExpandableItem
+                          key={mansion.id}
+                          title={mansion.chineseName}
+                          subtitle={mansion.name}
+                          content={detail ? [
+                            detail.description,
+                            detail.story ? `故事：${detail.story}` : ''
+                          ].filter(Boolean) : [mansion.description]}
+                          color={dirInfo.color}
+                          index={filteredMansions.indexOf(mansion)}
+                        />
+                      );
+                    })}
                   </div>
                 </motion.div>
               );
@@ -409,6 +406,37 @@ export default function Chapter() {
               <p className="text-foreground leading-relaxed italic text-accent">
                 「人生不相見，動如參與商」
               </p>
+            </motion.div>
+
+            {/* 補充：相關星官故事 */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              className="bg-card border border-border rounded-lg p-8 mt-8"
+            >
+              <h3 className="text-xl font-bold text-accent mb-4">補充：相關星官故事</h3>
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">文昌</h4>
+                  <p className="text-foreground leading-relaxed text-sm">
+                    文昌星座包括六星：上將、次將、貴相、司命、司中、司祿。司祿便是福祿壽三星中的祿星。道教亦將文昌奉為主宰功名祿位之神，又名「文星」，民間俗稱「文曲星」。文昌帝君即張亞子，晉時為官奉母至孝，戰死後百姓立廟。宋元道士假托他作了《清河內傳》，說他掌管文昌府，成為文昌帝君。
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">老人（南極老人）</h4>
+                  <p className="text-foreground leading-relaxed text-sm">
+                    老人星光度-0.7等，是全天第二亮恆星。在中國中原地方觀看，此星非常接近南方地平，故稱南極老人。古人認為老人星出現是吉兆，代表天下太平。由於老人星象徵太平昌盛，古代會立壽星祠祭祀，不少人家中擺設的慈眉悅目壽星公，便是此星的人化形象。
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">軒轅</h4>
+                  <p className="text-foreground leading-relaxed text-sm">
+                    軒轅十四即獅子座α星。軒轅即黃帝，傳說中軒轅打敗了炎帝，於涿鹿之野擒殺蚩尤後，被擁戴為部落聯盟領袖，這個統一部落最終成為現在的中華民族。中國人皆尊軒轅為共同祖先，自稱黃帝子孫。
+                  </p>
+                </div>
+              </div>
             </motion.div>
 
             {/* 測驗按鈕 */}
