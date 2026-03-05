@@ -1,0 +1,289 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-gold: #d4af37;
+  --color-gold-light: #e8d4a8;
+  --color-gold-dark: #b8860b;
+  --color-night-sky: #0f172a;
+  --color-night-sky-light: #1a1a2e;
+  --color-night-sky-lighter: #2d2d44;
+  --color-star-light: #f0f0f0;
+  --color-star-muted: #d0d0d0;
+}
+
+:root {
+  /* 古韻現代主題 - 深色夜空 + 金色星辰 */
+  --primary: #d4af37;
+  --primary-foreground: #0f172a;
+  --sidebar-primary: #d4af37;
+  --sidebar-primary-foreground: #0f172a;
+  --chart-1: #d4af37;
+  --chart-2: #e8d4a8;
+  --chart-3: #b8860b;
+  --chart-4: #8b7500;
+  --chart-5: #6b5d00;
+  --radius: 0.65rem;
+  
+  /* 背景與前景 */
+  --background: #0f172a;
+  --foreground: #f0f0f0;
+  --card: #1a1a2e;
+  --card-foreground: #f0f0f0;
+  --popover: #1a1a2e;
+  --popover-foreground: #f0f0f0;
+  
+  /* 次要顏色 */
+  --secondary: #2d2d44;
+  --secondary-foreground: #e8d4a8;
+  --muted: #3a3a52;
+  --muted-foreground: #a0a0b0;
+  --accent: #d4af37;
+  --accent-foreground: #0f172a;
+  
+  /* 邊框與輸入 */
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #3a3a52;
+  --input: #2d2d44;
+  --ring: #d4af37;
+  
+  /* 側邊欄 */
+  --sidebar: #1a1a2e;
+  --sidebar-foreground: #f0f0f0;
+  --sidebar-accent: #d4af37;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #3a3a52;
+  --sidebar-ring: #d4af37;
+}
+
+.dark {
+  --primary: #d4af37;
+  --primary-foreground: #0f172a;
+  --sidebar-primary: #d4af37;
+  --sidebar-primary-foreground: #0f172a;
+  --background: #0f172a;
+  --foreground: #f0f0f0;
+  --card: #1a1a2e;
+  --card-foreground: #f0f0f0;
+  --popover: #1a1a2e;
+  --popover-foreground: #f0f0f0;
+  --secondary: #2d2d44;
+  --secondary-foreground: #e8d4a8;
+  --muted: #3a3a52;
+  --muted-foreground: #a0a0b0;
+  --accent: #d4af37;
+  --accent-foreground: #0f172a;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #3a3a52;
+  --input: #2d2d44;
+  --ring: #d4af37;
+  --chart-1: #d4af37;
+  --chart-2: #e8d4a8;
+  --chart-3: #b8860b;
+  --chart-4: #8b7500;
+  --chart-5: #6b5d00;
+  --sidebar: #1a1a2e;
+  --sidebar-foreground: #f0f0f0;
+  --sidebar-accent: #d4af37;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #3a3a52;
+  --sidebar-ring: #d4af37;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Noto Sans SC', sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 700;
+  }
+  h1 {
+    @apply text-4xl;
+    color: #d4af37;
+  }
+  h2 {
+    @apply text-3xl;
+    color: #e8d4a8;
+  }
+  h3 {
+    @apply text-2xl;
+    color: #f0f0f0;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+@layer components {
+  .container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .flex {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+      max-width: 1280px;
+    }
+  }
+
+  /* 古籍引文框 */
+  .ancient-quote {
+    @apply border-l-4 border-accent pl-4 py-2 italic text-muted-foreground;
+    font-family: 'Noto Serif SC', serif;
+  }
+
+  /* 知識卡片 */
+  .knowledge-card {
+    @apply bg-card border border-border rounded-lg p-6 transition-all duration-300;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1);
+  }
+
+  .knowledge-card:hover {
+    @apply border-accent;
+    box-shadow: 0 8px 24px rgba(212, 175, 55, 0.2);
+    transform: translateY(-4px);
+  }
+
+  /* 星辰點綴 */
+  .star-accent {
+    @apply text-accent;
+    text-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
+  }
+
+  /* 夜空背景 */
+  .night-sky-bg {
+    @apply bg-background;
+    background-image: 
+      radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 60px 70px, #fff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 50px 50px, #fff, rgba(0,0,0,0)),
+      radial-gradient(1px 1px at 130px 80px, #fff, rgba(0,0,0,0)),
+      radial-gradient(2px 2px at 90px 10px, #fff, rgba(0,0,0,0));
+    background-repeat: repeat;
+    background-size: 200px 200px;
+  }
+
+  /* 段落間距 */
+  p {
+    @apply mb-4 leading-relaxed;
+  }
+
+  /* 列表樣式 */
+  ul, ol {
+    @apply mb-4 ml-6;
+  }
+
+  li {
+    @apply mb-2;
+  }
+}
+
+/* 動畫定義 */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(212, 175, 55, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+  }
+}
+
+.animate-twinkle {
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}

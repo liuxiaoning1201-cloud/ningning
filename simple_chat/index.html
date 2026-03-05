@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>與孟子聊天</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+    h1 { margin-bottom: 20px; font-size: 1.2rem; }
+    #messages { min-height: 300px; margin-bottom: 16px; }
+    .msg { padding: 10px 14px; margin-bottom: 8px; border-radius: 12px; max-width: 90%; }
+    .user { background: #c4a77d; color: #fff; margin-left: auto; }
+    .ai { background: #f0ede8; }
+    input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+    button { margin-top: 8px; padding: 10px 24px; background: #8b7355; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>與孟子聊天</h1>
+  <div id="messages"></div>
+  <input id="input" placeholder="輸入訊息..." />
+  <button onclick="send()">發送</button>
+
+  <script>
+    const SYSTEM = '你是孟子，先秦儒家代表人物。用第一人稱、簡潔親切地與學生對話，可引用你的作品如《二子學弈》《論四端》。';
+    const messages = [];
+
+    async function send() {
+      const input = document.getElementById('input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      const userMsg = { role: 'user', content: text };
+      messages.push(userMsg);
+      addMsg(text, 'user');
+
+      const msgs = [{ role: 'system', content: SYSTEM }, ...messages];
+      addMsg('思考中...', 'ai', true);
+      try {
+        const r = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: msgs })
+        });
+        const data = await r.json();
+        document.querySelector('.ai.loading')?.remove();
+        if (data.error) throw new Error(data.error);
+        messages.push({ role: 'assistant', content: data.reply });
+        addMsg(data.reply, 'ai');
+      } catch (e) {
+        document.querySelector('.ai.loading')?.remove();
+        addMsg('錯誤：' + e.message, 'ai');
+      }
+    }
+    document.getElementById('input').onkeydown = e => { if (e.key === 'Enter') send(); };
+
+    function addMsg(text, who, loading) {
+      const d = document.createElement('div');
+      d.className = 'msg ' + who + (loading ? ' loading' : '');
+      d.textContent = text;
+      document.getElementById('messages').appendChild(d);
+      d.scrollIntoView();
+    }
+  </script>
+</body>
+</html>
