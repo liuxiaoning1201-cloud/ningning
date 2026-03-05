@@ -172,7 +172,9 @@
 請用友善、易懂的方式回答，適宜中小學生理解。可協助解答：語文、詩詞、文言、學習方法、軟件使用等問題。`;
 
     const apiInput = document.getElementById('apiUrl');
-    apiInput.value = localStorage.getItem(API_KEY) || 'http://localhost:3001';
+    const defaultUrl = (location.origin && location.protocol !== 'file:')
+      ? location.origin + '/api' : 'http://localhost:3001';
+    apiInput.value = localStorage.getItem(API_KEY) || defaultUrl;
     apiInput.addEventListener('blur', () => localStorage.setItem(API_KEY, apiInput.value));
 
     let chatHistory = [];

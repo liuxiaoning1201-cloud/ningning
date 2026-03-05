@@ -231,10 +231,13 @@ ${worksText}
   // 載入時渲染作者
   renderAuthorList('authorList', '', selectAuthor);
 
-  // 儲存 API 網址，首次使用預設 localhost:3001
+  // API 網址：若透過 launch.js 啟動，使用同源 /api 代理，無需跨域
   const savedApi = localStorage.getItem(API_BASE_KEY);
   const apiInput = document.getElementById('apiBaseUrl');
-  apiInput.value = savedApi || 'http://localhost:3001';
+  const defaultApi = (typeof location !== 'undefined' && location.origin && location.protocol !== 'file:')
+    ? location.origin + '/api'  // 同源代理，一鍵啟動時自動連線
+    : 'http://localhost:3001';
+  apiInput.value = savedApi || defaultApi;
   apiInput.addEventListener('blur', e => {
     localStorage.setItem(API_BASE_KEY, e.target.value);
   });

@@ -21,10 +21,53 @@ const mime = {
   '.ico': 'image/x-icon'
 };
 
+const API_TARGET = 'http://127.0.0.1:' + PORT_API;
+
 const webServer = http.createServer((req, res) => {
   const urlPath = (req.url || '/').split('?')[0] || '/';
+
+  // 代理 /api/* 到後端，解決跨域與 file:// 連線問題
+  if (urlPath.startsWith('/api/')) {
+    const apiPath = urlPath.replace('/api', '');
+    const targetUrl = new URL(API_TARGET + apiPath);
+    const opts = {
+      hostname: targetUrl.hostname,
+      port: targetUrl.port,
+      path: targetUrl.pathname,
+      method: req.method,
+      headers: { 'Content-Type': req.headers['content-type'] || 'application/json' }
+    };
+    if (req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => { body += c; });
+      req.on('end', () => {
+        opts.headers['Content-Length'] = Buffer.byteLength(body);
+        const proxyReq = http.request(opts, (proxyRes) => {
+          res.writeHead(proxyRes.statusCode, { 'Content-Type': proxyRes.headers['content-type'] || 'application/json' });
+          proxyRes.pipe(res);
+        });
+        proxyReq.on('error', () => {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: '後端未啟動，請確認 node server.js 已執行' }));
+        });
+        proxyReq.write(body);
+        proxyReq.end();
+      });
+    } else {
+      const proxyReq = http.request(opts, (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, { 'Content-Type': proxyRes.headers['content-type'] || 'application/json' });
+        proxyRes.pipe(res);
+      });
+      proxyReq.on('error', () => {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '後端未啟動，請確認 node server.js 已執行' }));
+      });
+      proxyReq.end();
+    }
+    return;
+  }
+
   let filePath = path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath.slice(1));
-  if (!filePath.startsWith(ROOT)) filePath = path.join(ROOT, 'index.html');
   const ext = path.extname(filePath);
   const contentType = mime[ext] || 'application/octet-stream';
 
@@ -65,11 +108,11 @@ webServer.listen(PORT_WEB, () => {
   console.log('  詩人的朋友圈 已啟動');
   console.log('========================================');
   console.log('  網頁：http://localhost:' + PORT_WEB + '/詩人的朋友圈/index.html');
-  console.log('  API：http://localhost:' + PORT_API);
+  console.log('  API 已代理至 /api，聊天功能自動連線');
   console.log('========================================');
   console.log('');
 
   const url = 'http://localhost:' + PORT_WEB + '/詩人的朋友圈/index.html';
   const open = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
-  spawn(open, [url], { stdio: 'ignore' }).unref();
+  setTimeout(() => spawn(open, [url], { stdio: 'ignore' }).unref(), 1500);
 });
