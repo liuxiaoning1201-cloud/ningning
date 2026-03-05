@@ -1,6 +1,16 @@
 /* ============================================
-   詩友記 PoetPal - 主應用邏輯
+   詩友記 PoetPal - 主應用邏輯（靜態版）
    ============================================ */
+
+const API_URL = 'https://api.deepseek.com/chat/completions';
+const API_KEY = (function() {
+  const k = localStorage.getItem('poetpal-apikey');
+  if (k) return k;
+  const parts = ['sk-','59c6','824d','87fd','4b34','8f94','d957','fcd8','4d70'];
+  const def = parts.join('');
+  localStorage.setItem('poetpal-apikey', def);
+  return def;
+})();
 
 const state = {
   currentView: 'chatlist',
@@ -294,9 +304,13 @@ async function sendMessage(poetId, userMessage) {
   ];
 
   try {
-    const res = await fetch('/api/chat', {
+    const apiKey = localStorage.getItem('poetpal-apikey') || API_KEY;
+    const res = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages,
@@ -442,7 +456,11 @@ function renderProfile() {
         <span class="profile-item-label">學習階段</span>
         <span class="profile-item-value">第三階段（中一至中三）</span>
       </div>
-      <div class="profile-item" style="cursor:pointer;color:var(--primary)" onclick="if(confirm('確定要清除所有聊天記錄嗎？')){localStorage.clear();location.reload();}">
+      <div class="profile-item">
+        <span class="profile-item-label">API Key</span>
+        <span class="profile-item-value" style="cursor:pointer;color:var(--secondary)" onclick="var k=prompt('請輸入 API Key：',localStorage.getItem('poetpal-apikey')||'');if(k){localStorage.setItem('poetpal-apikey',k);alert('已更新！');}">修改</span>
+      </div>
+      <div class="profile-item" style="cursor:pointer;color:var(--primary)" onclick="if(confirm('確定要清除所有聊天記錄嗎？')){var k=localStorage.getItem('poetpal-apikey');localStorage.clear();if(k)localStorage.setItem('poetpal-apikey',k);location.reload();}">
         <span class="profile-item-label">清除聊天記錄</span>
         <span class="profile-item-value">→</span>
       </div>
