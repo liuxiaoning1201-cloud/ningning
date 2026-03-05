@@ -840,9 +840,6 @@ body::after {
                 const slowPeepDuration = originalPeepDuration + 700;
 
                 clearInterval(animalIntervalId);
-                animalIntervalId = setInterval(peep, slowSpeed);
-                
-                const originalPeep = window.peep; // Store global peep
                 
                 const slowPeep = function() {
                      if (!holes || holes.length === 0) return;
@@ -1001,53 +998,49 @@ body::after {
              highScoreEndEl.textContent = userHighScore;
         }
         
-        // --- AI 識別與題庫 ---
+        // --- AI 識別與題庫 (DeepSeek API) ---
         
-        async function callGeminiAPI(payload) {
-             const apiKey = ""; // API Key is handled by the environment
-             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-             try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const DEEPSEEK_API_KEY = 'sk-a082925b9cb644449be8fa0e54a8f46c';
+        
+        async function callDeepSeekAPI(prompt, wantJson) {
+            const body = {
+                model: 'deepseek-chat',
+                messages: [{ role: 'user', content: prompt }]
+            };
+            if (wantJson) body.response_format = { type: 'json_object' };
+            try {
+                const response = await fetch('https://api.deepseek.com/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                    },
+                    body: JSON.stringify(body)
+                });
                 if (!response.ok) {
-                    console.error("API Error Response:", await response.text());
-                    throw new Error(`AI API 請求失敗，狀態碼: ${response.status}`);
+                    const errText = await response.text();
+                    console.error('DeepSeek API Error:', errText);
+                    throw new Error(`AI 請求失敗: ${response.status}`);
                 }
                 const result = await response.json();
-                const candidate = result.candidates?.[0];
-                if (!candidate) {
-                    // This can happen if the prompt is blocked entirely.
-                    throw new Error('AI 未能生成回應。請檢查您的輸入內容。');
-                }
-                // If finishReason is SAFETY or other, there might not be any content.
-                if (candidate.finishReason !== 'STOP' && candidate.finishReason !== 'MAX_TOKENS') {
-                     console.warn(`AI 因 ${candidate.finishReason} 而停止。`);
-                     // Return empty content instead of throwing an error for cases like safety blocks
-                     return payload.generationConfig?.responseMimeType === 'application/json' ? '[]' : '';
-                }
-                const content = candidate.content?.parts?.[0]?.text;
-                // If content is undefined, it's a valid empty response.
-                if (typeof content === 'undefined') {
-                    return payload.generationConfig?.responseMimeType === 'application/json' ? '[]' : '';
-                }
+                const content = result.choices?.[0]?.message?.content?.trim();
+                if (!content) throw new Error('AI 未返回內容');
                 return content;
-             } catch(error) {
-                console.error("呼叫 Gemini API 失敗:", error);
+            } catch (error) {
+                console.error('呼叫 DeepSeek API 失敗:', error);
                 throw error;
-             }
+            }
         }
         
         async function getCharDefinitions(chars) {
             const uniqueChars = [...new Set(chars)];
-            const payload = {
-                contents: [{ parts: [{ text: `請為以下每個繁體中文字提供一個簡短的核心定義（15字以內）。以 JSON 物件格式返回，key 為漢字，value 為定義。漢字列表：${uniqueChars.join('、')}` }] }],
-                generationConfig: { responseMimeType: "application/json" }
-            };
+            const prompt = `請為以下每個繁體中文字提供一個簡短的核心定義（15字以內）。以 JSON 物件格式返回，key 為漢字，value 為定義。漢字列表：${uniqueChars.join('、')}`;
             try {
-                const jsonText = await callGeminiAPI(payload);
+                const jsonText = await callDeepSeekAPI(prompt, true);
                 return JSON.parse(jsonText);
             } catch (error) {
                 return uniqueChars.reduce((obj, char) => {
-                    obj[char] = "查詢失敗";
+                    obj[char] = '查詢失敗';
                     return obj;
                 }, {});
             }
@@ -1059,11 +1052,9 @@ body::after {
             try {
                 const mistakeString = allMistakesInGame.length > 0
                     ? `他在這些字上犯了錯：${[...new Set(allMistakesInGame.map(m => `「${m.target}」錯打成「${m.wrong}」`))].join('、')}。`
-                    : "他沒有犯任何錯誤。";
-
+                    : '他沒有犯任何錯誤。';
                 const prompt = `你是一個親切的遊戲動物夥伴。一個學生剛剛完成了「字詞地鼠戰」遊戲，請用繁體中文給他一段簡短（約 50 字）、有趣且充滿鼓勵的話。他的最終分數是：${gameState.score} 分。${mistakeString}請根據這些資訊給予個人化的回饋。例如，如果他錯了很多字，可以鼓勵他再接再厲；如果分數很高，可以大力稱讚。開頭可以用一些可愛的語氣詞，例如「哇喔！」或「嘿！你真棒！」。`;
-                const payload = { contents: [{ parts: [{ text: prompt }] }] };
-                const feedback = await callGeminiAPI(payload);
+                const feedback = await callDeepSeekAPI(prompt, false);
                 aiFeedbackText.textContent = feedback;
             } catch (error) {
                 aiFeedbackText.textContent = '哇！你真是太棒了，繼續努力喔！';
