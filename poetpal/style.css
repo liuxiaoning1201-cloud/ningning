@@ -844,6 +844,100 @@ header {
 .empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
 .empty-state p { font-size: 14px; line-height: 1.6; }
 
+/* ====== 詩人互評回覆 ====== */
+.feed-replies {
+  padding: 8px 14px 4px;
+  background: var(--bg);
+  border-radius: 8px;
+  margin: 0 14px 8px;
+}
+.feed-reply {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.feed-reply-name {
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+/* ====== 紅包問答 ====== */
+.redpacket-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s;
+}
+.redpacket-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 24px;
+  width: min(88vw, 340px);
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  animation: slideUp 0.35s ease;
+}
+.redpacket-header {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e74c3c;
+  margin-bottom: 16px;
+}
+.redpacket-question {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+.redpacket-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  outline: none;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.redpacket-input:focus {
+  border-color: var(--primary);
+}
+.redpacket-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: transform 0.15s;
+}
+.redpacket-btn:active {
+  transform: scale(0.97);
+}
+.redpacket-close {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ====== Responsive ====== */
 @media (max-width: 480px) {
   #app {

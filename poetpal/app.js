@@ -337,6 +337,7 @@ async function sendMessage(poetId, userMessage) {
     }
 
     saveState();
+    triggerRandomRedPacket();
 
   } catch (error) {
     console.error('Send error:', error);
@@ -351,7 +352,8 @@ async function sendMessage(poetId, userMessage) {
 
 /* ============== 動態/朋友圈 ============== */
 function renderFeed() {
-  dom.storiesRow.innerHTML = POETS.slice(0, 8).map(poet => `
+  const storyPoets = POETS.filter((_, i) => i < 12);
+  dom.storiesRow.innerHTML = storyPoets.map(poet => `
     <div class="story-item" data-poet="${poet.id}">
       <div class="story-avatar" style="background:${poet.color}">${poet.avatar}</div>
       <span class="story-name">${poet.name}</span>
@@ -362,6 +364,11 @@ function renderFeed() {
     const poet = getPoet(post.poetId);
     if (!poet) return '';
     const lines = post.text.split('，').slice(0, 4).join('<br>');
+    const repliesHtml = (post.replies || []).map(r => {
+      const rp = getPoet(r.poetId);
+      if (!rp) return '';
+      return `<div class="feed-reply"><span class="feed-reply-name" style="color:${rp.color};cursor:pointer" onclick="navigate('chat','${r.poetId}')">${rp.name}</span>：${r.text}</div>`;
+    }).join('');
     return `
       <div class="feed-card">
         <div class="feed-card-header">
@@ -378,6 +385,7 @@ function renderFeed() {
           <div class="poem-title">《${post.poem}》</div>
           <div class="desc">${post.text}</div>
         </div>
+        ${repliesHtml ? `<div class="feed-replies">${repliesHtml}</div>` : ''}
         <div class="feed-card-actions">
           <button class="feed-action" onclick="this.classList.toggle('liked');this.querySelector('span').textContent=this.classList.contains('liked')?${post.likes + 1}:${post.likes}">❤️ <span>${post.likes}</span></button>
           <button class="feed-action" onclick="navigate('chat','${post.poetId}')">💬 聊聊</button>
@@ -385,6 +393,51 @@ function renderFeed() {
         </div>
       </div>`;
   }).join('');
+}
+
+/* ============== 紅包問答 ============== */
+function showRedPacket() {
+  if (!POET_REDPACKETS || POET_REDPACKETS.length === 0) return;
+  const idx = Math.floor(Math.random() * POET_REDPACKETS.length);
+  const rp = POET_REDPACKETS[idx];
+  const poet = getPoet(rp.poetId);
+  const overlay = document.createElement('div');
+  overlay.className = 'redpacket-overlay';
+  overlay.innerHTML = `
+    <div class="redpacket-card">
+      <div class="redpacket-header">🧧 ${poet ? poet.name : '詩人'}的詩禮紅包</div>
+      <div class="redpacket-question">${rp.question}</div>
+      <input type="text" class="redpacket-input" placeholder="輸入你的答案⋯⋯" autofocus>
+      <button class="redpacket-btn" onclick="checkRedPacket(this,'${rp.answer.replace(/'/g,"\\'")}','${rp.reward.replace(/'/g,"\\'")}')">拆紅包</button>
+      <button class="redpacket-close" onclick="this.closest('.redpacket-overlay').remove()">先不了</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.redpacket-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') overlay.querySelector('.redpacket-btn').click();
+  });
+}
+
+function checkRedPacket(btn, answer, reward) {
+  const overlay = btn.closest('.redpacket-overlay');
+  const input = overlay.querySelector('.redpacket-input');
+  const userAns = input.value.trim();
+  if (!userAns) { input.focus(); return; }
+  if (userAns.includes(answer) || answer.includes(userAns)) {
+    state.user.xp = (state.user.xp || 0) + 10;
+    state.user.msgCount += 2;
+    saveState();
+    overlay.querySelector('.redpacket-card').innerHTML = `
+      <div class="redpacket-header" style="font-size:48px">🎉</div>
+      <div class="redpacket-question">答對了！</div>
+      <div style="margin:12px 0;font-size:16px;color:#e74c3c">${reward}</div>
+      <button class="redpacket-btn" onclick="this.closest('.redpacket-overlay').remove()">收下</button>`;
+  } else {
+    overlay.querySelector('.redpacket-card').innerHTML = `
+      <div class="redpacket-header" style="font-size:48px">😅</div>
+      <div class="redpacket-question">差一點！正確答案是：</div>
+      <div style="margin:12px 0;font-size:18px;font-weight:bold;color:var(--primary)">${answer}</div>
+      <button class="redpacket-btn" onclick="this.closest('.redpacket-overlay').remove()">知道了</button>`;
+  }
 }
 
 /* ============== 書院 ============== */
@@ -459,6 +512,10 @@ function renderProfile() {
       <div class="profile-item">
         <span class="profile-item-label">API Key</span>
         <span class="profile-item-value" style="cursor:pointer;color:var(--secondary)" onclick="var k=prompt('請輸入 API Key：',localStorage.getItem('poetpal-apikey')||'');if(k){localStorage.setItem('poetpal-apikey',k);alert('已更新！');}">修改</span>
+      </div>
+      <div class="profile-item" style="cursor:pointer;color:#e74c3c" onclick="showRedPacket()">
+        <span class="profile-item-label">🧧 每日詩禮紅包</span>
+        <span class="profile-item-value">答題拿金幣 →</span>
       </div>
       <div class="profile-item" style="cursor:pointer;color:var(--primary)" onclick="if(confirm('確定要清除所有聊天記錄嗎？')){var k=localStorage.getItem('poetpal-apikey');localStorage.clear();if(k)localStorage.setItem('poetpal-apikey',k);location.reload();}">
         <span class="profile-item-label">清除聊天記錄</span>
@@ -587,6 +644,18 @@ function setupEvents() {
     const story = e.target.closest('.story-item');
     if (story) navigate('chat', story.dataset.poet);
   });
+
+  dom.feedPosts.addEventListener('click', (e) => {
+    const nameEl = e.target.closest('.feed-reply-name');
+    if (nameEl) return;
+  });
+}
+
+function triggerRandomRedPacket() {
+  if (typeof POET_REDPACKETS === 'undefined' || !POET_REDPACKETS.length) return;
+  if (state.user.msgCount > 0 && state.user.msgCount % 5 === 0) {
+    setTimeout(showRedPacket, 800);
+  }
 }
 
 /* ============== 初始化 ============== */
