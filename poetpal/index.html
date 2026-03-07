@@ -72,10 +72,24 @@
         <div id="feed-posts"></div>
       </section>
 
-      <!-- 書院 -->
+      <!-- 書院（文章展示）-->
       <section id="view-library" class="view">
-        <div id="dynasty-tabs"></div>
-        <div id="poet-grid"></div>
+        <div id="stage-tabs"></div>
+        <div id="article-list"></div>
+      </section>
+
+      <!-- 書院文章閱讀 -->
+      <section id="view-article" class="view">
+        <div id="article-reader"></div>
+      </section>
+
+      <!-- 名人堂（詩人檢索）-->
+      <section id="view-directory" class="view">
+        <div id="dir-search-bar">
+          <input type="text" id="dir-search" placeholder="搜索詩人姓名...">
+        </div>
+        <div id="dir-dynasty-tabs"></div>
+        <div id="dir-poet-grid"></div>
       </section>
 
       <!-- 我的 -->
@@ -98,6 +112,10 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
         <span>書院</span>
       </button>
+      <button class="nav-item" data-view="directory">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>名人堂</span>
+      </button>
       <button class="nav-item" data-view="profile">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span>我的</span>
@@ -114,6 +132,7 @@
   </div>
 
   <script src="poets.js"></script>
+  <script src="articles.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

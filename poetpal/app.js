@@ -42,6 +42,8 @@ const dom = {
     chat: $('#view-chat'),
     feed: $('#view-feed'),
     library: $('#view-library'),
+    article: $('#view-article'),
+    directory: $('#view-directory'),
     profile: $('#view-profile')
   },
   chatList: $('#chat-list'),
@@ -56,8 +58,12 @@ const dom = {
   chatPoetSubtitle: $('.chat-poet-subtitle'),
   storiesRow: $('#stories-row'),
   feedPosts: $('#feed-posts'),
-  dynastyTabs: $('#dynasty-tabs'),
-  poetGrid: $('#poet-grid'),
+  stageTabs: $('#stage-tabs'),
+  articleList: $('#article-list'),
+  articleReader: $('#article-reader'),
+  dirSearch: $('#dir-search'),
+  dirDynastyTabs: $('#dir-dynasty-tabs'),
+  dirPoetGrid: $('#dir-poet-grid'),
   profileContent: $('#profile-content'),
   poetModal: $('#poet-modal'),
   modalBody: $('#modal-body'),
@@ -143,6 +149,7 @@ function navigate(viewName, poetId) {
     if (viewName === 'chatlist') renderChatList();
     else if (viewName === 'feed') renderFeed();
     else if (viewName === 'library') renderLibrary();
+    else if (viewName === 'directory') renderDirectory();
     else if (viewName === 'profile') renderProfile();
   }
 }
@@ -440,26 +447,148 @@ function checkRedPacket(btn, answer, reward) {
   }
 }
 
-/* ============== 書院 ============== */
-function renderLibrary(activeDynasty) {
-  const dynasties = DYNASTY_ORDER;
-  if (!activeDynasty) activeDynasty = dynasties[0];
-
-  dom.dynastyTabs.innerHTML = dynasties.map(d =>
-    `<button class="dynasty-tab ${d === activeDynasty ? 'active' : ''}" data-dynasty="${d}">${d}</button>`
+/* ============== 書院（文章展示）============== */
+function renderLibrary(activeStage) {
+  if (!activeStage) activeStage = 1;
+  const stageLabels = {1:'小一至小三',2:'小四至小六',3:'中一至中三',4:'中四至中六'};
+  dom.stageTabs.innerHTML = [1,2,3,4].map(s =>
+    `<button class="dynasty-tab ${s===activeStage?'active':''}" data-stage="${s}">第${['一','二','三','四'][s-1]}階段<span class="stage-sub">${stageLabels[s]}</span></button>`
   ).join('');
 
-  const poets = POETS.filter(p => p.dynasty === activeDynasty);
-  dom.poetGrid.innerHTML = poets.map(poet => `
-    <div class="poet-card" data-poet="${poet.id}">
-      ${createAvatar(poet)}
-      <div class="poet-card-name">${poet.name}</div>
-      <div class="poet-card-title">${poet.title}</div>
-      <div class="poet-card-tags">
-        ${poet.tags.slice(0, 2).map(t => `<span>#${t}</span>`).join('')}
+  const articles = ARTICLES.filter(a => a.stage === activeStage);
+  dom.articleList.innerHTML = articles.map(a => `
+    <div class="article-card" data-article="${a.id}">
+      <div class="article-card-left">
+        <div class="article-title-row">
+          <span class="article-title">${a.title}</span>
+          ${a.dse?'<span class="dse-badge">DSE</span>':''}
+        </div>
+        <div class="article-meta">${a.author}${a.dynasty?' · '+a.dynasty:''}</div>
       </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>`).join('');
+}
+
+/* ============== 文章閱讀器 ============== */
+function openArticle(articleId) {
+  const art = ARTICLES.find(a => a.id === articleId);
+  if (!art) return;
+  state.currentView = 'article';
+  dom.mainHeader.classList.add('hidden');
+  dom.searchBar.classList.add('hidden');
+  dom.chatHeader.classList.remove('hidden');
+  dom.bottomNav.style.display = 'none';
+  dom.chatPoetName.textContent = art.title;
+  dom.chatPoetSubtitle.textContent = art.author + (art.dynasty ? ' · ' + art.dynasty : '');
+  Object.values(dom.views).forEach(v => v.classList.remove('active'));
+  dom.views.article.classList.add('active');
+
+  let audioHtml = '';
+  if (art.audioC || art.audioP) {
+    audioHtml = '<div class="article-audio-row">';
+    if (art.audioC) audioHtml += `<button class="audio-btn" onclick="playArticleAudio(this,'${art.audioC}')">🗣️ 粵語朗讀</button>`;
+    if (art.audioP) audioHtml += `<button class="audio-btn" onclick="playArticleAudio(this,'${art.audioP}')">🗣️ 普通話朗讀</button>`;
+    audioHtml += '</div>';
+  }
+
+  let textHtml = '';
+  if (art.text) {
+    const parsed = parseAnnotatedText(art.text);
+    textHtml = `<div class="article-text-container">
+      <div class="article-text-body">${parsed}</div>
+      <div class="annotation-bubble hidden" id="ann-bubble"></div>
+    </div>`;
+  } else {
+    textHtml = `<div class="article-pdf-fallback">
+      <p style="text-align:center;color:var(--text-light);margin:16px 0">點擊下方按鈕查看完整賞析</p>
+      <a href="${art.pdf}" target="_blank" class="pdf-open-btn">📄 查看完整賞析 PDF</a>
+    </div>`;
+  }
+
+  dom.articleReader.innerHTML = `
+    <div class="article-header-info">
+      <h2 class="article-reader-title">${art.title}</h2>
+      <div class="article-reader-meta">${art.author}${art.dynasty?' · '+art.dynasty:''}</div>
+      ${audioHtml}
     </div>
-  `).join('');
+    ${textHtml}
+    <div class="article-actions-bar">
+      <a href="${art.pdf}" target="_blank" class="article-action-link">📄 賞析PDF</a>
+      ${art.poetId ? `<button class="article-action-link" onclick="navigate('chat','${art.poetId}')">💬 和${art.author}聊天</button>` : ''}
+    </div>`;
+  dom.articleReader.scrollTop = 0;
+}
+
+function parseAnnotatedText(text) {
+  return text.replace(/\n/g, '<br>').replace(/\{([^|]+)\|([^}]+)\}/g,
+    '<span class="keyword" onclick="toggleAnnotation(this,\'$2\')">$1</span>');
+}
+
+function toggleAnnotation(el, def) {
+  const bubble = document.getElementById('ann-bubble');
+  if (bubble.classList.contains('hidden') || bubble.dataset.word !== el.textContent) {
+    bubble.innerHTML = `<strong>${el.textContent}</strong><br>${def}`;
+    bubble.dataset.word = el.textContent;
+    const rect = el.getBoundingClientRect();
+    const container = el.closest('.article-text-container').getBoundingClientRect();
+    bubble.style.top = (rect.top - container.top) + 'px';
+    bubble.classList.remove('hidden');
+  } else {
+    bubble.classList.add('hidden');
+  }
+}
+
+function playArticleAudio(btn, src) {
+  const existing = document.getElementById('article-audio-player');
+  if (existing) { existing.pause(); existing.remove(); }
+  if (btn.classList.contains('playing')) {
+    btn.classList.remove('playing');
+    btn.textContent = btn.textContent.replace('⏸️','🗣️');
+    return;
+  }
+  document.querySelectorAll('.audio-btn.playing').forEach(b => {
+    b.classList.remove('playing');
+    b.textContent = b.textContent.replace('⏸️','🗣️');
+  });
+  const audio = document.createElement('audio');
+  audio.id = 'article-audio-player';
+  audio.src = src;
+  audio.style.display = 'none';
+  document.body.appendChild(audio);
+  audio.play().catch(() => {});
+  btn.classList.add('playing');
+  btn.textContent = btn.textContent.replace('🗣️','⏸️');
+  audio.onended = () => {
+    btn.classList.remove('playing');
+    btn.textContent = btn.textContent.replace('⏸️','🗣️');
+    audio.remove();
+  };
+}
+
+/* ============== 名人堂（詩人檢索）============== */
+function renderDirectory(activeDynasty, filter) {
+  const dynasties = DYNASTY_ORDER;
+  if (!activeDynasty) activeDynasty = '全部';
+  dom.dirDynastyTabs.innerHTML = ['全部', ...dynasties].map(d =>
+    `<button class="dynasty-tab ${d === activeDynasty ? 'active' : ''}" data-dir-dynasty="${d}">${d}</button>`
+  ).join('');
+
+  let poets = [...POETS];
+  if (activeDynasty !== '全部') poets = poets.filter(p => p.dynasty === activeDynasty);
+  if (filter) {
+    const q = filter.toLowerCase();
+    poets = poets.filter(p => p.name.includes(q) || p.courtesy.includes(q) || p.dynasty.includes(q));
+  }
+
+  dom.dirPoetGrid.innerHTML = poets.map(poet => `
+    <div class="dir-poet-card" data-dir-poet="${poet.id}">
+      ${createAvatar(poet)}
+      <div class="dir-poet-info">
+        <div class="dir-poet-name">${poet.name}</div>
+        <div class="dir-poet-meta">${poet.dynasty} · ${poet.title}</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>`).join('');
 }
 
 /* ============== 我的 ============== */
@@ -553,7 +682,12 @@ function showPoetModal(poetId) {
     <div class="modal-section">
       <h3>代表作品</h3>
       <ul class="modal-works">
-        ${poet.works.map(w => `<li>${w}</li>`).join('')}
+        ${poet.works.map(w => {
+          const art = typeof ARTICLES !== 'undefined' ? ARTICLES.find(a => a.title.includes(w.replace(/[（(].*/,'')) || w.includes(a.title)) : null;
+          return art
+            ? `<li class="work-link" onclick="hideModal();openArticle('${art.id}')">${w} →</li>`
+            : `<li>${w}</li>`;
+        }).join('')}
       </ul>
     </div>
 
@@ -580,7 +714,12 @@ function setupEvents() {
     btn.addEventListener('click', () => navigate(btn.dataset.view));
   });
 
-  dom.btnBack.addEventListener('click', () => navigate('chatlist'));
+  dom.btnBack.addEventListener('click', () => {
+    const existing = document.getElementById('article-audio-player');
+    if (existing) { existing.pause(); existing.remove(); }
+    if (state.currentView === 'article') navigate('library');
+    else navigate('chatlist');
+  });
 
   dom.chatList.addEventListener('click', (e) => {
     const item = e.target.closest('.chat-item');
@@ -630,14 +769,29 @@ function setupEvents() {
     renderChatList(e.target.value.trim());
   });
 
-  dom.dynastyTabs.addEventListener('click', (e) => {
+  dom.stageTabs.addEventListener('click', (e) => {
     const tab = e.target.closest('.dynasty-tab');
-    if (tab) renderLibrary(tab.dataset.dynasty);
+    if (tab && tab.dataset.stage) renderLibrary(parseInt(tab.dataset.stage));
   });
 
-  dom.poetGrid.addEventListener('click', (e) => {
-    const card = e.target.closest('.poet-card');
-    if (card) showPoetModal(card.dataset.poet);
+  dom.articleList.addEventListener('click', (e) => {
+    const card = e.target.closest('.article-card');
+    if (card) openArticle(card.dataset.article);
+  });
+
+  dom.dirDynastyTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('.dynasty-tab');
+    if (tab && tab.dataset.dirDynasty) renderDirectory(tab.dataset.dirDynasty, dom.dirSearch.value.trim());
+  });
+
+  dom.dirPoetGrid.addEventListener('click', (e) => {
+    const card = e.target.closest('.dir-poet-card');
+    if (card) showPoetModal(card.dataset.dirPoet);
+  });
+
+  dom.dirSearch.addEventListener('input', (e) => {
+    const active = dom.dirDynastyTabs.querySelector('.dynasty-tab.active');
+    renderDirectory(active ? active.dataset.dirDynasty : '全部', e.target.value.trim());
   });
 
   dom.storiesRow.addEventListener('click', (e) => {
