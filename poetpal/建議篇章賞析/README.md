@@ -2,9 +2,9 @@
 
 本資料夾整合香港教育局**四個學習階段**建議篇章的**賞析** PDF，方便在詩友記（PoetPal）專案中查閱。
 
-- **第一學習階段**（小一至小三）：[key-stage1](https://www.edb.gov.hk/tc/curriculum-development/kla/chi-edu/key-stage1.html) — 20 篇，本資料夾內為 `KS1_01_賞析.pdf` … `KS1_20_賞析.pdf`
-- **第二學習階段**（小四至小六）：[key-stage2](https://www.edb.gov.hk/tc/curriculum-development/kla/chi-edu/key-stage2.html) — 20 篇，本資料夾內為 `KS2_01_賞析.pdf` … `KS2_20_賞析.pdf`
-- **第三學習階段**（中一至中三）：[key-stage3](https://www.edb.gov.hk/tc/curriculum-development/kla/chi-edu/key-stage3.html) — 25 篇，本資料夾內為 `KS3_01_賞析.pdf` … `KS3_25_賞析.pdf`
+- **第一學習階段**（小一至小三）：[key-stage1](https://www.edb.gov.hk/tc/curriculum-development/kla/chi-edu/key-stage1.html) — 20 篇，本資料夾內為 `KS1_01_守株待兔.pdf` … `KS1_20_詠雪.pdf`
+- **第二學習階段**（小四至小六）：[key-stage2](https://www.edb.gov.hk/tc/curriculum-development/kla/chi-edu/key-stage2.html) — 20 篇，本資料夾內為 `KS2_01_論語四則.pdf` … `KS2_20_朱子家訓節錄.pdf`
+- **第三學習階段**（中一至中三）：[key-stage3](https://www.edb.gov.hk/tc/curriculum-development/kla/chi-edu/key-stage3.html) — 25 篇，本資料夾內為 `KS3_01_論四端.pdf` … `KS3_25_習慣說.pdf`（子篇如 `KS3_07a`、`KS3_07b` 等見教育局頁面）
 - **第四學習階段**（中四至中六）：[key-stage4](https://www.edb.gov.hk/tc/curriculum-development/kla/chi-edu/key-stage4.html) — 20 項（共 24 篇賞析），本資料夾內為具篇名的 PDF（見下表）
 
 本資料夾內已存放各篇賞析的 **PDF 副本**（第四階段檔名見下表），並在下方提供教育局原文連結備查。
@@ -13,11 +13,11 @@
 
 ---
 
-## 第一／第二／第三階段賞析 PDF（本地檔名）
+## 第一／第二／第三階段賞析 PDF（本地檔名，與 KS4 同格式）
 
-- **KS1**：`KS1_01_賞析.pdf` … `KS1_20_賞析.pdf`（第一學習階段 20 篇）
-- **KS2**：`KS2_01_賞析.pdf` … `KS2_20_賞析.pdf`（第二學習階段 20 篇）
-- **KS3**：`KS3_01_賞析.pdf` … `KS3_25_賞析.pdf`（第三學習階段 25 篇）
+- **KS1**：`KS1_01_守株待兔.pdf` … `KS1_20_詠雪.pdf`（第一學習階段 20 篇）
+- **KS2**：`KS2_01_論語四則.pdf` … `KS2_20_朱子家訓節錄.pdf`（第二學習階段 20 篇）
+- **KS3**：`KS3_01_論四端.pdf` … `KS3_25_習慣說.pdf`（第三學習階段 25 篇）
 
 ---
 

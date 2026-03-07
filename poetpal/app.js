@@ -486,24 +486,28 @@ function openArticle(articleId) {
   let audioHtml = '';
   if (art.audioC || art.audioP) {
     audioHtml = '<div class="article-audio-row">';
-    if (art.audioC) audioHtml += `<button class="audio-btn" onclick="playArticleAudio(this,'${art.audioC}')">🗣️ 粵語朗讀</button>`;
-    if (art.audioP) audioHtml += `<button class="audio-btn" onclick="playArticleAudio(this,'${art.audioP}')">🗣️ 普通話朗讀</button>`;
+    if (art.audioC) audioHtml += `<button class="audio-btn" data-src="${encodeURI(art.audioC)}" onclick="playArticleAudio(this,this.dataset.src)">🗣️ 粵語朗讀</button>`;
+    if (art.audioP) audioHtml += `<button class="audio-btn" data-src="${encodeURI(art.audioP)}" onclick="playArticleAudio(this,this.dataset.src)">🗣️ 普通話朗讀</button>`;
     audioHtml += '</div>';
   }
 
   let textHtml = '';
   if (art.text) {
     const parsed = parseAnnotatedText(art.text);
-    textHtml = `<div class="article-text-container">
+    textHtml = `<div class="article-text-container" onclick="dismissAnnotation(event)">
       <div class="article-text-body">${parsed}</div>
       <div class="annotation-bubble hidden" id="ann-bubble"></div>
     </div>`;
-  } else {
-    textHtml = `<div class="article-pdf-fallback">
-      <p style="text-align:center;color:var(--text-light);margin:16px 0">點擊下方按鈕查看完整賞析</p>
-      <a href="${art.pdf}" target="_blank" class="pdf-open-btn">📄 查看完整賞析 PDF</a>
-    </div>`;
   }
+
+  const encodedPdf = art.pdf ? encodeURI(art.pdf) : '';
+  const pdfEmbedHtml = art.pdf ? `<div class="article-analysis-section">
+    <h3 class="analysis-section-title">作者簡介 · 背景資料 · 賞析重點</h3>
+    <div class="pdf-embed-wrapper">
+      <embed src="${encodedPdf}" type="application/pdf" class="pdf-embed-viewer">
+      <p class="pdf-fallback-hint">如無法顯示，<a href="${encodedPdf}" target="_blank">請點此查看</a></p>
+    </div>
+  </div>` : '';
 
   dom.articleReader.innerHTML = `
     <div class="article-header-info">
@@ -513,18 +517,19 @@ function openArticle(articleId) {
     </div>
     ${textHtml}
     <div class="article-actions-bar">
-      <a href="${art.pdf}" target="_blank" class="article-action-link">📄 賞析PDF</a>
       ${art.poetId ? `<button class="article-action-link" onclick="navigate('chat','${art.poetId}')">💬 和${art.author}聊天</button>` : ''}
-    </div>`;
+    </div>
+    ${pdfEmbedHtml}`;
   dom.articleReader.scrollTop = 0;
 }
 
 function parseAnnotatedText(text) {
   return text.replace(/\n/g, '<br>').replace(/\{([^|]+)\|([^}]+)\}/g,
-    '<span class="keyword" onclick="toggleAnnotation(this,\'$2\')">$1</span>');
+    '<span class="keyword" onclick="toggleAnnotation(this,\'$2\',event)">$1</span>');
 }
 
-function toggleAnnotation(el, def) {
+function toggleAnnotation(el, def, e) {
+  if (e) e.stopPropagation();
   const bubble = document.getElementById('ann-bubble');
   if (bubble.classList.contains('hidden') || bubble.dataset.word !== el.textContent) {
     bubble.innerHTML = `<strong>${el.textContent}</strong><br>${def}`;
@@ -535,6 +540,15 @@ function toggleAnnotation(el, def) {
     bubble.classList.remove('hidden');
   } else {
     bubble.classList.add('hidden');
+  }
+}
+
+function dismissAnnotation(e) {
+  const bubble = document.getElementById('ann-bubble');
+  if (bubble && !bubble.classList.contains('hidden')) {
+    if (!e.target.classList.contains('keyword')) {
+      bubble.classList.add('hidden');
+    }
   }
 }
 
