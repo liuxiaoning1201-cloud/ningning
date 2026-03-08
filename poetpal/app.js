@@ -873,12 +873,15 @@ function setupEvents() {
 
 function formatAnalysis(text) {
   if (!text) return '';
+  if (text.includes('\n')) {
+    return text.split('\n').filter(p => p.trim()).map(p => '<p class="ana-para">' + p.trim() + '</p>').join('');
+  }
   const sentences = text.match(/[^。！？]+[。！？]+/g) || [text];
   const paras = [];
   let buf = [];
   for (let i = 0; i < sentences.length; i++) {
     buf.push(sentences[i]);
-    if (buf.join('').length > 120 && i < sentences.length - 1) {
+    if (buf.join('').length > 150 && i < sentences.length - 1) {
       paras.push(buf.join(''));
       buf = [];
     }
