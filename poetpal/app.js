@@ -545,8 +545,12 @@ function parseAnnotatedText(text, art) {
     '<span class="keyword" onclick="toggleAnnotation(this,\'$2\',event)">$1</span>');
 
   const allLines = cleaned.split('\n');
+  const plainAll = cleaned.replace(/\{([^|]+)\|[^}]*\}/g, '$1');
+  const totalLen = plainAll.replace(/\n/g, '').length;
   const avgLen = allLines.reduce((s,l) => s + l.replace(/\{[^}]*\}/g,'').length, 0) / Math.max(allLines.length,1);
-  const isPoem = avgLen < 35 && allLines.length >= 3;
+  const endsWithPunct = allLines.filter(l => /[。！？，；」』\n]$/.test(l.replace(/\{([^|]+)\|[^}]*\}/g,'$1').trim())).length;
+  const punctRatio = endsWithPunct / Math.max(allLines.length,1);
+  const isPoem = avgLen < 30 && allLines.length >= 3 && totalLen < 300 && punctRatio > 0.5;
   const cls = isPoem ? 'text-para text-verse' : 'text-para';
 
   if (cleaned.includes('\n\n')) {
