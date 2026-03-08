@@ -537,7 +537,28 @@ function openArticle(articleId) {
 function parseAnnotatedText(text, art) {
   let cleaned = text;
   if (art && art.title && art.author) {
-    cleaned = cleaned.replace(new RegExp('^' + art.title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/[（(].*/,'') + '[^\\n]*\\n' + art.author.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\n?'), '');
+    const plain = cleaned.replace(/\{([^|]+)\|[^}]*\}/g, '$1');
+    const titleBase = art.title.replace(/[（(].*/,'');
+    const titleEsc = titleBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const authorEsc = art.author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const m = plain.match(new RegExp('^' + titleEsc + '[^\\n]{0,30}\\s*' + authorEsc + '\\s*'));
+    if (m) {
+      let pi = 0, oi = 0;
+      while (pi < m[0].length && oi < cleaned.length) {
+        if (cleaned[oi] === '{') {
+          const pipe = cleaned.indexOf('|', oi);
+          const close = cleaned.indexOf('}', oi);
+          if (pipe > oi && pipe < close) {
+            pi += pipe - oi - 1;
+            oi = close + 1;
+            continue;
+          }
+        }
+        pi++;
+        oi++;
+      }
+      cleaned = cleaned.substring(oi);
+    }
   }
   cleaned = cleaned.replace(/^\s*\n/, '');
 
@@ -749,7 +770,13 @@ function showPoetModal(poetId) {
       <h3>代表作品</h3>
       <ul class="modal-works">
         ${poet.works.map(w => {
-          const art = typeof ARTICLES !== 'undefined' ? ARTICLES.find(a => a.title.includes(w.replace(/[（(].*/,'')) || w.includes(a.title)) : null;
+          const wBase = w.replace(/[（(].*/,'');
+          const art = typeof ARTICLES !== 'undefined' ? ARTICLES.find(a => {
+            const tBase = a.title.replace(/[（(].*/,'');
+            if (tBase.includes(wBase) || wBase.includes(tBase)) return true;
+            if (a.poetId === poet.id && a.text) return a.text.replace(/\{([^|]+)\|[^}]*\}/g,'$1').includes(wBase);
+            return false;
+          }) : null;
           return art
             ? `<li class="work-link" onclick="hideModal();openArticle('${art.id}')">${w} →</li>`
             : `<li>${w}</li>`;
