@@ -484,10 +484,11 @@ function openArticle(articleId) {
   dom.views.article.classList.add('active');
 
   let audioHtml = '';
-  if (art.audioC || art.audioP) {
+  if (art.audioC || art.audioP || art.audioY) {
     audioHtml = '<div class="article-audio-row">';
     if (art.audioC) audioHtml += `<button class="audio-btn" data-src="${encodeURI(art.audioC)}" onclick="playArticleAudio(this,this.dataset.src)">🗣️ 粵語朗讀</button>`;
     if (art.audioP) audioHtml += `<button class="audio-btn" data-src="${encodeURI(art.audioP)}" onclick="playArticleAudio(this,this.dataset.src)">🗣️ 普通話朗讀</button>`;
+    if (art.audioY) audioHtml += `<button class="audio-btn audio-btn-chant" data-src="${encodeURI(art.audioY)}" onclick="playArticleAudio(this,this.dataset.src)">🎵 粵語吟誦</button>`;
     audioHtml += '</div>';
   }
 
@@ -500,14 +501,26 @@ function openArticle(articleId) {
     </div>`;
   }
 
-  const encodedPdf = art.pdf ? encodeURI(art.pdf) : '';
-  const pdfEmbedHtml = art.pdf ? `<div class="article-analysis-section">
-    <h3 class="analysis-section-title">作者簡介 · 背景資料 · 賞析重點</h3>
-    <div class="pdf-embed-wrapper">
-      <embed src="${encodedPdf}" type="application/pdf" class="pdf-embed-viewer">
-      <p class="pdf-fallback-hint">如無法顯示，<a href="${encodedPdf}" target="_blank">請點此查看</a></p>
-    </div>
-  </div>` : '';
+  const ana = (typeof ANALYSIS !== 'undefined') ? ANALYSIS[art.id] : null;
+  let analysisHtml = '';
+  let annotationsHtml = '';
+  if (ana) {
+    if (ana.authorIntro) {
+      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">作者簡介</h4><p class="analysis-text">${ana.authorIntro}</p></div>`;
+    }
+    if (ana.background) {
+      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">背景資料</h4><p class="analysis-text">${ana.background}</p></div>`;
+    }
+    if (ana.highlights) {
+      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">賞析重點</h4><p class="analysis-text">${ana.highlights}</p></div>`;
+    }
+    if (ana.annotations && Object.keys(ana.annotations).length > 0) {
+      let annItems = Object.entries(ana.annotations).map(([word, def]) =>
+        `<li class="ann-item"><span class="ann-word">${word}</span>：${def}</li>`
+      ).join('');
+      annotationsHtml = `<div class="analysis-block"><h4 class="analysis-label">注釋</h4><ul class="ann-list">${annItems}</ul></div>`;
+    }
+  }
 
   dom.articleReader.innerHTML = `
     <div class="article-header-info">
@@ -519,7 +532,7 @@ function openArticle(articleId) {
     <div class="article-actions-bar">
       ${art.poetId ? `<button class="article-action-link" onclick="navigate('chat','${art.poetId}')">💬 和${art.author}聊天</button>` : ''}
     </div>
-    ${pdfEmbedHtml}`;
+    ${(analysisHtml || annotationsHtml) ? '<div class="article-analysis-section">' + annotationsHtml + analysisHtml + '</div>' : ''}`;
   dom.articleReader.scrollTop = 0;
 }
 
