@@ -497,7 +497,7 @@ function openArticle(articleId) {
 
   let textHtml = '';
   if (art.text) {
-    const parsed = parseAnnotatedText(art.text);
+    const parsed = parseAnnotatedText(art.text, art);
     textHtml = `<div class="article-text-container" onclick="dismissAnnotation(event)">
       <div class="article-text-body">${parsed}</div>
       <div class="annotation-bubble hidden" id="ann-bubble"></div>
@@ -508,13 +508,13 @@ function openArticle(articleId) {
   let analysisHtml = '';
   if (ana) {
     if (ana.authorIntro) {
-      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">作者簡介</h4><p class="analysis-text">${ana.authorIntro}</p></div>`;
+      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">作者簡介</h4><div class="analysis-text">${formatAnalysis(ana.authorIntro)}</div></div>`;
     }
     if (ana.background) {
-      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">背景資料</h4><p class="analysis-text">${ana.background}</p></div>`;
+      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">背景資料</h4><div class="analysis-text">${formatAnalysis(ana.background)}</div></div>`;
     }
     if (ana.highlights) {
-      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">賞析重點</h4><p class="analysis-text">${ana.highlights}</p></div>`;
+      analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">賞析重點</h4><div class="analysis-text">${formatAnalysis(ana.highlights)}</div></div>`;
     }
   }
 
@@ -527,14 +527,53 @@ function openArticle(articleId) {
     ${textHtml}
     <div class="article-actions-bar">
       ${art.poetId ? `<button class="article-action-link" onclick="navigate('chat','${art.poetId}')">💬 和${art.author}聊天</button>` : ''}
+      <button class="article-action-link ai-interpret-btn" onclick="aiInterpret('${art.id}')">🤖 AI 解讀</button>
     </div>
+    <div class="ai-result-panel hidden" id="ai-result-panel"></div>
     ${analysisHtml ? '<div class="article-analysis-section">' + analysisHtml + '</div>' : ''}`;
   dom.articleReader.scrollTop = 0;
 }
 
-function parseAnnotatedText(text) {
-  return text.replace(/\n/g, '<br>').replace(/\{([^|]+)\|([^}]+)\}/g,
+function parseAnnotatedText(text, art) {
+  let cleaned = text;
+  if (art && art.title && art.author) {
+    cleaned = cleaned.replace(new RegExp('^' + art.title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/[（(].*/,'') + '[^\\n]*\\n' + art.author.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\n?'), '');
+  }
+  cleaned = cleaned.replace(/^\s*\n/, '');
+
+  const annotate = s => s.replace(/\{([^|]+)\|([^}]+)\}/g,
     '<span class="keyword" onclick="toggleAnnotation(this,\'$2\',event)">$1</span>');
+
+  const allLines = cleaned.split('\n');
+  const avgLen = allLines.reduce((s,l) => s + l.replace(/\{[^}]*\}/g,'').length, 0) / Math.max(allLines.length,1);
+  const isPoem = avgLen < 35 && allLines.length >= 3;
+  const cls = isPoem ? 'text-para text-verse' : 'text-para';
+
+  if (cleaned.includes('\n\n')) {
+    return cleaned.split('\n\n').map(para =>
+      '<p class="' + cls + '">' + annotate(para.replace(/\n/g, '<br>')) + '</p>'
+    ).join('');
+  }
+  const lines = allLines;
+  if (isPoem) {
+    return '<p class="text-verse">' + annotate(cleaned.replace(/\n/g, '<br>')) + '</p>';
+  }
+  const paras = [];
+  let buf = [];
+  for (const line of lines) {
+    const raw = line.replace(/\{([^|]+)\|[^}]*\}/g, '$1').trim();
+    if (buf.length > 0 && raw.length > 0 && /^[　「『]/.test(raw)) {
+      paras.push(buf.join(''));
+      buf = [line];
+    } else if (buf.length > 0 && raw.length > 0 && buf[buf.length-1].replace(/\{([^|]+)\|[^}]*\}/g,'$1').trim().endsWith('。') && !raw.startsWith('」') && !raw.startsWith('』')) {
+      paras.push(buf.join(''));
+      buf = [line];
+    } else {
+      buf.push(line);
+    }
+  }
+  if (buf.length) paras.push(buf.join(''));
+  return paras.map(p => '<p class="text-para">' + annotate(p) + '</p>').join('');
 }
 
 function toggleAnnotation(el, def, e) {
@@ -826,6 +865,65 @@ function setupEvents() {
     const nameEl = e.target.closest('.feed-reply-name');
     if (nameEl) return;
   });
+}
+
+function formatAnalysis(text) {
+  if (!text) return '';
+  const sentences = text.match(/[^。！？]+[。！？]+/g) || [text];
+  const paras = [];
+  let buf = [];
+  for (let i = 0; i < sentences.length; i++) {
+    buf.push(sentences[i]);
+    if (buf.join('').length > 120 && i < sentences.length - 1) {
+      paras.push(buf.join(''));
+      buf = [];
+    }
+  }
+  if (buf.length) paras.push(buf.join(''));
+  if (paras.length <= 1) return '<p class="ana-para">' + text + '</p>';
+  return paras.map(p => '<p class="ana-para">' + p + '</p>').join('');
+}
+
+async function aiInterpret(articleId) {
+  const art = ARTICLES.find(a => a.id === articleId);
+  if (!art || !art.text) return;
+  const panel = document.getElementById('ai-result-panel');
+  if (!panel) return;
+
+  if (!panel.classList.contains('hidden') && panel.dataset.artId === articleId) {
+    panel.classList.add('hidden');
+    return;
+  }
+
+  panel.dataset.artId = articleId;
+  panel.classList.remove('hidden');
+  panel.innerHTML = '<div class="ai-loading"><span class="ai-spinner"></span> AI 正在解讀中...</div>';
+
+  const plainText = art.text.replace(/\{([^|]+)\|[^}]*\}/g, '$1');
+
+  try {
+    const apiKey = localStorage.getItem('poetpal-apikey') || API_KEY;
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          { role: 'system', content: '你是一位專業的古文翻譯老師。請將以下文言文翻譯成通俗易懂的現代白話文。要求：1)翻譯準確，忠於原文；2)語言流暢自然；3)按原文的段落結構分段翻譯；4)不要加入個人評價或額外解釋。直接輸出翻譯結果。' },
+          { role: 'user', content: '請將以下文言文翻譯成現代白話文：\n\n' + plainText }
+        ],
+        temperature: 0.3,
+        max_tokens: 2000
+      })
+    });
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    const data = await res.json();
+    const result = data.choices?.[0]?.message?.content || '翻譯失敗';
+    const formatted = result.split('\n').filter(l => l.trim()).map(l => '<p class="ai-para">' + l + '</p>').join('');
+    panel.innerHTML = `<div class="ai-result-header"><span>🤖 AI 白話文翻譯</span><button class="ai-close-btn" onclick="document.getElementById('ai-result-panel').classList.add('hidden')">✕</button></div><div class="ai-result-body">${formatted}</div>`;
+  } catch (e) {
+    panel.innerHTML = '<div class="ai-error">解讀失敗，請稍後再試</div>';
+  }
 }
 
 function triggerRandomRedPacket() {

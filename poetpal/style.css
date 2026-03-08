@@ -877,6 +877,14 @@ header {
   font-family: var(--font-serif); font-size: 18px; line-height: 2;
   color: var(--text); letter-spacing: 0.5px;
 }
+.text-para {
+  margin: 0 0 1.2em; text-indent: 2em;
+}
+.text-para:last-child { margin-bottom: 0; }
+.text-verse {
+  text-indent: 0; text-align: center; margin: 0 0 1.5em;
+}
+.text-verse:last-child { margin-bottom: 0; }
 .keyword {
   color: var(--primary); border-bottom: 2px dotted var(--primary);
   cursor: pointer; transition: background 0.2s; padding: 0 1px; border-radius: 2px;
@@ -918,6 +926,46 @@ header {
   font-size: 13.5px; line-height: 1.85; color: var(--text);
   padding: 0 4px; text-align: justify;
 }
+.ana-para {
+  text-indent: 2em; margin: 0 0 0.8em;
+}
+.ana-para:last-child { margin-bottom: 0; }
+
+/* ====== AI 解讀 ====== */
+.ai-interpret-btn { background: linear-gradient(135deg, #e8f4f8, #d0e8f0) !important; border-color: #5ba3c9 !important; color: #2a7da8 !important; }
+.ai-interpret-btn:hover { background: linear-gradient(135deg, #d0e8f0, #b8dce8) !important; }
+.ai-result-panel {
+  margin: 0 16px 16px; border-radius: 12px; overflow: hidden;
+  border: 1.5px solid #5ba3c9; background: #f6fbfd;
+}
+.ai-result-panel.hidden { display: none; }
+.ai-result-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; background: linear-gradient(135deg, #e0f0f6, #d0e8f0);
+  font-size: 14px; font-weight: 700; color: #2a7da8;
+}
+.ai-close-btn {
+  background: none; border: none; font-size: 16px; cursor: pointer;
+  color: #2a7da8; padding: 2px 6px; border-radius: 4px;
+}
+.ai-close-btn:hover { background: rgba(42,125,168,0.1); }
+.ai-result-body { padding: 14px 16px; }
+.ai-para {
+  font-size: 14px; line-height: 1.9; color: var(--text);
+  text-indent: 2em; margin: 0 0 0.7em;
+}
+.ai-para:last-child { margin-bottom: 0; }
+.ai-loading {
+  padding: 24px; text-align: center; color: #5ba3c9; font-size: 14px;
+}
+.ai-spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid #5ba3c9; border-top-color: transparent;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.ai-error { padding: 16px; text-align: center; color: #c44; font-size: 13px; }
 .audio-btn-chant {
   background: linear-gradient(135deg, #f0e6d3, #e8d5b5) !important;
   border-color: var(--accent) !important;
