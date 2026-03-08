@@ -15,6 +15,7 @@ const API_KEY = (function() {
 const state = {
   currentView: 'chatlist',
   currentPoetId: null,
+  selectedLibraryStage: 1,
   chatHistories: {},
   isSending: false,
   user: {
@@ -148,7 +149,7 @@ function navigate(viewName, poetId) {
 
     if (viewName === 'chatlist') renderChatList();
     else if (viewName === 'feed') renderFeed();
-    else if (viewName === 'library') renderLibrary();
+    else if (viewName === 'library') renderLibrary(state.selectedLibraryStage);
     else if (viewName === 'directory') renderDirectory();
     else if (viewName === 'profile') renderProfile();
   }
@@ -449,7 +450,8 @@ function checkRedPacket(btn, answer, reward) {
 
 /* ============== 書院（文章展示）============== */
 function renderLibrary(activeStage) {
-  if (!activeStage) activeStage = 1;
+  if (!activeStage) activeStage = state.selectedLibraryStage || 1;
+  state.selectedLibraryStage = activeStage;
   const stageLabels = {1:'小一至小三',2:'小四至小六',3:'中一至中三',4:'中四至中六'};
   dom.stageTabs.innerHTML = [1,2,3,4].map(s =>
     `<button class="dynasty-tab ${s===activeStage?'active':''}" data-stage="${s}">第${['一','二','三','四'][s-1]}階段<span class="stage-sub">${stageLabels[s]}</span></button>`
@@ -473,6 +475,7 @@ function renderLibrary(activeStage) {
 function openArticle(articleId) {
   const art = ARTICLES.find(a => a.id === articleId);
   if (!art) return;
+  state.selectedLibraryStage = art.stage;
   state.currentView = 'article';
   dom.mainHeader.classList.add('hidden');
   dom.searchBar.classList.add('hidden');
@@ -503,7 +506,6 @@ function openArticle(articleId) {
 
   const ana = (typeof ANALYSIS !== 'undefined') ? ANALYSIS[art.id] : null;
   let analysisHtml = '';
-  let annotationsHtml = '';
   if (ana) {
     if (ana.authorIntro) {
       analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">作者簡介</h4><p class="analysis-text">${ana.authorIntro}</p></div>`;
@@ -513,12 +515,6 @@ function openArticle(articleId) {
     }
     if (ana.highlights) {
       analysisHtml += `<div class="analysis-block"><h4 class="analysis-label">賞析重點</h4><p class="analysis-text">${ana.highlights}</p></div>`;
-    }
-    if (ana.annotations && Object.keys(ana.annotations).length > 0) {
-      let annItems = Object.entries(ana.annotations).map(([word, def]) =>
-        `<li class="ann-item"><span class="ann-word">${word}</span>：${def}</li>`
-      ).join('');
-      annotationsHtml = `<div class="analysis-block"><h4 class="analysis-label">注釋</h4><ul class="ann-list">${annItems}</ul></div>`;
     }
   }
 
@@ -532,7 +528,7 @@ function openArticle(articleId) {
     <div class="article-actions-bar">
       ${art.poetId ? `<button class="article-action-link" onclick="navigate('chat','${art.poetId}')">💬 和${art.author}聊天</button>` : ''}
     </div>
-    ${(analysisHtml || annotationsHtml) ? '<div class="article-analysis-section">' + annotationsHtml + analysisHtml + '</div>' : ''}`;
+    ${analysisHtml ? '<div class="article-analysis-section">' + analysisHtml + '</div>' : ''}`;
   dom.articleReader.scrollTop = 0;
 }
 
