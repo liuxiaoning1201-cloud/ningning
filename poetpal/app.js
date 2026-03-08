@@ -913,8 +913,8 @@ async function aiInterpret(articleId) {
       body: JSON.stringify({
         model: 'deepseek-chat',
         messages: [
-          { role: 'system', content: '你是一位專業的古文翻譯老師。請將以下文言文翻譯成通俗易懂的現代白話文。要求：1)翻譯準確，忠於原文；2)語言流暢自然；3)按原文的段落結構分段翻譯；4)不要加入個人評價或額外解釋。直接輸出翻譯結果。' },
-          { role: 'user', content: '請將以下文言文翻譯成現代白話文：\n\n' + plainText }
+          { role: 'system', content: '你是一位香港中學的專業古文翻譯老師。請將以下文言文翻譯成通俗易懂的現代白話文。嚴格要求：1)必須使用香港繁體字（依照香港教育局標準用字，例如用「裏」不用「裡」、用「牀」不用「床」、用「啟」不用「啓」、用「綫」不用「線」等）；2)翻譯準確，忠於原文；3)語言流暢自然，適合香港中小學生閱讀；4)按原文的段落結構分段翻譯；5)不要加入個人評價或額外解釋。直接輸出翻譯結果。' },
+          { role: 'user', content: '請用香港繁體字將以下文言文翻譯成現代白話文：\n\n' + plainText }
         ],
         temperature: 0.3,
         max_tokens: 2000
