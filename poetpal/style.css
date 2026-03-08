@@ -876,6 +876,7 @@ header {
 .article-text-body {
   font-family: var(--font-serif); font-size: 18px; line-height: 2;
   color: var(--text); letter-spacing: 0.5px;
+  line-break: strict; word-break: normal; overflow-wrap: break-word;
 }
 .text-para {
   margin: 0 0 1.2em; text-indent: 2em;
@@ -925,6 +926,7 @@ header {
 .analysis-text {
   font-size: 13.5px; line-height: 1.85; color: var(--text);
   padding: 0 4px; text-align: justify;
+  line-break: strict; word-break: normal; overflow-wrap: break-word;
 }
 .ana-para {
   text-indent: 2em; margin: 0 0 0.8em;
@@ -949,7 +951,7 @@ header {
   color: #2a7da8; padding: 2px 6px; border-radius: 4px;
 }
 .ai-close-btn:hover { background: rgba(42,125,168,0.1); }
-.ai-result-body { padding: 14px 16px; }
+.ai-result-body { padding: 14px 16px; line-break: strict; word-break: normal; overflow-wrap: break-word; }
 .ai-para {
   font-size: 14px; line-height: 1.9; color: var(--text);
   text-indent: 2em; margin: 0 0 0.7em;
