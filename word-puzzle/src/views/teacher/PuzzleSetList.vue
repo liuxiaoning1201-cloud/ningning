@@ -3,20 +3,20 @@
     <nav class="nav-bar">
       <RouterLink to="/teacher" class="btn btn-secondary">詞句庫</RouterLink>
     </nav>
-    <h1 class="page-title">題組列表</h1>
+    <h1 class="page-title" style="font-family: var(--font-heading)">🧩 題組列表</h1>
     <p class="muted">可匯出 JSON 供學生匯入練習。</p>
     <p>
       <RouterLink to="/teacher/puzzles/crossword/new" class="btn btn-primary">新建 · 填字接龍</RouterLink>
     </p>
     <div v-if="puzzleSets.sets.length === 0" class="card">尚無題組。</div>
     <ul v-else class="list">
-      <li v-for="set in puzzleSets.sets" :key="set.id" class="card card-row">
+      <li v-for="(set, i) in puzzleSets.sets" :key="set.id" class="card card-row animate-fade-in" :style="{ animationDelay: `${i * 0.08}s` }">
         <span><strong>{{ set.title }}</strong> {{ set.type === "crossword" ? "填字接龍" : "數獨" }}</span>
         <span class="actions">
           <RouterLink v-if="set.type === 'crossword'" :to="`/teacher/puzzles/crossword/${set.id}`" class="btn btn-secondary">編輯</RouterLink>
           <RouterLink v-if="set.type === 'crossword'" :to="`/play/crossword/${set.id}`" class="btn btn-secondary">預覽</RouterLink>
           <button type="button" class="btn btn-secondary" @click="exportSet(set)">匯出</button>
-          <button type="button" class="btn btn-secondary danger" @click="removeSet(set.id)">刪除</button>
+          <button type="button" class="btn btn-danger" @click="removeSet(set.id)">刪除</button>
         </span>
       </li>
     </ul>
@@ -47,7 +47,7 @@ function removeSet(id: string) {
 <style scoped>
 .muted { color: var(--text-muted); margin-bottom: 1rem; }
 .list { list-style: none; }
+.list li { margin-bottom: 1rem; }
 .card-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
 .actions { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-.danger { color: #dc2626; }
 </style>

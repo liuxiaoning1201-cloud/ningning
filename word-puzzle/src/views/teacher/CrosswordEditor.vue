@@ -3,7 +3,7 @@
     <nav class="nav-bar">
       <RouterLink to="/teacher/puzzles" class="btn btn-secondary">← 題組列表</RouterLink>
     </nav>
-    <h1 class="page-title">{{ isNew ? "新建填字接龍" : "編輯填字接龍" }}</h1>
+    <h1 class="page-title" style="font-family: var(--font-heading)">{{ isNew ? "✨ 新建填字接龍" : "✏️ 編輯填字接龍" }}</h1>
 
     <div class="card" style="margin-bottom: 1rem">
       <label style="display: block; margin-bottom: 0.5rem; font-weight: 500">題組標題</label>
@@ -22,14 +22,29 @@
           </select>
         </label>
         <label>
-          難度檔
-          <select v-model="tier" style="padding: 0.4rem; border: 1px solid var(--border); border-radius: var(--radius); margin-left: 4px">
-            <option value="beginner">初學入門</option>
-            <option value="intermediate">小試身手</option>
-            <option value="advanced">漸入佳境</option>
+          難度
+          <select v-model.number="tier" style="padding: 0.4rem; border: 1px solid var(--border); border-radius: var(--radius); margin-left: 4px">
+            <option :value="1">★ 入門</option>
+            <option :value="2">★★ 初學</option>
+            <option :value="3">★★★ 中等</option>
+            <option :value="4">★★★★ 挑戰</option>
+            <option :value="5">★★★★★ 大師</option>
           </select>
         </label>
+        <label>
+          用詞數量
+          <input v-model.number="wordCount" type="number" min="0" placeholder="0=全部" style="width: 4rem; padding: 0.4rem; border: 1px solid var(--border); border-radius: var(--radius); margin-left: 4px" />
+        </label>
         <button type="button" class="btn btn-primary" :disabled="!selectedBankId" @click="generate">產生填字題</button>
+      </div>
+      <div v-if="selectedBank && selectedBank.items.length > 0" style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem">
+        <p style="font-size: 0.9rem; margin-bottom: 0.5rem"><strong>勾選要使用的詞句</strong>（不勾選則使用全部或按數量隨機）</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem">
+          <label v-for="it in selectedBank.items" :key="it.id" class="word-check-label">
+            <input type="checkbox" :checked="selectedItemIds.has(it.id)" @change="toggleItem(it.id)" />
+            {{ it.text }}
+          </label>
+        </div>
       </div>
     </div>
 
@@ -89,8 +104,20 @@ const isNew = computed(() => setId.value === "new" || !setId.value);
 
 const title = ref("");
 const selectedBankId = ref("");
-const tier = ref<DifficultyTier>("beginner");
+const tier = ref<DifficultyTier>(1);
+const wordCount = ref(0);
+const selectedItemIds = ref<Set<string>>(new Set());
 const puzzle = ref<CrosswordPuzzle | null>(null);
+
+const selectedBank = computed(() =>
+  wordBanks.banks.find((b) => b.id === selectedBankId.value) ?? null
+);
+
+function toggleItem(id: string) {
+  const s = new Set(selectedItemIds.value);
+  if (s.has(id)) s.delete(id); else s.add(id);
+  selectedItemIds.value = s;
+}
 
 watch(
   () => route.params.setId,
@@ -111,14 +138,22 @@ watch(
 );
 
 function generate() {
-  const bank = wordBanks.banks.find((b) => b.id === selectedBankId.value);
+  const bank = selectedBank.value;
   if (!bank || bank.items.length === 0) {
     alert("請選擇有詞條的詞句庫");
     return;
   }
+  const itemsToUse = selectedItemIds.value.size > 0
+    ? bank.items.filter((it) => selectedItemIds.value.has(it.id))
+    : bank.items;
+  if (itemsToUse.length === 0) {
+    alert("請至少勾選一個詞句");
+    return;
+  }
   const result = generateCrosswordPuzzle({
-    items: bank.items,
+    items: itemsToUse,
     tier: tier.value,
+    wordCount: wordCount.value || undefined,
   });
   if (result) {
     puzzle.value = result;
@@ -157,9 +192,25 @@ function save() {
 .muted { color: var(--text-muted); font-size: 0.9rem; }
 .grid-preview { display: grid; gap: 2px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius); margin-top: 0.5rem; }
 .cell { width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; border-radius: 4px; }
-.cell.block { background: #e5e7eb; }
-.cell.given { background: #e0f2fe; font-weight: 700; }
-.cell.blank { background: #fef3c7; color: #92400e; }
+.cell.block { background: var(--border); }
+.cell.given { background: rgba(255, 107, 138, 0.25); font-weight: 700; color: var(--primary); }
+.cell.blank { background: rgba(167, 139, 250, 0.2); color: var(--secondary); }
 .clue-list { padding-left: 1.25rem; margin-top: 0.35rem; }
 .clue-list li { margin-bottom: 0.25rem; }
+.word-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.6rem;
+  background: #FFF8F0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.word-check-label:hover {
+  border-color: var(--primary);
+  background: #FFF0F3;
+}
 </style>

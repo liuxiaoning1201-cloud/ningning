@@ -9,8 +9,11 @@ export interface ImportRow {
   difficulty?: number;
 }
 
-export async function parseExcelOrCsv(file: File): Promise<ImportRow[]> {
+export async function parseImportFile(file: File): Promise<ImportRow[]> {
   const name = (file.name || "").toLowerCase();
+  if (name.endsWith(".txt")) {
+    return parseTxt(file);
+  }
   if (name.endsWith(".csv")) {
     return parseCsv(file);
   }
@@ -19,6 +22,8 @@ export async function parseExcelOrCsv(file: File): Promise<ImportRow[]> {
   }
   return [];
 }
+
+export const parseExcelOrCsv = parseImportFile;
 
 function parseCsv(file: File): Promise<ImportRow[]> {
   return new Promise((resolve) => {
@@ -29,6 +34,35 @@ function parseCsv(file: File): Promise<ImportRow[]> {
       const lines = text.split("\n");
       for (const line of lines) {
         const parts = line.split(",").map((s) => s.trim());
+        const textVal = parts[0]?.trim();
+        if (!textVal) continue;
+        const def = parts[1]?.trim() ?? "";
+        const source = parts[2]?.trim() ?? "";
+        const diff = parts[3]?.trim();
+        const difficulty = diff ? parseInt(diff, 10) : 1;
+        rows.push({
+          text: textVal,
+          definition: def || undefined,
+          source: source || undefined,
+          difficulty: Number.isNaN(difficulty) ? 1 : Math.min(5, Math.max(1, difficulty)),
+        });
+      }
+      resolve(rows);
+    };
+    reader.readAsText(file, "UTF-8");
+  });
+}
+
+function parseTxt(file: File): Promise<ImportRow[]> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = (reader.result as string)?.replace(/\r\n/g, "\n").replace(/\r/g, "\n") ?? "";
+      const rows: ImportRow[] = [];
+      for (const line of text.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const parts = trimmed.includes("\t") ? trimmed.split("\t") : trimmed.split(",");
         const textVal = parts[0]?.trim();
         if (!textVal) continue;
         const def = parts[1]?.trim() ?? "";

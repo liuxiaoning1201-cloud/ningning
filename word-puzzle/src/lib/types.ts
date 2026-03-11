@@ -58,8 +58,8 @@ export interface PuzzleSet {
   };
 }
 
-/** 難度檔位 */
-export type DifficultyTier = "beginner" | "intermediate" | "advanced";
+/** 難度檔位（1-5 星） */
+export type DifficultyTier = 1 | 2 | 3 | 4 | 5;
 
 /** 遊戲模式 */
 export type GameMode = "practice" | "local" | "remote";

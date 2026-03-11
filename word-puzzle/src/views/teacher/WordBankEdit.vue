@@ -10,17 +10,17 @@
     </div>
     <div class="card" style="margin-bottom: 1rem">
       <h2 style="font-size: 1rem; margin-bottom: 0.5rem">匯入詞句</h2>
-      <p class="muted" style="margin-bottom: 0.5rem">上傳 .xlsx 或 .csv，第一欄為詞句、第二欄釋義（可選）、第三欄出處（可選）、第四欄難度 1–5（可選）。</p>
+      <p class="muted" style="margin-bottom: 0.5rem">上傳 .xlsx、.csv 或 .txt，第一欄為詞句、第二欄釋義（可選）、第三欄出處（可選）、第四欄難度 1–5（可選）。</p>
       <label class="btn btn-primary" style="cursor: pointer">
         選擇檔案
-        <input ref="fileInput" type="file" accept=".xlsx,.xls,.csv" style="display: none" @change="onFileChange" />
+        <input ref="fileInput" type="file" accept=".xlsx,.xls,.csv,.txt" style="display: none" @change="onFileChange" />
       </label>
     </div>
     <div class="card" style="margin-bottom: 1rem">
       <h2 style="font-size: 1rem; margin-bottom: 0.5rem">當前詞條 <span class="count-badge">{{ items.length }}</span></h2>
       <table v-if="items.length > 0" class="word-table">
         <thead>
-          <tr><th>詞句</th><th>釋義</th><th>出處</th><th>難度</th><th></th></tr>
+          <tr><th>詞句</th><th>釋義</th><th>出處</th><th>難度</th><th>AI</th><th></th></tr>
         </thead>
         <tbody>
           <tr v-for="(it, i) in items" :key="it.id">
@@ -28,6 +28,11 @@
             <td><input v-model="it.definition" type="text" class="cell-input" /></td>
             <td><input v-model="it.source" type="text" class="cell-input" placeholder="如《為政》" /></td>
             <td><input v-model.number="it.difficulty" type="number" min="1" max="5" class="cell-input num" /></td>
+            <td>
+              <button type="button" class="btn-icon" :disabled="aiLoading.has(i)" @click="aiExplain(i)" :title="'AI 解讀 ' + it.text">
+                {{ aiLoading.has(i) ? '⏳' : '🤖' }}
+              </button>
+            </td>
             <td><button type="button" class="btn-link danger" @click="removeItem(i)">刪除</button></td>
           </tr>
         </tbody>
@@ -48,7 +53,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useWordBanksStore } from "@/stores/wordBanks";
 import { usePuzzleSetsStore, generateId } from "@/stores/puzzleSets";
 import type { WordBank, WordBankItem } from "@/lib/types";
-import { parseExcelOrCsv } from "@/lib/importExcel";
+import { parseImportFile } from "@/lib/importExcel";
+import { getAiExplanation } from "@/lib/aiExplain";
 
 const route = useRoute();
 const router = useRouter();
@@ -57,6 +63,8 @@ const wordBanks = useWordBanksStore();
 const fileInput = ref<HTMLInputElement | null>(null);
 const bankName = ref("");
 const items = ref<WordBankItem[]>([]);
+
+const aiLoading = ref<Set<number>>(new Set());
 
 const bankId = computed(() => route.params.bankId as string);
 const isNew = computed(() => bankId.value === "new" || !bankId.value);
@@ -89,7 +97,7 @@ async function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
-  const parsed = await parseExcelOrCsv(file);
+  const parsed = await parseImportFile(file);
   if (parsed.length > 0) {
     const newItems = parsed.map((row) => ({
       id: generateId(),
@@ -102,6 +110,23 @@ async function onFileChange(e: Event) {
     alert(`已匯入 ${newItems.length} 筆詞條。`);
   }
   input.value = "";
+}
+
+async function aiExplain(index: number) {
+  const item = items.value[index];
+  if (!item?.text?.trim()) return;
+  aiLoading.value.add(index);
+  aiLoading.value = new Set(aiLoading.value);
+  try {
+    const result = await getAiExplanation(item.text.trim());
+    items.value[index].definition = result.meaning;
+    if (result.usage) {
+      items.value[index].definition += `（${result.usage}）`;
+    }
+  } finally {
+    aiLoading.value.delete(index);
+    aiLoading.value = new Set(aiLoading.value);
+  }
 }
 
 function save() {
@@ -135,4 +160,7 @@ function save() {
 .cell-input.num { width: 3rem; }
 .btn-link { background: none; border: none; cursor: pointer; color: var(--primary); padding: 0; }
 .btn-link.danger { color: #dc2626; }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 2px 4px; border-radius: 4px; transition: background 0.15s; }
+.btn-icon:hover { background: #f0e6d8; }
+.btn-icon:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

@@ -8,19 +8,32 @@ import type { CrosswordPuzzle, CrosswordCell, CrosswordWord, DifficultyTier } fr
 
 export interface GeneratorInput {
   items: WordBankItem[];
-  tier: DifficultyTier; // 初學 / 小試 / 漸入佳境 → 預填比例
+  tier: DifficultyTier;
+  wordCount?: number;
 }
 
 const TIER_GIVEN_RATIO: Record<DifficultyTier, number> = {
-  beginner: 0.6,
-  intermediate: 0.4,
-  advanced: 0.25,
+  1: 0.7,
+  2: 0.55,
+  3: 0.4,
+  4: 0.28,
+  5: 0.15,
+};
+
+const TIER_GRID_SIZE: Record<DifficultyTier, { min: number; max: number }> = {
+  1: { min: 4, max: 6 },
+  2: { min: 6, max: 8 },
+  3: { min: 8, max: 11 },
+  4: { min: 11, max: 14 },
+  5: { min: 14, max: 20 },
 };
 
 const TIER_TITLE: Record<DifficultyTier, string> = {
-  beginner: "初學入門",
-  intermediate: "小試身手",
-  advanced: "漸入佳境",
+  1: "★ 入門",
+  2: "★★ 初學",
+  3: "★★★ 中等",
+  4: "★★★★ 挑戰",
+  5: "★★★★★ 大師",
 };
 
 /** 找兩條詞的共同字位置 (word1[i] === word2[j]) */
@@ -37,8 +50,14 @@ function findOverlaps(word1: string, word2: string): { i: number; j: number }[] 
 /** 貪心放置：在網格上放置橫向與豎向詞，盡量交叉 */
 export function generateCrosswordPuzzle(input: GeneratorInput): CrosswordPuzzle | null {
   const { items, tier } = input;
-  const words = items.map((it) => it.text.trim()).filter((s) => s.length > 0);
-  if (words.length === 0) return null;
+  let allWords = items.map((it) => it.text.trim()).filter((s) => s.length > 0);
+  if (allWords.length === 0) return null;
+
+  if (input.wordCount && input.wordCount > 0 && input.wordCount < allWords.length) {
+    const shuffled = [...allWords].sort(() => Math.random() - 0.5);
+    allWords = shuffled.slice(0, input.wordCount);
+  }
+  const words = allWords;
 
   // 按長度排序，長詞先放
   const sorted = [...words].sort((a, b) => b.length - a.length);
@@ -55,17 +74,19 @@ export function generateCrosswordPuzzle(input: GeneratorInput): CrosswordPuzzle 
   }
 
   function setCell(r: number, c: number, ch: string) {
+    if (r < 0 || c < 0) return true; // will be normalized later
     ensureSize(r, c);
     const row = gridRows[r];
-    if (row[c] !== null && row[c] !== ch) return false; // 衝突
+    if (row[c] !== null && row[c] !== ch) return false;
     row[c] = ch;
     return true;
   }
 
   function getCell(r: number, c: number): string | null {
-    if (r < 0 || r >= gridRows.length) return null;
+    if (r < 0 || c < 0) return null;
+    if (r >= gridRows.length) return null;
     const row = gridRows[r];
-    if (c < 0 || c >= row.length) return null;
+    if (!row || c >= row.length) return null;
     return row[c];
   }
 
@@ -178,9 +199,53 @@ export function generateCrosswordPuzzle(input: GeneratorInput): CrosswordPuzzle 
     }
   }
 
+  // Normalize negative coordinates: find min row/col offset among all words
+  let minR = 0;
+  let minC = 0;
+  for (const info of wordInfos) {
+    if (info.r < minR) minR = info.r;
+    if (info.c < minC) minC = info.c;
+  }
+
+  // If any coordinate is negative, rebuild the grid with offset
+  if (minR < 0 || minC < 0) {
+    const offsetR = -minR;
+    const offsetC = -minC;
+    const newGrid: (string | null)[][] = [];
+
+    // Shift all word positions
+    for (const info of wordInfos) {
+      info.r += offsetR;
+      info.c += offsetC;
+    }
+
+    // Rebuild grid from word data
+    for (const info of wordInfos) {
+      for (let k = 0; k < info.word.length; k++) {
+        const r = info.dir === "h" ? info.r : info.r + k;
+        const c = info.dir === "h" ? info.c + k : info.c;
+        while (newGrid.length <= r) newGrid.push([]);
+        while (newGrid[r].length <= c) newGrid[r].push(null);
+        newGrid[r][c] = info.word[k];
+      }
+    }
+
+    // Replace gridRows content
+    gridRows.length = 0;
+    for (const row of newGrid) gridRows.push(row);
+  }
+
+  const rawRows = gridRows.length;
+  const rawCols = Math.max(0, ...gridRows.map((row) => row.length));
+  if (rawRows === 0 || rawCols === 0) return null;
+
+  // Normalize all rows to same width (don't force square — let grid expand naturally)
+  for (const row of gridRows) {
+    while (row.length < rawCols) row.push(null);
+  }
+
   const rows = gridRows.length;
   const cols = Math.max(0, ...gridRows.map((row) => row.length));
-  if (rows === 0 || cols === 0) return null;
 
   // 建立 cell 的 key： "r,c"
   const blankCells = new Map<string, { r: number; c: number }>();
@@ -189,7 +254,8 @@ export function generateCrosswordPuzzle(input: GeneratorInput): CrosswordPuzzle 
   const horizontalClues: { id: string; label: string; clue: string; source: string }[] = [];
   const verticalClues: { id: string; label: string; clue: string; source: string }[] = [];
   const labelH = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-  const labelV = "一二三四五六七八九十".split("");
+  const labelV: string[] = [];
+  for (let i = 1; i <= 50; i++) labelV.push(String(i));
 
   for (const info of wordInfos) {
     const clueId = `c${clueIndex++}`;
@@ -267,7 +333,7 @@ export function generateCrosswordPuzzle(input: GeneratorInput): CrosswordPuzzle 
     source: info.source,
   }));
 
-  const difficulty = tier === "beginner" ? 1 : tier === "intermediate" ? 2 : 3;
+  const difficulty = tier;
   const levelTitle = TIER_TITLE[tier];
 
   return {
