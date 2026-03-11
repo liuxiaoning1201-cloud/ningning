@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>古代天文文化學習網站</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --fg: #f0f0f0;
+      --card: #1a1a2e;
+      --accent: #d4af37;
+      --muted: #a0a0b0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .nav { padding: 16px 24px; border-bottom: 1px solid rgba(212,175,55,0.3); display: flex; align-items: center; gap: 16px; }
+    .nav a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    .nav a:hover { color: #e8d4a8; }
+    .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+    h1 { font-family: 'Noto Serif SC', serif; font-size: 2rem; color: var(--accent); margin-bottom: 24px; }
+    h2 { font-size: 1.4rem; color: var(--accent); margin: 24px 0 16px; }
+    .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid rgba(212,175,55,0.2); }
+    .card h3 { color: var(--accent); margin-bottom: 8px; }
+    .card p, .card ul { color: var(--muted); font-size: 0.95rem; }
+    .card ul { margin-left: 20px; margin-top: 8px; }
+    .home-hero {
+      min-height: 50vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 24px;
+      background: linear-gradient(180deg, rgba(15,23,42,0.9) 0%, var(--bg) 100%);
+    }
+    .home-hero h1 { font-size: 3rem; margin-bottom: 16px; }
+    .home-hero p { color: var(--muted); font-size: 1.2rem; margin-bottom: 32px; }
+    .chapter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+    .chapter-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid rgba(212,175,55,0.2);
+      cursor: pointer;
+      transition: all 0.3s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .chapter-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .chapter-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .chapter-card h3 { font-size: 1.2rem; margin-bottom: 8px; }
+    .chapter-card p { font-size: 0.9rem; color: var(--muted); }
+    .page { display: none; }
+    .page.active { display: block; }
+    .mansion-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .mansion-item { background: rgba(45,45,68,0.5); padding: 12px; border-radius: 8px; text-align: center; }
+    .mansion-item strong { color: var(--accent); display: block; }
+    .mansion-item span { font-size: 0.8rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="#/">古代天文</a>
+    <a href="#/chapters">完整課程</a>
+  </nav>
+
+  <main id="app"></main>
+
+  <script>
+    const CHAPTERS = [
+      { id: 'seven-celestial', title: '七曜與五星', icon: '⭐', desc: '探索古代天文中的七曜（日月五星）和五行的對應關係。' },
+      { id: 'four-symbols', title: '四象與四靈', icon: '🐉', desc: '了解東西南北四方的守護神獸及其文化意義。' },
+      { id: 'twenty-eight-mansions', title: '二十八星宿', icon: '🌟', desc: '深入學習中國古代的二十八星宿體系及其黃道分佈。' },
+      { id: 'big-dipper', title: '北斗七星與季節', icon: '🌌', desc: '探索北斗七星如何指示季節變化和時間流轉。' },
+      { id: 'twelve-zodiac', title: '十二星次', icon: '♈', desc: '學習黃道十二宮及其與二十八星宿的對應關係。' },
+      { id: 'three-enclosures', title: '三垣', icon: '🏯', desc: '古代天文分區系統中最高級的分類。' },
+      { id: 'celestial-mythology', title: '星空神話', icon: '📖', desc: '星辰背後的故事和文化意義。' }
+    ];
+
+    const MANSIONS = [
+      { dir: '東方', name: '青龍', list: '角、亢、氐、房、心、尾、箕' },
+      { dir: '北方', name: '玄武', list: '斗、牛、女、虛、危、室、壁' },
+      { dir: '西方', name: '白虎', list: '奎、婁、胃、昴、畢、觜、參' },
+      { dir: '南方', name: '朱雀', list: '井、鬼、柳、星、張、翼、軫' }
+    ];
+
+    function render() {
+      const hash = location.hash.slice(1) || '/';
+      const app = document.getElementById('app');
+      
+      if (hash === '/' || hash === '') {
+        app.innerHTML = `
+          <div class="home-hero">
+            <h1>古代天文</h1>
+            <p>探索星辰的奧秘，理解古人如何觀察天空、認識宇宙</p>
+            <p style="font-style:italic;color:var(--accent)">「人生不相見，動如參與商」</p>
+            <a href="#/chapters" style="padding:12px 24px;background:var(--accent);color:var(--bg);border-radius:8px;text-decoration:none;font-weight:600;">開始學習</a>
+          </div>
+        `;
+        return;
+      }
+
+      if (hash === '/chapters') {
+        app.innerHTML = `
+          <div class="container" style="padding-top:32px">
+            <h1>完整課程</h1>
+            <div class="chapter-grid">
+              ${CHAPTERS.map(c => `
+                <a href="#/chapter/${c.id}" class="chapter-card">
+                  <div class="icon">${c.icon}</div>
+                  <h3>${c.title}</h3>
+                  <p>${c.desc}</p>
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const match = hash.match(/^\/chapter\/(.+)$/);
+      if (match) {
+        const id = match[1];
+        const ch = CHAPTERS.find(c => c.id === id);
+        if (!ch) { app.innerHTML = '<div class="container"><h1>章節未找到</h1></div>'; return; }
+
+        if (id === 'twenty-eight-mansions') {
+          app.innerHTML = `
+            <div class="container">
+              <h1>${ch.title}</h1>
+              <div class="card">
+                <p>二十八星宿十分類似於西方的黃道十二宮，它們是黃道和白道附近的二十八個區域，為日月五星所經之處。「宿」意為「房子」，月亮每晚停留在不同的星宿。</p>
+              </div>
+              <h2>四象與二十八宿總覽</h2>
+              ${MANSIONS.map(m => `
+                <div class="card">
+                  <h3>${m.dir} · ${m.name}七宿</h3>
+                  <p>${m.list}</p>
+                </div>
+              `).join('')}
+            </div>
+          `;
+          return;
+        }
+
+        if (id === 'seven-celestial') {
+          app.innerHTML = `
+            <div class="container">
+              <h1>${ch.title}</h1>
+              <div class="card">
+                <p>古人把日、月和金、木、水、火、土五星合起來稱為七曜或七政。這七個天體在古代被認為是最重要的天體，掌管著時間、季節和人類的命運。</p>
+              </div>
+              <div class="card"><h3>日</h3><p>太陽是古代天文觀測的重要對象，代表光明和熱力。古人稱太陽為「日」或「太陽星」。</p></div>
+              <div class="card"><h3>月</h3><p>月球是古代重要的時間計量工具，代表陰柔和變化。月球的圓缺變化用於制定農曆。</p></div>
+              <div class="card"><h3>五星</h3><p>水星（辰星）、金星（太白）、火星（熒惑）、木星（歲星）、土星（鎮星）</p></div>
+            </div>
+          `;
+          return;
+        }
+
+        if (id === 'four-symbols') {
+          app.innerHTML = `
+            <div class="container">
+              <h1>${ch.title}</h1>
+              <div class="card">
+                <p>青龍、白虎、玄武、朱雀四大神獸分別代表東、西、北、南四個方向，對應春、秋、冬、夏四季。</p>
+              </div>
+              <div class="card"><h3>青龍（東）</h3><p>代表春季和生長，象徵活力與新生。</p></div>
+              <div class="card"><h3>白虎（西）</h3><p>代表秋季和肅殺，象徵力量與威嚴。</p></div>
+              <div class="card"><h3>朱雀（南）</h3><p>代表夏季和炎熱，象徵光明與熱情。</p></div>
+              <div class="card"><h3>玄武（北）</h3><p>代表冬季和寒冷，象徵智慧與沉靜。</p></div>
+            </div>
+          `;
+          return;
+        }
+
+        if (id === 'big-dipper') {
+          app.innerHTML = `
+            <div class="container">
+              <h1>${ch.title}</h1>
+              <div class="card">
+                <p>北斗七星是北方天空中最著名的星群，由七顆亮星組成。古人用北斗七星來指示季節：斗柄東指天下皆春，南指天下皆夏，西指天下皆秋，北指天下皆冬。</p>
+              </div>
+              <div class="card"><h3>北斗七星</h3><p>天樞、天璇、天璣、天權、玉衡、開陽、瑤光</p></div>
+            </div>
+          `;
+          return;
+        }
+
+        if (id === 'three-enclosures') {
+          app.innerHTML = `
+            <div class="container">
+              <h1>${ch.title}</h1>
+              <div class="card">
+                <p>三垣是古代天文分區系統中最高級的分類：紫微垣（天帝宮殿）、太微垣（政治中心）、天市垣（人間市場）。</p>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        if (id === 'twelve-zodiac') {
+          app.innerHTML = `
+            <div class="container">
+              <h1>${ch.title}</h1>
+              <div class="card">
+                <p>黃道十二宮對應西方的十二星座，與四象、季節和節氣密切相關。星紀、玄枵、娵訾、降婁、大梁、實沈、鶉首、鶉火、鶉尾、壽星、大火、析木。</p>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        if (id === 'celestial-mythology') {
+          app.innerHTML = `
+            <div class="container">
+              <h1>${ch.title}</h1>
+              <div class="card">
+                <p>星辰背後蘊含著豐富的文化意義和古老的神話故事，如盤古開天、女媧補天、嫦娥奔月、牛郎織女等。</p>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        app.innerHTML = `<div class="container"><h1>${ch.title}</h1><div class="card"><p>${ch.desc}</p></div></div>`;
+      }
+    }
+
+    window.addEventListener('hashchange', render);
+    render();
+  </script>
+</body>
+</html>

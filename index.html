@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>軟件中心</title>
+    <title>字遊空間</title>
     <style>
         * {
             margin: 0;
@@ -14,17 +14,18 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
 
         :root {
-            --cream-white: #faf9f6;
-            --warm-beige: #f5f3f0;
-            --soft-gray: #e8e6e3;
-            --accent-brown: #d4c4b0;
-            --dark-brown: #8b7355;
-            --text-dark: #5a4a3a;
+            --cream-white: #f8f9f6;
+            --warm-beige: #f0f2ee;
+            --soft-gray: #e4e6e2;
+            --accent: #6b7c6f;
+            --accent-light: #9aa89c;
+            --dark-brown: #4a5c4a;
+            --text-dark: #3d4a3d;
         }
 
         body {
             font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #faf9f6 0%, #f5f3f0 50%, #f0ede8 100%);
+            background: linear-gradient(160deg, #f8f9f6 0%, #f2f4f0 45%, #eef0eb 100%);
             min-height: 100vh;
             padding: 40px 20px;
             color: var(--text-dark);
@@ -40,7 +41,7 @@
             right: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at 30% 30%, rgba(212, 196, 176, 0.1) 0%, transparent 50%);
+            background: radial-gradient(circle at 30% 30%, rgba(107, 124, 111, 0.06) 0%, transparent 45%);
             animation: float 20s ease-in-out infinite;
             z-index: 0;
             pointer-events: none;
@@ -53,7 +54,7 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle at 70% 70%, rgba(212, 196, 176, 0.08) 0%, transparent 50%);
+            background: radial-gradient(circle at 70% 70%, rgba(154, 168, 156, 0.05) 0%, transparent 45%);
             animation: float 25s ease-in-out infinite reverse;
             z-index: 0;
             pointer-events: none;
@@ -97,7 +98,7 @@
             transform: translateX(-50%);
             width: 60px;
             height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-brown), transparent);
+            background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
             animation: expandLine 1s ease-out 0.5s both;
         }
 
@@ -131,8 +132,8 @@
             text-align: center;
             cursor: pointer;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(212, 196, 176, 0.3);
-            box-shadow: 0 8px 32px rgba(90, 74, 58, 0.08);
+            border: 1px solid rgba(107, 124, 111, 0.2);
+            box-shadow: 0 8px 32px rgba(61, 74, 61, 0.06);
             position: relative;
             overflow: hidden;
             opacity: 0;
@@ -142,6 +143,7 @@
         .app-card:nth-child(1) { animation-delay: 0.1s; }
         .app-card:nth-child(2) { animation-delay: 0.2s; }
         .app-card:nth-child(3) { animation-delay: 0.3s; }
+        .app-card:nth-child(4) { animation-delay: 0.4s; }
 
         .app-card::before {
             content: '';
@@ -160,8 +162,8 @@
 
         .app-card:hover {
             transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 48px rgba(90, 74, 58, 0.15);
-            border-color: var(--accent-brown);
+            box-shadow: 0 20px 48px rgba(61, 74, 61, 0.12);
+            border-color: var(--accent);
         }
 
         .app-card:active {
@@ -186,7 +188,7 @@
 
         .app-card:hover .app-icon {
             transform: rotate(5deg) scale(1.1);
-            background: linear-gradient(135deg, var(--accent-brown) 0%, var(--soft-gray) 100%);
+            background: linear-gradient(135deg, var(--accent-light) 0%, var(--soft-gray) 100%);
         }
 
         .app-icon::after {
@@ -286,12 +288,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>軟件中心</h1>
-            <p>探索豐富的互動應用</p>
+            <h1>字遊空間</h1>
+            <p>在文字世界裡自由遊戲</p>
         </div>
 
         <div class="apps-grid">
-            <div class="app-card" onclick="window.location.href='字詞地鼠戰.html'">
+            <div class="app-card" onclick="window.location.href='字詞地鼠戰/字詞地鼠戰.html'">
                 <div class="app-icon">🎯</div>
                 <h2 class="app-title">字詞地鼠戰</h2>
                 <p class="app-description">趣味字詞學習遊戲<br>通過打地鼠的方式練習字詞</p>
@@ -303,10 +305,16 @@
                 <p class="app-description">創新的手勢互動點名<br>讓點名變得更有趣</p>
             </div>
 
-            <div class="app-card" onclick="window.location.href='春江花月夜.html'">
+            <div class="app-card" onclick="window.location.href='春江花月夜/春江花月夜.html'">
                 <div class="app-icon">🌙</div>
                 <h2 class="app-title">春江花月夜</h2>
                 <p class="app-description">手勢互動詩詞體驗<br>感受古典詩詞之美</p>
+            </div>
+
+            <div class="app-card" onclick="window.location.href='poetpal/index.html'">
+                <div class="app-icon">🏯</div>
+                <h2 class="app-title">詩友記</h2>
+                <p class="app-description">穿越時空與詩人聊天<br>50+ 位詩人等你來對話</p>
             </div>
         </div>
     </div>
@@ -329,7 +337,7 @@
                     left: ${x}px;
                     top: ${y}px;
                     border-radius: 50%;
-                    background: rgba(212, 196, 176, 0.4);
+                    background: rgba(107, 124, 111, 0.25);
                     transform: scale(0);
                     animation: ripple 0.6s ease-out;
                     pointer-events: none;

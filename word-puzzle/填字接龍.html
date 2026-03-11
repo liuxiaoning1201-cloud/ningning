@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中文填字接龍</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f0f4f8;--card:#fff;--text:#1a1a1a;--muted:#64748b;--pri:#2563eb;--pri2:#1d4ed8;--bdr:#e2e8f0;--grn:#15803d;--red:#b91c1c;--rd:10px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;font-size:15px;color:var(--text);background:var(--bg);min-height:100vh;padding:12px;line-height:1.6}
+.app{max-width:720px;margin:0 auto}
+h1{font-size:1.4rem;font-weight:700;margin-bottom:10px}
+h2{font-size:1.05rem;font-weight:600;margin-bottom:8px;color:#334155}
+.mu{color:var(--muted);font-size:.9rem}
+.nav{margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:4px;padding:8px 16px;border-radius:var(--rd);border:1px solid var(--bdr);background:var(--card);color:#334155;cursor:pointer;font-size:14px;font-family:inherit;text-decoration:none;transition:all .15s}
+.btn:hover{background:#f1f5f9;border-color:#94a3b8}
+.bp{background:var(--pri);color:#fff;border-color:var(--pri)}.bp:hover{background:var(--pri2)}
+.bd{color:var(--red);border-color:#fecaca}.bd:hover{background:#fef2f2}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rd);padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+input[type="text"],input[type="number"],select,textarea{padding:8px 10px;border:1px solid var(--bdr);border-radius:8px;font-size:14px;width:100%;font-family:inherit}
+textarea{min-height:80px;resize:vertical}
+.badge{display:inline-block;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:999px;font-size:12px;margin-left:6px}
+.star{color:#f59e0b}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.row label{font-size:14px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th,.tbl td{padding:6px 8px;text-align:left;border-bottom:1px solid #f1f5f9}
+.tbl th{color:var(--muted);font-weight:500}
+.lnk{color:var(--red);cursor:pointer;background:none;border:none;font-size:13px}
+.scores{display:flex;gap:2rem;font-weight:600;font-size:1rem;margin:10px 0}
+.correct{color:var(--grn)}.wrong{color:var(--red)}
+
+.mode-card{background:var(--card);border:1px solid var(--bdr);border-radius:16px;padding:20px;text-align:center;cursor:pointer;transition:all .15s;text-decoration:none;display:block;color:inherit}
+.mode-card:hover{border-color:var(--pri);box-shadow:0 4px 12px rgba(37,99,235,.15);transform:translateY(-2px)}
+.mode-card .icon{font-size:2rem;margin-bottom:6px}
+.mode-card .title{font-size:1.1rem;font-weight:700}
+.mode-card .desc{font-size:.85rem;color:var(--muted);margin-top:4px}
+
+.grid-scroll{overflow-x:auto;margin:8px 0 12px;-webkit-overflow-scrolling:touch}
+.grid-wrap{display:inline-grid;gap:2px;padding:4px;border:1px solid var(--bdr);border-radius:var(--rd)}
+.gc{width:2.8rem;height:2.8rem;border:1px solid var(--bdr);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;position:relative}
+.gc.block{background:#cbd5e1;border-color:#94a3b8}
+.gc.given{background:#dbeafe;font-weight:700;color:#1e40af}
+.gc.blank{background:var(--card)}
+.gc.blank.focused{background:#fef3c7;border-color:var(--pri)}
+.gc input{position:absolute;inset:0;width:100%;height:100%;border:none;text-align:center;font-size:1.1rem;font-weight:700;background:transparent;outline:none;padding:8px 0 0 0;caret-color:var(--pri)}
+.gc input:focus{background:#fef3c7}
+.gc .lbl{position:absolute;top:0;left:1px;line-height:1.15;font-weight:700;pointer-events:none;z-index:2;font-size:7.5px}
+.gc .lbl .lh{color:var(--pri);display:block;white-space:nowrap}
+.gc .lbl .lv{color:#c2410c;display:block;white-space:nowrap}
+.gc .gv{padding-top:6px}
+
+.word-pick{margin-top:6px;max-height:240px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px;padding:8px;background:#fafbfc}
+.word-pick label{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:13px;transition:background .1s}
+.word-pick label:hover{background:#f1f5f9}
+.word-pick input[type="checkbox"]{width:auto;flex-shrink:0}
+.word-pick .wp-src{color:var(--muted);font-size:11px;margin-left:auto;white-space:nowrap}
+.pick-bar{display:flex;gap:6px;margin-top:6px;align-items:center;font-size:13px}
+
+.clue-sec{margin-top:10px}
+.clue-sec strong{display:block;margin-bottom:4px}
+.cl{padding-left:1.25rem}.cl li{margin-bottom:3px;font-size:14px}
+
+@media(max-width:500px){
+  .gc{width:2.3rem;height:2.3rem;font-size:.9rem}
+  .gc input{font-size:.9rem}
+  .gc .lbl{font-size:6px}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════ STORAGE ══════════════════ */
+var K_B="cw:banks",K_S="cw:sets",K_C="cw:cfg";
+function ld(k,d){try{var r=localStorage.getItem(k);return r?JSON.parse(r):d}catch(e){return d}}
+function sv(k,v){localStorage.setItem(k,JSON.stringify(v))}
+function uid(){return Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)}
+
+var banks=ld(K_B,[]),sets=ld(K_S,[]),cfg=ld(K_C,{showHints:true});
+function sB(){sv(K_B,banks)}function sS(){sv(K_S,sets)}function sC(){sv(K_C,cfg)}
+
+/* ══════════════════ GENERATOR ══════════════════ */
+var TR={beginner:.65,intermediate:.4,advanced:.2};
+var TT={beginner:"初學入門",intermediate:"小試身手",advanced:"漸入佳境"};
+var TD={beginner:1,intermediate:2,advanced:3};
+var WLIM={beginner:4,intermediate:7,advanced:9999};
+var HL="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+var VL="一二三四五六七八九十".split("");
+
+function gen(selectedItems,tier){
+  var words=[],seen=new Set();
+  selectedItems.forEach(function(it){var t=it.text.trim();if(t&&!seen.has(t)){seen.add(t);words.push(t)}});
+  if(!words.length)return null;
+  words.sort(function(a,b){return b.length-a.length});
+
+  var cells={};
+  function key(r,c){return r+","+c}
+  function get(r,c){return cells[key(r,c)]||null}
+  function put(r,c,ch){var k=key(r,c);var cur=cells[k];if(cur&&cur!==ch)return false;cells[k]=ch;return true}
+  function canPut(r,c,ch){var cur=cells[key(r,c)];return !cur||cur===ch}
+
+  var infos=[];
+  function tryH(w,r0,c0){for(var k=0;k<w.length;k++){if(!canPut(r0,c0+k,w[k]))return false}for(var k=0;k<w.length;k++)put(r0,c0+k,w[k]);return true}
+  function tryV(w,r0,c0){for(var k=0;k<w.length;k++){if(!canPut(r0+k,c0,w[k]))return false}for(var k=0;k<w.length;k++)put(r0+k,c0,w[k]);return true}
+
+  var w0=words[0],it0=selectedItems.find(function(x){return x.text.trim()===w0});
+  tryH(w0,0,0);
+  infos.push({w:w0,d:"h",r:0,c:0,def:it0?it0.definition:"",src:it0?it0.source:""});
+
+  for(var wi=1;wi<words.length;wi++){
+    var w=words[wi],itm=selectedItems.find(function(x){return x.text.trim()===w}),placed=false;
+    for(var pi=0;pi<infos.length&&!placed;pi++){
+      var p=infos[pi];
+      for(var i=0;i<w.length&&!placed;i++){
+        for(var j=0;j<p.w.length&&!placed;j++){
+          if(w[i]!==p.w[j])continue;
+          if(p.d==="h"){
+            var r0=p.r-i,c0=p.c+j;
+            if(tryV(w,r0,c0)){infos.push({w:w,d:"v",r:r0,c:c0,def:itm?itm.definition:"",src:itm?itm.source:""});placed=true}
+          }else{
+            var r0=p.r+j,c0=p.c-i;
+            if(tryH(w,r0,c0)){infos.push({w:w,d:"h",r:r0,c:c0,def:itm?itm.definition:"",src:itm?itm.source:""});placed=true}
+          }
+        }
+      }
+    }
+    if(!placed){
+      var aK=Object.keys(cells),mR=0;aK.forEach(function(k){var r=+k.split(",")[0];if(r>mR)mR=r});
+      tryH(w,mR+2,0);
+      infos.push({w:w,d:"h",r:mR+2,c:0,def:itm?itm.definition:"",src:itm?itm.source:""});
+    }
+  }
+
+  var allKeys=Object.keys(cells);
+  if(!allKeys.length)return null;
+  var minR=Infinity,maxR=-Infinity,minC=Infinity,maxC=-Infinity;
+  allKeys.forEach(function(k){var p=k.split(",");var r=+p[0],c=+p[1];if(r<minR)minR=r;if(r>maxR)maxR=r;if(c<minC)minC=c;if(c>maxC)maxC=c});
+  var rows=maxR-minR+1,cols=maxC-minC+1;
+  infos.forEach(function(inf){inf.r-=minR;inf.c-=minC});
+
+  var ratio=TR[tier]||.4;
+  var grid=[];
+  for(var r=0;r<rows;r++){var row=[];for(var c=0;c<cols;c++){
+    var ch=get(r+minR,c+minC);
+    if(!ch){row.push({t:"x"});continue}
+    row.push({t:Math.random()<ratio?"g":"b",v:ch,hl:null,vl:null});
+  }grid.push(row)}
+
+  var hCl=[],vCl=[];
+  infos.forEach(function(inf){
+    var lb,txt="",src=inf.src?" "+inf.src:"";
+    if(inf.d==="h"){
+      lb=HL[hCl.length]||""+(hCl.length+1);
+      if(grid[inf.r]&&grid[inf.r][inf.c])grid[inf.r][inf.c].hl=lb+"→";
+      for(var k=0;k<inf.w.length;k++){var cl=grid[inf.r][inf.c+k];txt+=(cl&&cl.t==="g")?cl.v:"_"}
+      hCl.push({id:uid(),lb:lb,word:txt,tx:txt+src,src:inf.src||"",def:inf.def||"",sr:inf.r,sc:inf.c,ln:inf.w.length});
+    }else{
+      lb=VL[vCl.length]||""+(vCl.length+1);
+      if(grid[inf.r]&&grid[inf.r][inf.c])grid[inf.r][inf.c].vl=lb+"↓";
+      for(var k=0;k<inf.w.length;k++){var cl=grid[inf.r+k]?grid[inf.r+k][inf.c]:null;txt+=(cl&&cl.t==="g")?cl.v:"_"}
+      vCl.push({id:uid(),lb:lb,word:txt,tx:txt+src,src:inf.src||"",def:inf.def||"",sr:inf.r,sc:inf.c,ln:inf.w.length});
+    }
+  });
+  return {id:uid(),grid:grid,hCl:hCl,vCl:vCl,dif:TD[tier]||1,lvl:TT[tier]||"",rows:rows,cols:cols,words:infos};
+}
+
+/* ══════════════════ ROUTING ══════════════════ */
+function rt(){return(location.hash||"#home").slice(1).split("/")}
+function go(h){location.hash=h}
+function esc(s){return s?String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"):""}
+function stars(n){var s="";for(var i=0;i<5;i++)s+=(i<n?"★":"☆");return'<span class="star">'+s+"</span>"}
+
+var app=document.getElementById("app");
+
+/* ══════════════════ RENDER ══════════════════ */
+function render(){
+  var p=rt(),v=p[0],s=p[1],id=p[2];
+
+  /* ═══ HOME ═══ */
+  if(v==="home"||!v){
+    app.innerHTML=
+      '<h1 style="text-align:center;font-size:1.6rem;margin:16px 0 6px">中文填字接龍</h1>'+
+      '<p class="mu" style="text-align:center;margin-bottom:20px">詞語、成語與語句練習</p>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+        '<a class="mode-card" href="#practice"><div class="icon">📝</div><div class="title">練習模式</div><div class="desc">單人練習，自選題目或自動出題</div></a>'+
+        '<a class="mode-card" href="#local"><div class="icon">🤝</div><div class="title">本地對戰</div><div class="desc">同機雙人，輪流填格比拼</div></a>'+
+        '<a class="mode-card" href="#remote"><div class="icon">🌐</div><div class="title">遠程對戰</div><div class="desc">登入班級，線上即時比賽</div></a>'+
+        '<a class="mode-card" href="#settings"><div class="icon">⚙️</div><div class="title">設置</div><div class="desc">管理題庫、出題、匯入匯出</div></a>'+
+      '</div>';
+    return;
+  }
+
+  /* ═══ PRACTICE PICK ═══ */
+  if(v==="practice"&&!s){renderPickPage("practice","練習模式","開始練習");return}
+
+  /* ═══ LOCAL PICK ═══ */
+  if(v==="local"&&!s){renderPickPage("local","本地對戰","開始對戰");return}
+
+  /* ═══ REMOTE ═══ */
+  if(v==="remote"){
+    app.innerHTML=
+      '<div class="nav"><a class="btn" href="#home">← 首頁</a></div>'+
+      '<h1>遠程對戰</h1>'+
+      '<div class="card"><p class="mu">遠程對戰需要後端支持（如 Supabase）。</p>'+
+      '<p class="mu" style="margin-top:6px">設定完成後，學生可用學校郵箱登入、加入班級，多人同時在各自電腦上進行比賽。</p>'+
+      '<p class="mu" style="margin-top:6px">此功能將在後端建立後開放。</p></div>';
+    return;
+  }
+
+  /* ═══ SETTINGS ═══ */
+  if(v==="settings"&&!s){
+    app.innerHTML=
+      '<div class="nav"><a class="btn" href="#home">← 首頁</a></div>'+
+      '<h1>設置</h1>'+
+      '<div class="card"><h2>遊戲設定</h2>'+
+        '<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="chkH" '+(cfg.showHints?"checked":"")+' style="width:auto"> 顯示提示（橫向/豎向提示文字）</label></div>'+
+      '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0">詞句庫管理</h2><p class="mu">新增詞句、匯入 Excel/CSV</p></div><a class="btn bp" href="#settings/banks">管理</a></div>'+
+      '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><h2 style="margin:0">題組管理</h2><p class="mu">查看、新建、匯出或刪除題組</p></div><a class="btn bp" href="#settings/puzzles">管理</a></div>';
+    document.getElementById("chkH").onchange=function(){cfg.showHints=this.checked;sC()};
+    return;
+  }
+
+  /* ═══ BANKS LIST ═══ */
+  if(v==="settings"&&s==="banks"&&!id){
+    app.innerHTML=
+      '<div class="nav"><a class="btn" href="#settings">← 設置</a></div>'+
+      '<h1>詞句庫</h1>'+
+      '<p class="mu" style="margin-bottom:10px">建立詞句庫後，即可自動產生填字題。</p>'+
+      '<a class="btn bp" href="#settings/bank/new">新增詞句庫</a>'+
+      (banks.length===0?'<div class="card" style="margin-top:12px"><p class="mu">尚無詞句庫。</p></div>':
+      '<div style="margin-top:12px">'+banks.map(function(b){
+        return'<div class="card" style="display:flex;justify-content:space-between;align-items:center"><a href="#settings/bank/'+b.id+'" style="color:inherit;text-decoration:none"><strong>'+esc(b.name)+'</strong><span class="badge">'+b.items.length+' 詞</span></a><button class="btn bd delB" data-id="'+b.id+'">刪除</button></div>'
+      }).join("")+'</div>');
+    app.querySelectorAll(".delB").forEach(function(btn){btn.onclick=function(){if(!confirm("確定刪除此詞句庫？"))return;banks=banks.filter(function(b){return b.id!==btn.dataset.id});sB();render()}});
+    return;
+  }
+
+  /* ═══ EDIT BANK ═══ */
+  if(v==="settings"&&s==="bank"){
+    renderBankEditor(id);
+    return;
+  }
+
+  /* ═══ PUZZLES LIST ═══ */
+  if(v==="settings"&&s==="puzzles"){
+    app.innerHTML=
+      '<div class="nav"><a class="btn" href="#settings">← 設置</a></div>'+
+      '<h1>題組管理</h1>'+
+      '<a class="btn bp" href="#settings/newpuzzle/x" style="margin-bottom:12px">新建填字接龍（自動產生）</a>'+
+      (sets.length===0?'<div class="card">尚無題組。請先在「詞句庫」加入詞條，再新建題組。</div>':
+      sets.map(function(s){
+        return'<div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
+          '<span><strong>'+esc(s.title||"未命名")+'</strong> '+stars(s.dif||1)+'</span>'+
+          '<span><button class="btn expS" data-id="'+s.id+'">匯出</button> <button class="btn bd delS" data-id="'+s.id+'">刪除</button></span></div>'
+      }).join(""));
+    app.querySelectorAll(".delS").forEach(function(b){b.onclick=function(){if(!confirm("確定刪除？"))return;sets=sets.filter(function(s){return s.id!==b.dataset.id});sS();render()}});
+    app.querySelectorAll(".expS").forEach(function(b){b.onclick=function(){
+      var s2=sets.find(function(x){return x.id===b.dataset.id});if(!s2)return;
+      var a=document.createElement("a");a.href="data:application/json,"+encodeURIComponent(JSON.stringify(s2,null,2));a.download="題組-"+(s2.title||"export")+".json";a.click()
+    }});
+    return;
+  }
+
+  /* ═══ NEW PUZZLE ═══ */
+  if(v==="settings"&&s==="newpuzzle"){renderNewPuzzle();return}
+
+  /* ═══ PLAY PRACTICE ═══ */
+  if(v==="practice"&&s==="play"&&id){
+    var pz=sets.find(function(x){return x.id===id});
+    if(!pz||!pz.grid){app.innerHTML='<div class="nav"><a class="btn" href="#practice">← 返回</a></div><p>找不到題組。</p>';return}
+    app.innerHTML=
+      '<div class="nav"><a class="btn" href="#practice">← 返回</a></div>'+
+      '<h1>'+esc(pz.title||"填字練習")+'</h1>'+
+      '<p class="mu" style="margin-bottom:8px">'+stars(pz.dif||1)+' · '+esc(pz.lvl||"")+'</p>'+
+      '<div id="gA"></div><div id="cA"></div>'+
+      '<div class="row" style="margin-top:10px"><button class="btn bp" id="ck">對答案</button><span id="rT"></span></div>';
+    var ua={};
+    rGrid(document.getElementById("gA"),pz,ua,null);
+    rClue(document.getElementById("cA"),pz);
+    document.getElementById("ck").onclick=function(){checkAnswer(pz,ua)};
+    return;
+  }
+
+  /* ═══ PLAY LOCAL ═══ */
+  if(v==="local"&&s==="play"&&id){
+    var pz=sets.find(function(x){return x.id===id});
+    if(!pz||!pz.grid){app.innerHTML='<div class="nav"><a class="btn" href="#local">← 返回</a></div><p>找不到題組。</p>';return}
+    app.innerHTML=
+      '<div class="nav"><a class="btn" href="#local">← 返回</a></div>'+
+      '<h1>本地對戰 · '+esc(pz.title||"")+'</h1>'+
+      '<p id="tI" style="font-weight:700;margin-bottom:8px;font-size:1.05rem;color:var(--pri)">▶ 玩家一 的回合</p>'+
+      '<div id="gA"></div><div id="cA"></div>'+
+      '<div class="scores"><span>玩家一：<strong id="s1">0</strong> 分</span><span>玩家二：<strong id="s2">0</strong> 分</span></div>'+
+      '<div id="eM"></div>';
+    var ua={},fb={},cp=1,sc1=0,sc2=0;
+    var tb=0;pz.grid.forEach(function(row){row.forEach(function(c){if(c.t==="b")tb++})});
+    rGrid(document.getElementById("gA"),pz,ua,function(r,c,val){
+      var k=r+","+c;if(fb[k])return;
+      ua[k]=val;
+      if(val.trim()){
+        fb[k]=cp;
+        var cell=pz.grid[r]?pz.grid[r][c]:null;
+        if(cell&&val.trim()===cell.v){if(cp===1)sc1++;else sc2++}
+        cp=cp===1?2:1;
+        document.getElementById("tI").innerHTML=(cp===1?'▶ <span style="color:var(--pri)">玩家一</span>':'▶ <span style="color:#c2410c">玩家二</span>')+' 的回合';
+        document.getElementById("s1").textContent=sc1;
+        document.getElementById("s2").textContent=sc2;
+        if(Object.keys(fb).length>=tb){
+          var msg=sc1>sc2?"🎉 玩家一勝！":sc2>sc1?"🎉 玩家二勝！":"🤝 平手！";
+          document.getElementById("eM").innerHTML='<div class="card" style="text-align:center;font-size:1.15rem;font-weight:700;padding:20px">對戰結束 — '+msg+'</div>'
+        }
+      }
+    });
+    rClue(document.getElementById("cA"),pz);
+    return;
+  }
+
+  if(v==="play"&&s==="practice"&&id){go("practice/play/"+id);return}
+  if(v==="play"&&s==="local"&&id){go("local/play/"+id);return}
+
+  app.innerHTML='<div class="nav"><a class="btn" href="#home">← 首頁</a></div><p>頁面不存在。</p>';
+}
+
+/* ══════════════════ PICK PAGE (practice / local) ══════════════════ */
+function renderPickPage(mode,title,playLabel){
+  app.innerHTML=
+    '<div class="nav"><a class="btn" href="#home">← 首頁</a></div>'+
+    '<h1>'+title+'</h1>'+
+    '<div class="card">'+
+      '<h2>快速開始 · 自動出題</h2>'+
+      '<p class="mu" style="margin-bottom:6px">從詞句庫勾選詞語，系統依難度自動產生填字題。</p>'+
+      '<div class="row">'+
+        '<label>詞句庫 <select id="aB" style="width:auto"><option value="">— 請選擇 —</option>'+
+          banks.map(function(b){return'<option value="'+b.id+'">'+esc(b.name)+' ('+b.items.length+'詞)</option>'}).join("")+
+        '</select></label>'+
+        '<label>難度 <select id="aT" style="width:auto"><option value="beginner">初學入門</option><option value="intermediate">小試身手</option><option value="advanced">漸入佳境</option></select></label>'+
+      '</div>'+
+      '<div id="wpArea"></div>'+
+      '<button class="btn bp" id="aG" style="margin-top:8px">產生並開始遊戲</button>'+
+      (banks.length===0?'<p class="mu" style="margin-top:6px">⚠ 尚無詞句庫，請先到 <a href="#settings/banks">設置 → 詞句庫</a> 新增。</p>':'')+
+    '</div>'+
+    '<div class="card"><label class="btn" style="cursor:pointer">匯入題組 JSON <input type="file" id="iJ" accept=".json" style="display:none"></label></div>'+
+    (sets.length?'<h2 style="margin-top:8px">已有題組</h2>'+sets.map(function(s){
+      return'<div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'+
+        '<span><strong>'+esc(s.title||"未命名")+'</strong> '+stars(s.dif||1)+' <span style="font-size:12px;color:var(--muted)">'+esc(s.lvl||"")+'</span></span>'+
+        '<a class="btn bp" href="#'+mode+'/play/'+s.id+'">'+playLabel+'</a></div>'
+    }).join(""):'<div class="card mu">尚無題組。可用上方自動出題，或到<a href="#settings"> 設置 </a>管理。</div>');
+
+  var wp=null;
+  var selBank=document.getElementById("aB");
+  var selTier=document.getElementById("aT");
+
+  function refreshWP(){
+    var bId=selBank.value,bank=banks.find(function(b){return b.id===bId});
+    var area=document.getElementById("wpArea");
+    if(!bank||!bank.items.length){area.innerHTML="";wp=null;return}
+    wp=buildWordPick(area,bank.items,selTier.value);
+  }
+  selBank.onchange=refreshWP;
+  selTier.onchange=function(){if(wp)wp.setTier(selTier.value);else refreshWP()};
+
+  document.getElementById("aG").onclick=function(){
+    if(!wp){alert("請先選擇詞句庫");return}
+    var sel=wp.getSelected();
+    if(sel.length<2){alert("請至少勾選 2 個詞語");return}
+    var tier=selTier.value;
+    var pz=gen(sel,tier);
+    if(!pz){alert("無法產生填字題，請確認詞句有共同字可交叉");return}
+    pz.title="自動出題 · "+pz.lvl;
+    sets.push(pz);sS();go(mode+"/play/"+pz.id);
+  };
+
+  var iJ=document.getElementById("iJ");
+  if(iJ)iJ.onchange=function(){
+    var f=this.files[0];if(!f)return;
+    var reader=new FileReader();reader.onload=function(){
+      try{var d=JSON.parse(reader.result);if(!d.id||!d.grid){alert("無效的題組檔案");return}sets.push(d);sS();render()}catch(e){alert("解析失敗")}
+    };reader.readAsText(f);
+  };
+}
+
+/* ══════════════════ WORD PICK COMPONENT ══════════════════ */
+function buildWordPick(container,items,tier){
+  var checked=[];
+  var limit=WLIM[tier]||9999;
+  items.forEach(function(_,i){checked[i]=i<limit});
+
+  function renderList(){
+    var html='<p style="font-size:13px;margin-bottom:4px;font-weight:600">勾選要出題的詞句（初級建議 3–4 個，中級 5–7 個）：</p>'+
+      '<div class="word-pick">';
+    items.forEach(function(it,i){
+      html+='<label><input type="checkbox" data-i="'+i+'" '+(checked[i]?"checked":"")+'> <span>'+esc(it.text)+'</span>'+(it.source?'<span class="wp-src">'+esc(it.source)+'</span>':'')+'</label>';
+    });
+    html+='</div><div class="pick-bar">'+
+      '<button class="btn" id="wpAll" style="padding:3px 10px;font-size:12px">全選</button>'+
+      '<button class="btn" id="wpNone" style="padding:3px 10px;font-size:12px">取消全選</button>'+
+      '<span class="mu" id="wpCnt"></span></div>';
+    container.innerHTML=html;
+    updateCount();
+
+    container.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+      cb.onchange=function(){checked[+cb.dataset.i]=cb.checked;updateCount()};
+    });
+    document.getElementById("wpAll").onclick=function(){checked=items.map(function(){return true});renderList()};
+    document.getElementById("wpNone").onclick=function(){checked=items.map(function(){return false});renderList()};
+  }
+
+  function updateCount(){
+    var n=checked.filter(Boolean).length;
+    var el=document.getElementById("wpCnt");
+    if(el)el.textContent="已選 "+n+" / "+items.length;
+  }
+
+  renderList();
+
+  return{
+    getSelected:function(){return items.filter(function(_,i){return checked[i]})},
+    setTier:function(t){
+      limit=WLIM[t]||9999;
+      items.forEach(function(_,i){checked[i]=i<limit});
+      renderList();
+    }
+  };
+}
+
+/* ══════════════════ NEW PUZZLE (settings) ══════════════════ */
+function renderNewPuzzle(){
+  app.innerHTML=
+    '<div class="nav"><a class="btn" href="#settings/puzzles">← 題組列表</a></div>'+
+    '<h1>新建填字接龍</h1>'+
+    '<div class="card"><label>題組標題</label><input type="text" id="pT" placeholder="例如：第一關 為政篇"></div>'+
+    '<div class="card">'+
+      '<div class="row">'+
+        '<label>詞句庫 <select id="sB" style="width:auto"><option value="">— 請選擇 —</option>'+
+          banks.map(function(b){return'<option value="'+b.id+'">'+esc(b.name)+' ('+b.items.length+'詞)</option>'}).join("")+
+        '</select></label>'+
+        '<label>難度 <select id="sT" style="width:auto"><option value="beginner">初學入門</option><option value="intermediate">小試身手</option><option value="advanced">漸入佳境</option></select></label>'+
+      '</div>'+
+      '<div id="wpArea2"></div>'+
+      '<button class="btn bp" id="gBtn" style="margin-top:8px">產生填字題</button>'+
+    '</div>'+
+    '<div id="pv"></div>'+
+    '<div class="row"><button class="btn bp" id="svP" disabled>儲存題組</button><a class="btn" href="#settings/puzzles">取消</a></div>';
+
+  var wp2=null,curP=null;
+  var selB2=document.getElementById("sB"),selT2=document.getElementById("sT");
+
+  function refreshWP2(){
+    var bId=selB2.value,bank=banks.find(function(b){return b.id===bId});
+    var area=document.getElementById("wpArea2");
+    if(!bank||!bank.items.length){area.innerHTML="";wp2=null;return}
+    wp2=buildWordPick(area,bank.items,selT2.value);
+  }
+  selB2.onchange=refreshWP2;
+  selT2.onchange=function(){if(wp2)wp2.setTier(selT2.value);else refreshWP2()};
+
+  document.getElementById("gBtn").onclick=function(){
+    if(!wp2){alert("請選擇有詞條的詞句庫");return}
+    var sel=wp2.getSelected();
+    if(sel.length<2){alert("請至少勾選 2 個詞語");return}
+    curP=gen(sel,selT2.value);
+    if(!curP){alert("無法產生填字題");return}
+    document.getElementById("svP").disabled=false;
+    renderPreview(document.getElementById("pv"),curP);
+  };
+  document.getElementById("svP").onclick=function(){
+    var title=document.getElementById("pT").value.trim();
+    if(!title){alert("請輸入標題");return}
+    if(!curP)return;
+    curP.title=title;sets.push(curP);sS();go("settings/puzzles");
+  };
+}
+
+/* ══════════════════ BANK EDITOR ══════════════════ */
+function renderBankEditor(id){
+  var isNew=id==="new";
+  var bank=isNew?null:banks.find(function(b){return b.id===id});
+  var bName=bank?bank.name:"";
+  var items=bank?bank.items.map(function(x){return{id:x.id,text:x.text,definition:x.definition||"",source:x.source||"",difficulty:x.difficulty||1}}):[];
+
+  app.innerHTML=
+    '<div class="nav"><a class="btn" href="#settings/banks">← 詞句庫列表</a></div>'+
+    '<h1>'+(isNew?"新增":"編輯")+'詞句庫</h1>'+
+    '<div class="card"><label>名稱</label><input type="text" id="bN" value="'+esc(bName)+'" placeholder="例如：五年級論語"></div>'+
+    '<div class="card"><h2>匯入詞句</h2>'+
+      '<p class="mu" style="margin-bottom:6px">上傳 .xlsx 或 .csv（第一欄詞句、第二欄釋義、第三欄出處、第四欄難度 1–5）</p>'+
+      '<label class="btn bp" style="cursor:pointer">選擇檔案 <input type="file" id="fImp" accept=".xlsx,.xls,.csv" style="display:none"></label>'+
+      '<div style="margin-top:10px"><p class="mu">或直接貼上（每行一筆，逗號分隔「詞句,釋義,出處,難度」）</p>'+
+      '<textarea id="pArea" placeholder="知之為知之,知道就是知道,《為政》,1&#10;君子不器,,《為政》,2"></textarea>'+
+      '<button class="btn bp" id="bPaste" style="margin-top:6px">貼上匯入</button></div></div>'+
+    '<div class="card"><h2>詞條 <span class="badge" id="cnt">'+items.length+'</span></h2>'+
+      '<div id="tw"></div>'+
+      '<button class="btn" id="addR" style="margin-top:8px">+ 新增一筆</button></div>'+
+    '<div class="row"><button class="btn bp" id="svB">儲存</button><a class="btn" href="#settings/banks">取消</a></div>';
+
+  function rTbl(){
+    var w=document.getElementById("tw");
+    document.getElementById("cnt").textContent=items.length;
+    if(!items.length){w.innerHTML='<p class="mu">尚無詞條。</p>';return}
+    w.innerHTML='<table class="tbl"><thead><tr><th>詞句</th><th>釋義</th><th>出處</th><th>難度</th><th></th></tr></thead><tbody>'+
+      items.map(function(it,i){
+        return'<tr><td><input type="text" value="'+esc(it.text)+'" data-i="'+i+'" data-f="text" class="e"></td>'+
+          '<td><input type="text" value="'+esc(it.definition)+'" data-i="'+i+'" data-f="definition" class="e"></td>'+
+          '<td><input type="text" value="'+esc(it.source)+'" data-i="'+i+'" data-f="source" class="e" placeholder="《為政》"></td>'+
+          '<td><input type="number" value="'+it.difficulty+'" min="1" max="5" data-i="'+i+'" data-f="difficulty" class="e" style="width:3rem"></td>'+
+          '<td><button class="lnk rm" data-i="'+i+'">刪除</button></td></tr>'
+      }).join("")+'</tbody></table>';
+    w.querySelectorAll(".e").forEach(function(inp){inp.oninput=function(){
+      var idx=+inp.dataset.i,f=inp.dataset.f;
+      if(f==="difficulty")items[idx][f]=Math.max(1,Math.min(5,+inp.value||1));
+      else items[idx][f]=inp.value;
+    }});
+    w.querySelectorAll(".rm").forEach(function(b){b.onclick=function(){items.splice(+b.dataset.i,1);rTbl()}});
+  }
+  rTbl();
+
+  document.getElementById("addR").onclick=function(){items.push({id:uid(),text:"",definition:"",source:"",difficulty:1});rTbl()};
+
+  document.getElementById("fImp").onchange=function(){
+    var file=this.files[0];if(!file)return;
+    var ext=file.name.split(".").pop().toLowerCase();
+    var reader=new FileReader();
+    reader.onload=function(){
+      var added=0;
+      if(ext==="csv"){
+        (reader.result||"").replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n").forEach(function(ln){
+          var p=ln.split(",").map(function(s){return s.trim()});
+          if(p[0]){items.push({id:uid(),text:p[0],definition:p[1]||"",source:p[2]||"",difficulty:Math.max(1,Math.min(5,+p[3]||1))});added++}
+        });
+      }else if(typeof XLSX!=="undefined"){
+        var wb=XLSX.read(reader.result,{type:"binary"});
+        var data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+        (data||[]).forEach(function(row){
+          var t=(row[0]!=null?String(row[0]):"").trim();
+          if(t){items.push({id:uid(),text:t,definition:(row[1]!=null?String(row[1]):"").trim(),source:(row[2]!=null?String(row[2]):"").trim(),difficulty:Math.max(1,Math.min(5,+row[3]||1))});added++}
+        });
+      }
+      rTbl();this.value="";if(added)alert("已匯入 "+added+" 筆");
+    };
+    if(ext==="csv")reader.readAsText(file,"UTF-8");else reader.readAsBinaryString(file);
+  };
+
+  document.getElementById("bPaste").onclick=function(){
+    var text=(document.getElementById("pArea").value||"").trim();if(!text){alert("請先貼上文字");return}
+    var added=0;
+    text.split("\n").forEach(function(ln){
+      var p=ln.split(",").map(function(s){return s.trim()}).filter(function(s){return s});
+      if(!p.length)return;
+      items.push({id:uid(),text:p[0],definition:p[1]||"",source:p[2]||"",difficulty:Math.max(1,Math.min(5,+p[3]||1))});added++;
+    });
+    document.getElementById("pArea").value="";rTbl();if(added)alert("已匯入 "+added+" 筆");
+  };
+
+  document.getElementById("svB").onclick=function(){
+    var name=document.getElementById("bN").value.trim();
+    if(!name){alert("請輸入名稱");return}
+    var valid=items.filter(function(it){return it.text.trim()});
+    var obj={id:bank?bank.id:uid(),name:name,items:valid,createdAt:new Date().toISOString()};
+    if(isNew)banks.push(obj);else{var i=banks.findIndex(function(b){return b.id===obj.id});if(i>=0)banks[i]=obj}
+    sB();go("settings/banks");
+  };
+}
+
+/* ══════════════════ GRID RENDERER (IME-safe) ══════════════════ */
+function rGrid(container,pz,ua,onInput){
+  var cols=pz.cols||pz.grid[0].length;
+  var scroll=document.createElement("div");
+  scroll.className="grid-scroll";
+  var wrap=document.createElement("div");
+  wrap.className="grid-wrap";
+  wrap.style.gridTemplateColumns="repeat("+cols+",2.8rem)";
+  wrap.setAttribute("tabindex","0");
+  var inputs=[];
+
+  pz.grid.forEach(function(row,r){
+    row.forEach(function(cell,c){
+      var div=document.createElement("div");
+      div.className="gc "+(cell.t==="x"?"block":cell.t==="g"?"given":"blank");
+
+      if(cell.hl||cell.vl){
+        var lbl=document.createElement("div");lbl.className="lbl";
+        if(cell.hl){var sh=document.createElement("span");sh.className="lh";sh.textContent=cell.hl;lbl.appendChild(sh)}
+        if(cell.vl){var sv2=document.createElement("span");sv2.className="lv";sv2.textContent=cell.vl;lbl.appendChild(sv2)}
+        div.appendChild(lbl);
+      }
+
+      if(cell.t==="g"){
+        var sp=document.createElement("span");
+        sp.className="gv";sp.textContent=cell.v;
+        div.appendChild(sp);
+      }else if(cell.t==="b"){
+        var inp=document.createElement("input");
+        inp.type="text";
+        inp.value=ua[r+","+c]||"";
+        inp.dataset.r=r;inp.dataset.c=c;
+
+        var composing=false;
+        inp.addEventListener("compositionstart",function(){composing=true});
+        inp.addEventListener("compositionend",function(e){
+          composing=false;
+          var d=e.data||this.value||"";
+          var v=d.length>0?d.charAt(0):"";
+          this.value=v;
+          ua[r+","+c]=v;
+          if(onInput)onInput(r,c,v);
+          if(v)advanceNext(inputs,r,c);
+        });
+        inp.addEventListener("input",function(){
+          if(composing)return;
+          var v=this.value;
+          if(v.length>1)v=v.charAt(v.length-1);
+          this.value=v;
+          ua[r+","+c]=v;
+          if(onInput)onInput(r,c,v);
+          if(v)advanceNext(inputs,r,c);
+        });
+        inp.addEventListener("focus",function(){div.classList.add("focused")});
+        inp.addEventListener("blur",function(){div.classList.remove("focused")});
+        div.appendChild(inp);
+        inputs.push({r:r,c:c,el:inp});
+      }
+      wrap.appendChild(div);
+    });
+  });
+
+  wrap.addEventListener("keydown",function(e){
+    if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight"&&e.key!=="ArrowUp"&&e.key!=="ArrowDown")return;
+    e.preventDefault();
+    var idx=inputs.findIndex(function(x){return x.el===document.activeElement});
+    if(idx<0)return;
+    var cur=inputs[idx],next=null;
+    if(e.key==="ArrowRight"){for(var i=idx+1;i<inputs.length;i++){next=inputs[i];break}}
+    else if(e.key==="ArrowLeft"){for(var i=idx-1;i>=0;i--){next=inputs[i];break}}
+    else if(e.key==="ArrowDown"){for(var i=idx+1;i<inputs.length;i++){if(inputs[i].c===cur.c){next=inputs[i];break}}}
+    else if(e.key==="ArrowUp"){for(var i=idx-1;i>=0;i--){if(inputs[i].c===cur.c){next=inputs[i];break}}}
+    if(next)next.el.focus();
+  });
+
+  scroll.appendChild(wrap);
+  container.innerHTML="";
+  container.appendChild(scroll);
+  if(inputs.length)inputs[0].el.focus();
+}
+
+function advanceNext(inputs,r,c){
+  var idx=inputs.findIndex(function(x){return x.r===r&&x.c===c});
+  if(idx>=0&&idx<inputs.length-1){
+    inputs[idx+1].el.focus();
+  }
+}
+
+/* ══════════════════ CLUE RENDERER ══════════════════ */
+function rClue(container,pz){
+  if(!cfg.showHints){container.innerHTML='<p class="mu" style="margin-top:8px">提示已關閉（可到「設置」開啟）</p>';return}
+  var h='';
+  if(pz.hCl&&pz.hCl.length){
+    h+='<div class="clue-sec card"><strong>→ 橫向提示</strong><ul class="cl">';
+    pz.hCl.forEach(function(cl){h+='<li id="ch-'+cl.id+'"><strong>'+cl.lb+'.</strong> '+esc(cl.word)+(cl.src?' <span class="mu">'+esc(cl.src)+'</span>':'')+(cl.def?' — '+esc(cl.def):'')+'</li>'});
+    h+='</ul></div>';
+  }
+  if(pz.vCl&&pz.vCl.length){
+    h+='<div class="clue-sec card"><strong>↓ 豎向提示</strong><ul class="cl">';
+    pz.vCl.forEach(function(cl){h+='<li id="cv-'+cl.id+'"><strong>'+cl.lb+'.</strong> '+esc(cl.word)+(cl.src?' <span class="mu">'+esc(cl.src)+'</span>':'')+(cl.def?' — '+esc(cl.def):'')+'</li>'});
+    h+='</ul></div>';
+  }
+  container.innerHTML=h;
+}
+
+/* ══════════════════ PREVIEW ══════════════════ */
+function renderPreview(container,pz){
+  if(!pz||!pz.grid)return;
+  var cols=pz.cols||pz.grid[0].length;
+  var h='<div class="grid-scroll"><div class="grid-wrap" style="grid-template-columns:repeat('+cols+',2.8rem)">';
+  pz.grid.forEach(function(row){row.forEach(function(cell){
+    var lblH='';
+    if(cell.hl||cell.vl){
+      lblH='<div class="lbl">';
+      if(cell.hl)lblH+='<span class="lh">'+cell.hl+'</span>';
+      if(cell.vl)lblH+='<span class="lv">'+cell.vl+'</span>';
+      lblH+='</div>';
+    }
+    if(cell.t==="x")h+='<div class="gc block"></div>';
+    else if(cell.t==="g")h+='<div class="gc given">'+lblH+'<span class="gv">'+esc(cell.v)+'</span></div>';
+    else h+='<div class="gc blank">'+lblH+'<span class="mu" style="padding-top:6px">?</span></div>';
+  })});
+  h+='</div></div>';
+  if(pz.hCl&&pz.hCl.length){h+='<div class="clue-sec"><strong>→ 橫向提示</strong><ul class="cl">';pz.hCl.forEach(function(cl){h+='<li><strong>'+cl.lb+'.</strong> '+esc(cl.word)+(cl.src?' <span class="mu">'+esc(cl.src)+'</span>':'')+'</li>'});h+='</ul></div>'}
+  if(pz.vCl&&pz.vCl.length){h+='<div class="clue-sec"><strong>↓ 豎向提示</strong><ul class="cl">';pz.vCl.forEach(function(cl){h+='<li><strong>'+cl.lb+'.</strong> '+esc(cl.word)+(cl.src?' <span class="mu">'+esc(cl.src)+'</span>':'')+'</li>'});h+='</ul></div>'}
+  container.innerHTML=h;
+}
+
+/* ══════════════════ CHECK ANSWER ══════════════════ */
+function checkAnswer(pz,ua){
+  var total=0,correct=0;
+  pz.grid.forEach(function(row,r){row.forEach(function(cell,c){
+    if(cell.t!=="b")return;total++;
+    if((ua[r+","+c]||"").trim()===cell.v)correct++;
+  })});
+  document.getElementById("rT").innerHTML=' <strong>答對 '+correct+' / '+total+' 格</strong>';
+  if(pz.hCl)pz.hCl.forEach(function(cl){
+    var ok=true;
+    for(var k=0;k<cl.ln;k++){var cell=pz.grid[cl.sr]?pz.grid[cl.sr][cl.sc+k]:null;if(cell&&cell.t==="b"&&(ua[cl.sr+","+(cl.sc+k)]||"").trim()!==cell.v)ok=false}
+    var el=document.getElementById("ch-"+cl.id);if(el)el.innerHTML+=(ok?' <span class="correct">✓</span>':' <span class="wrong">✗</span>');
+  });
+  if(pz.vCl)pz.vCl.forEach(function(cl){
+    var ok=true;
+    for(var k=0;k<cl.ln;k++){var cell=pz.grid[cl.sr+k]?pz.grid[cl.sr+k][cl.sc]:null;if(cell&&cell.t==="b"&&(ua[(cl.sr+k)+","+cl.sc]||"").trim()!==cell.v)ok=false}
+    var el=document.getElementById("cv-"+cl.id);if(el)el.innerHTML+=(ok?' <span class="correct">✓</span>':' <span class="wrong">✗</span>');
+  });
+}
+
+/* ══════════════════ BOOT ══════════════════ */
+window.addEventListener("hashchange",render);
+if(!location.hash)location.hash="home";
+render();
+})();
+</script>
+</body>
+</html>
