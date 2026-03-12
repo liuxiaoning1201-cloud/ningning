@@ -452,9 +452,11 @@ function checkRedPacket(btn, answer, reward) {
 function renderLibrary(activeStage) {
   if (!activeStage) activeStage = state.selectedLibraryStage || 1;
   state.selectedLibraryStage = activeStage;
-  const stageLabels = {1:'小一至小三',2:'小四至小六',3:'中一至中三',4:'中四至中六'};
-  dom.stageTabs.innerHTML = [1,2,3,4].map(s =>
-    `<button class="dynasty-tab ${s===activeStage?'active':''}" data-stage="${s}">第${['一','二','三','四'][s-1]}階段<span class="stage-sub">${stageLabels[s]}</span></button>`
+  const stageLabels = {1:'小一至小三',2:'小四至小六',3:'中一至中三',4:'中四至中六',5:'積學與涵泳'};
+  dom.stageTabs.innerHTML = [1,2,3,4,5].map(s =>
+    s === 5
+      ? `<button class="dynasty-tab ${s===activeStage?'active':''}" data-stage="${s}">積學與涵泳</button>`
+      : `<button class="dynasty-tab ${s===activeStage?'active':''}" data-stage="${s}">第${['一','二','三','四'][s-1]}階段<span class="stage-sub">${stageLabels[s]}</span></button>`
   ).join('');
 
   const articles = ARTICLES.filter(a => a.stage === activeStage);
@@ -575,9 +577,17 @@ function parseAnnotatedText(text, art) {
   const cls = isPoem ? 'text-para text-verse' : 'text-para';
 
   if (cleaned.includes('\n\n')) {
-    return cleaned.split('\n\n').map(para =>
-      '<p class="' + cls + '">' + annotate(para.replace(/\n/g, '<br>')) + '</p>'
-    ).join('');
+    return cleaned.split('\n\n').map(para => {
+      let paraCls = cls;
+      if (art && art.centerText) {
+        const pLines = para.split('\n');
+        const pAvg = pLines.reduce((s,l) => s + l.replace(/\{[^}]*\}/g,'').length, 0) / Math.max(pLines.length, 1);
+        const pPunct = pLines.filter(l => /[。！？，；」』]$/.test(l.replace(/\{([^|]+)\|[^}]*\}/g,'$1').trim())).length;
+        const pRatio = pPunct / Math.max(pLines.length, 1);
+        paraCls = (pLines.length >= 3 && pAvg < 30 && pRatio > 0.5) ? 'text-para text-verse' : 'text-para';
+      }
+      return '<p class="' + paraCls + '">' + annotate(para.replace(/\n/g, '<br>')) + '</p>';
+    }).join('');
   }
   const lines = allLines;
   if (isPoem) {
@@ -787,7 +797,7 @@ function showPoetModal(poetId) {
     <div class="modal-section">
       <h3>適用學習階段</h3>
       <div class="modal-tags">
-        ${poet.stages.map(s => `<span class="modal-tag">第${['一','二','三','四'][s-1]}階段</span>`).join('')}
+        ${poet.stages.map(s => `<span class="modal-tag">${s===5?'積學與涵泳':'第'+['一','二','三','四'][s-1]+'階段'}</span>`).join('')}
       </div>
     </div>
 
