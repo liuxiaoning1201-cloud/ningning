@@ -3,12 +3,12 @@
     <nav class="nav-bar">
       <RouterLink to="/" class="btn btn-secondary">← 首頁</RouterLink>
     </nav>
-    <h1 class="page-title" style="font-family: var(--font-heading)">⚙️ 遊戲設定</h1>
+    <h1 class="page-title" style="font-family: var(--font-heading)">⚙️ 設定</h1>
 
     <!-- Difficulty -->
     <div class="card settings-card animate-fade-in">
       <h2 class="section-title">🎯 遊戲難度</h2>
-      <p class="section-desc">選擇遊戲難度，影響填字提示字的比例。</p>
+      <p class="section-desc">選擇遊戲難度，影響填字格子大小與提示字比例。</p>
       <div class="difficulty-selector">
         <button
           v-for="d in 5"
@@ -40,9 +40,9 @@
     <!-- Word banks -->
     <div class="card settings-card animate-fade-in" style="animation-delay: 0.2s">
       <h2 class="section-title">📚 詞庫管理</h2>
-      <p class="section-desc">管理你的詞句庫，支援 TXT、CSV 和 Excel 格式匯入。</p>
+      <p class="section-desc">管理詞句庫，支援 TXT、CSV 和 Excel 格式匯入。</p>
       <div class="bank-actions">
-        <RouterLink to="/teacher/banks/new" class="btn btn-primary">➕ 新增詞庫</RouterLink>
+        <RouterLink to="/settings/banks/new" class="btn btn-primary">➕ 新增詞庫</RouterLink>
         <label class="btn btn-secondary" style="cursor: pointer">
           📂 匯入詞庫
           <input
@@ -52,6 +52,12 @@
             @change="onImportBank"
           />
         </label>
+        <button v-if="wordBanks.banks.length > 0" type="button" class="btn btn-secondary" @click="aiExplainAll">
+          🤖 AI 批量解讀
+        </button>
+      </div>
+      <div v-if="aiProgress" class="ai-progress">
+        {{ aiProgress }}
       </div>
       <div v-if="wordBanks.banks.length === 0" class="empty-state">
         尚無詞句庫，請新增或匯入。
@@ -63,41 +69,103 @@
             <span class="badge">{{ bank.items.length }} 詞</span>
           </div>
           <div class="bank-actions-inline">
-            <RouterLink :to="`/teacher/banks/${bank.id}`" class="btn-icon" title="編輯">✏️</RouterLink>
+            <RouterLink :to="`/settings/banks/${bank.id}`" class="btn-icon" title="編輯">✏️</RouterLink>
             <button type="button" class="btn-icon danger" title="刪除" @click="deleteBank(bank.id)">🗑️</button>
           </div>
         </li>
       </ul>
     </div>
 
-    <!-- Puzzle sets -->
+    <!-- Puzzle sets (inline management) -->
     <div class="card settings-card animate-fade-in" style="animation-delay: 0.3s">
       <h2 class="section-title">🧩 題組管理</h2>
-      <p class="section-desc">
-        共有 <strong>{{ puzzleSets.sets.length }}</strong> 個題組。
-      </p>
-      <RouterLink to="/teacher/puzzles" class="btn btn-secondary">前往題組管理 →</RouterLink>
+      <p class="section-desc">管理已儲存的填字題組。</p>
+      <div class="bank-actions">
+        <RouterLink to="/settings/puzzles/crossword/new" class="btn btn-primary">➕ 新建填字題</RouterLink>
+      </div>
+      <div v-if="puzzleSets.sets.length === 0" class="empty-state">
+        尚無題組。
+      </div>
+      <ul v-else class="bank-list">
+        <li v-for="set in puzzleSets.sets" :key="set.id" class="bank-item">
+          <div class="bank-info">
+            <strong>{{ set.title }}</strong>
+            <span class="badge">{{ set.type === 'crossword' ? '填字' : '數獨' }}</span>
+          </div>
+          <div class="bank-actions-inline">
+            <RouterLink v-if="set.type === 'crossword'" :to="`/settings/puzzles/crossword/${set.id}`" class="btn-icon" title="編輯">✏️</RouterLink>
+            <RouterLink v-if="set.type === 'crossword'" :to="`/play/crossword/${set.id}`" class="btn-icon" title="預覽">👁️</RouterLink>
+            <button v-if="set.type === 'crossword' && set.crossword" type="button" class="btn-icon" title="列印 PDF" @click="printPuzzle(set)">🖨️</button>
+            <button type="button" class="btn-icon danger" title="刪除" @click="removeSet(set.id)">🗑️</button>
+          </div>
+        </li>
+      </ul>
     </div>
+  </div>
+
+  <!-- Hidden print area -->
+  <div v-if="printingSet" id="print-area" class="print-area">
+    <h1 class="print-title">{{ printingSet.title }}</h1>
+    <p class="print-subtitle" v-if="printingSet.crossword">
+      難度 {{ printingSet.crossword.difficulty }} 星 · {{ printingSet.crossword.levelTitle }}
+    </p>
+    <template v-if="printingSet.crossword">
+      <div
+        class="print-grid"
+        :style="{ gridTemplateColumns: `repeat(${printingSet.crossword.grid[0]?.length ?? 0}, 2rem)` }"
+      >
+        <template v-for="(row, r) in printingSet.crossword.grid" :key="r">
+          <template v-for="(cell, c) in row" :key="`${r}-${c}`">
+            <span v-if="cell.type === 'block'" class="print-cell print-block"></span>
+            <span v-else-if="cell.type === 'given'" class="print-cell print-given">{{ cell.value }}</span>
+            <span v-else class="print-cell print-blank"></span>
+          </template>
+        </template>
+      </div>
+      <div class="print-clues">
+        <div class="print-clue-section">
+          <strong>→ 橫向提示</strong>
+          <ul>
+            <li v-for="h in printingSet.crossword.horizontalClues" :key="h.id">
+              {{ h.label }}. {{ h.clue }}
+            </li>
+          </ul>
+        </div>
+        <div class="print-clue-section">
+          <strong>↓ 豎向提示</strong>
+          <ul>
+            <li v-for="v in printingSet.crossword.verticalClues" :key="v.id">
+              {{ v.label }}. {{ v.clue }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, nextTick } from "vue";
 import { useGameSessionStore } from "@/stores/gameSession";
 import { useWordBanksStore } from "@/stores/wordBanks";
 import { usePuzzleSetsStore, generateId } from "@/stores/puzzleSets";
 import { parseImportFile } from "@/lib/importExcel";
+import { getAiExplanation } from "@/lib/aiExplain";
+import type { PuzzleSet } from "@/lib/types";
 
 const gameSession = useGameSessionStore();
 const wordBanks = useWordBanksStore();
 const puzzleSets = usePuzzleSetsStore();
 
+const aiProgress = ref("");
+const printingSet = ref<PuzzleSet | null>(null);
+
 const difficultyLabels: Record<number, string> = {
-  1: "1 星（最簡單）",
-  2: "2 星（簡單）",
-  3: "3 星（普通）",
-  4: "4 星（困難）",
-  5: "5 星（最困難）",
+  1: "1 星 · 5×5 格（最簡單）",
+  2: "2 星 · 7×7 格",
+  3: "3 星 · 9×9 格",
+  4: "4 星 · 11×11 格",
+  5: "5 星 · 13×15 格（最困難）",
 };
 
 const difficultyLabel = computed(() => {
@@ -119,6 +187,11 @@ function deleteBank(id: string) {
   wordBanks.removeBank(id);
 }
 
+function removeSet(id: string) {
+  if (!confirm("確定刪除此題組？")) return;
+  puzzleSets.removeSet(id);
+}
+
 async function onImportBank(e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -138,12 +211,50 @@ async function onImportBank(e: Event) {
       text: row.text,
       definition: row.definition ?? "",
       source: row.source ?? "",
-      difficulty: Math.min(5, Math.max(1, row.difficulty ?? 1)),
+      difficulty: 1,
     })),
     createdAt: new Date().toISOString(),
   });
   alert(`已匯入「${baseName}」，共 ${parsed.length} 筆詞條。`);
   input.value = "";
+}
+
+async function aiExplainAll() {
+  let total = 0;
+  let done = 0;
+  for (const bank of wordBanks.banks) {
+    total += bank.items.filter((it) => it.text.trim() && !it.definition.trim()).length;
+  }
+  if (total === 0) {
+    alert("所有詞條已有釋義，無需 AI 解讀。");
+    return;
+  }
+  if (!confirm(`將為 ${total} 個尚無釋義的詞條進行 AI 解讀，是否繼續？`)) return;
+
+  for (const bank of wordBanks.banks) {
+    for (const item of bank.items) {
+      if (!item.text.trim() || item.definition.trim()) continue;
+      aiProgress.value = `AI 解讀中... ${done + 1}/${total}：${item.text}`;
+      try {
+        const result = await getAiExplanation(item.text.trim());
+        item.definition = result.meaning;
+        if (result.usage) item.definition += `（${result.usage}）`;
+      } catch {}
+      done++;
+    }
+    wordBanks.updateBank(bank);
+  }
+  aiProgress.value = "";
+  alert(`AI 解讀完成，共處理 ${done} 個詞條。`);
+}
+
+async function printPuzzle(set: PuzzleSet) {
+  printingSet.value = set;
+  await nextTick();
+  window.print();
+  setTimeout(() => {
+    printingSet.value = null;
+  }, 500);
 }
 </script>
 
@@ -282,5 +393,103 @@ async function onImportBank(e: Event) {
   font-size: 0.9rem;
   padding: 1rem 0;
   text-align: center;
+}
+
+.ai-progress {
+  padding: 0.5rem 0.75rem;
+  background: #FEF3C7;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+  color: #92400E;
+}
+
+/* ── Print styles ── */
+.print-area {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+  .print-area {
+    display: block !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 1.5cm;
+    background: white;
+    z-index: 99999;
+  }
+}
+
+.print-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+.print-subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.print-grid {
+  display: grid;
+  gap: 0;
+  margin: 0 auto 1rem;
+  width: fit-content;
+}
+
+.print-cell {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 1px solid #333;
+}
+
+.print-block {
+  background: #ddd;
+  border-color: #ddd;
+}
+
+.print-given {
+  background: #f0f0f0;
+}
+
+.print-blank {
+  background: white;
+}
+
+.print-clues {
+  display: flex;
+  gap: 2rem;
+  font-size: 0.85rem;
+}
+
+.print-clue-section {
+  flex: 1;
+}
+
+.print-clue-section ul {
+  padding-left: 1.25rem;
+  margin-top: 0.35rem;
+}
+
+.print-clue-section li {
+  margin-bottom: 0.2rem;
 }
 </style>

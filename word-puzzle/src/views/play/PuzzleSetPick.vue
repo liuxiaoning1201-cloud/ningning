@@ -2,19 +2,23 @@
   <div class="page">
     <nav class="nav-bar">
       <RouterLink to="/" class="btn btn-secondary">← 首頁</RouterLink>
+      <button v-if="crosswordSets.length > 0" type="button" class="btn btn-secondary" @click="showHistory = !showHistory">
+        📋 出題記錄 ({{ crosswordSets.length }})
+      </button>
     </nav>
-    <h1 class="page-title" style="font-family: var(--font-heading)">📋 選擇題目</h1>
+    <h1 class="page-title" style="font-family: var(--font-heading)">📝 練習模式</h1>
+
     <div class="card" style="margin-bottom: 1rem">
       <h2 style="font-size: 1rem; margin-bottom: 0.5rem">🎮 遊戲設定</h2>
       <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center">
         <label>
-          難度篩選
+          難度
           <select :value="gameSession.settings.difficulty" style="margin-left: 4px; padding: 0.4rem" @change="onDifficultyChange">
-            <option :value="1">1 星</option>
-            <option :value="2">2 星</option>
-            <option :value="3">3 星</option>
-            <option :value="4">4 星</option>
-            <option :value="5">5 星</option>
+            <option :value="1">★ 入門 (5×5)</option>
+            <option :value="2">★★ 初學 (7×7)</option>
+            <option :value="3">★★★ 中等 (9×9)</option>
+            <option :value="4">★★★★ 挑戰 (11×11)</option>
+            <option :value="5">★★★★★ 大師 (13×15)</option>
           </select>
         </label>
         <label style="display: flex; align-items: center; gap: 0.35rem">
@@ -23,9 +27,9 @@
         </label>
       </div>
     </div>
+
     <div class="card" style="margin-bottom: 1rem">
-      <h2 style="font-size: 1rem; margin-bottom: 0.5rem">🎲 依難度自動出題</h2>
-      <p class="muted" style="margin-bottom: 0.5rem">從詞句庫依難度檔隨機產生一題，直接開始練習。</p>
+      <h2 style="font-size: 1rem; margin-bottom: 0.5rem">🎲 出題</h2>
       <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center">
         <label>
           詞句庫
@@ -50,19 +54,33 @@
         </label>
         <button type="button" class="btn btn-primary" :disabled="!autoBankId" @click="autoGenerate">隨機出題</button>
       </div>
+
+      <!-- Word selection checkboxes -->
+      <div v-if="selectedBank && selectedBank.items.length > 0" style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem">
+        <p style="font-size: 0.9rem; margin-bottom: 0.5rem"><strong>勾選要使用的詞句</strong>（不勾選則使用全部或按數量隨機）</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem">
+          <label v-for="it in selectedBank.items" :key="it.id" class="word-check-label">
+            <input type="checkbox" :checked="selectedItemIds.has(it.id)" @change="toggleItem(it.id)" />
+            {{ it.text }}
+          </label>
+        </div>
+      </div>
     </div>
-    <div v-if="crosswordSets.length === 0" class="card">
-      尚無填字題組，請先在上方選擇詞句庫並隨機出題。
+
+    <!-- History modal -->
+    <div v-if="showHistory" class="card" style="margin-bottom: 1rem">
+      <h2 style="font-size: 1rem; margin-bottom: 0.5rem">📋 出題記錄</h2>
+      <div v-if="crosswordSets.length === 0" class="empty-state">尚無記錄。</div>
+      <ul v-else class="history-list">
+        <li v-for="set in crosswordSets" :key="set.id" class="history-item">
+          <span><strong>{{ set.title }}</strong></span>
+          <span class="actions">
+            <RouterLink :to="`/play/crossword/${set.id}`" class="btn btn-primary btn-sm">練習</RouterLink>
+            <RouterLink :to="`/play/local/${set.id}`" class="btn btn-secondary btn-sm">本地對戰</RouterLink>
+          </span>
+        </li>
+      </ul>
     </div>
-    <ul v-else class="list">
-      <li v-for="(set, i) in crosswordSets" :key="set.id" class="card card-row animate-fade-in" :style="{ animationDelay: `${i * 0.08}s` }">
-        <span><strong>{{ set.title }}</strong> <span class="badge">填字接龍</span></span>
-        <span class="actions">
-          <RouterLink :to="`/play/crossword/${set.id}`" class="btn btn-primary">練習</RouterLink>
-          <RouterLink :to="`/play/local/${set.id}`" class="btn btn-secondary">本地對戰</RouterLink>
-        </span>
-      </li>
-    </ul>
   </div>
 </template>
 
@@ -83,22 +101,27 @@ const wordBanks = useWordBanksStore();
 const autoBankId = ref("");
 const autoTier = ref<DifficultyTier>(1);
 const autoWordCount = ref(0);
+const showHistory = ref(false);
+const selectedItemIds = ref<Set<string>>(new Set());
 
 const selectedBankItemCount = computed(() => {
   const bank = wordBanks.banks.find((b) => b.id === autoBankId.value);
   return bank?.items.length ?? 0;
 });
 
+const selectedBank = computed(() =>
+  wordBanks.banks.find((b) => b.id === autoBankId.value) ?? null
+);
+
+function toggleItem(id: string) {
+  const s = new Set(selectedItemIds.value);
+  if (s.has(id)) s.delete(id); else s.add(id);
+  selectedItemIds.value = s;
+}
+
 const crosswordSets = computed(() =>
   puzzleSets.sets.filter((s) => s.type === "crossword")
 );
-
-function saveSettings() {
-  gameSession.setSettings({
-    difficulty: gameSession.settings.difficulty,
-    showHints: gameSession.settings.showHints,
-  });
-}
 
 function onDifficultyChange(e: Event) {
   const v = Number((e.target as HTMLSelectElement).value);
@@ -116,8 +139,15 @@ function autoGenerate() {
     alert("請選擇有詞條的詞句庫");
     return;
   }
+  const itemsToUse = selectedItemIds.value.size > 0
+    ? bank.items.filter((it) => selectedItemIds.value.has(it.id))
+    : bank.items;
+  if (itemsToUse.length === 0) {
+    alert("請至少選擇一個詞句");
+    return;
+  }
   const puzzle = generateCrosswordPuzzle({
-    items: bank.items,
+    items: itemsToUse,
     tier: autoTier.value,
     wordCount: autoWordCount.value || undefined,
   });
@@ -135,15 +165,29 @@ function autoGenerate() {
   puzzleSets.addSet(set);
   router.push(`/play/crossword/${set.id}`);
 }
-
 </script>
 
 <style scoped>
-.muted { color: var(--text-muted); margin-bottom: 1rem; }
-.list { list-style: none; }
-.list li { margin-bottom: 1rem; }
-.card-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+.empty-state { color: var(--text-muted); font-size: 0.9rem; padding: 0.5rem 0; text-align: center; }
+.history-list { list-style: none; padding: 0; margin: 0; }
+.history-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 0.5rem; }
+.history-item:last-child { border-bottom: none; }
 .actions { display: flex; gap: 0.35rem; }
-.list a { color: inherit; text-decoration: none; }
-.badge { font-size: 12px; color: var(--text-muted); margin-left: 6px; }
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+.word-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.6rem;
+  background: #FFF8F0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.word-check-label:hover {
+  border-color: var(--primary);
+  background: #FFF0F3;
+}
 </style>
