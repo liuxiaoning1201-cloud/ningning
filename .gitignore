@@ -9,3 +9,9 @@ dist/
 
 # 原始大檔案備份
 春江花月夜/assets/春江花月夜_original.mp4
+
+# 系統與本地
+.DS_Store
+
+# Wrangler 本地快取
+.wrangler/
