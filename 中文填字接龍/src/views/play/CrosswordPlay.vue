@@ -10,99 +10,96 @@
     </template>
     <template v-else>
       <h1 class="page-title">{{ set.title }}</h1>
-      <p class="muted">難度 {{ puzzle.difficulty }} 星 · {{ puzzle.levelTitle }}</p>
+      <p class="muted">難度 {{ puzzle.difficulty }} 星 · {{ puzzle.levelTitle }}　共 {{ puzzle.words.length }} 題</p>
 
-      <div
-        ref="gridContainerRef"
-        class="crossword-grid"
-        tabindex="0"
-        :style="{ gridTemplateColumns: `repeat(${cols}, ${cellSize})` }"
-      >
-        <template v-for="(row, r) in puzzle.grid" :key="r">
-          <template v-for="(cell, c) in row" :key="`${r}-${c}`">
-            <!-- block -->
-            <span
-              v-if="cell.type === 'block'"
-              class="cell block"
-              :style="{ width: cellSize, height: cellSize }"
-            ></span>
-
-            <!-- given -->
-            <span
-              v-else-if="cell.type === 'given'"
-              class="cell given"
-              :style="{ width: cellSize, height: cellSize }"
-              :class="cellResultClass(r, c)"
-            >
-              <span v-if="cellIndicators[cellKey(r, c)]" class="cell-indicator">
-                {{ cellIndicators[cellKey(r, c)].number }}{{ cellIndicators[cellKey(r, c)].arrow }}
-              </span>
-              {{ cell.value }}
-            </span>
-
-            <!-- blank -->
-            <span
-              v-else
-              class="cell blank"
-              :style="{ width: cellSize, height: cellSize }"
-              :class="cellResultClass(r, c)"
-            >
-              <span v-if="cellIndicators[cellKey(r, c)]" class="cell-indicator">
-                {{ cellIndicators[cellKey(r, c)].number }}{{ cellIndicators[cellKey(r, c)].arrow }}
-              </span>
-              <input
-                :ref="(el) => setInputRef(r, c, el)"
-                :value="gameSession.userAnswers[cellKey(r, c)]"
-                type="text"
-                maxlength="10"
-                class="cell-input"
-                :class="{ focused: focusedCell && focusedCell.r === r && focusedCell.c === c }"
-                :style="{ fontSize: inputFontSize }"
-                @compositionstart="onCompositionStart"
-                @compositionend="onCompositionEnd(r, c, $event)"
-                @compositionupdate="onCompositionUpdate"
-                @input="onCellInput(r, c, $event)"
-                @focus="focusedCell = { r, c }"
-                @keydown="onCellKeydown(r, c, $event)"
-              />
-            </span>
-          </template>
-        </template>
-      </div>
-
-      <div v-if="gameSession.settings.showHints" class="card" style="margin-top: 1rem">
-        <strong>→ 橫向提示</strong>
-        <ul class="clue-list">
-          <li v-for="h in puzzle.horizontalClues" :key="h.id">
-            {{ h.label }}. {{ h.clue }}
-            <span v-if="gameSession.showResult" :class="resultClass(h.id, 'h')">
-              {{ resultText(h.id, 'h') }}
-            </span>
-          </li>
-        </ul>
-        <strong style="display: block; margin-top: 0.75rem">↓ 豎向提示</strong>
-        <ul class="clue-list">
-          <li v-for="v in puzzle.verticalClues" :key="v.id">
-            {{ v.label }}. {{ v.clue }}
-            <span v-if="gameSession.showResult" :class="resultClass(v.id, 'v')">
-              {{ resultText(v.id, 'v') }}
-            </span>
-          </li>
-        </ul>
-      </div>
-
-      <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 1rem">
-        <button
-          type="button"
-          class="btn btn-primary"
-          :disabled="!allFilled"
-          @click="checkAnswer"
+      <!-- 方形畫布：格子自動適應填滿 -->
+      <div class="grid-canvas">
+        <div
+          ref="gridContainerRef"
+          class="crossword-grid"
+          tabindex="0"
+          :style="gridStyle"
         >
+          <template v-for="(row, r) in puzzle.grid" :key="r">
+            <template v-for="(cell, c) in row" :key="`${r}-${c}`">
+              <span
+                v-if="cell.type === 'block'"
+                class="cell block"
+              ></span>
+              <span
+                v-else-if="cell.type === 'given'"
+                class="cell given"
+                :class="cellResultClass(r, c)"
+              >
+                <span v-if="cellIndicators[cellKey(r, c)]" class="cell-indicator" :class="cellIndicators[cellKey(r, c)].isH ? 'ind-h' : 'ind-v'">
+                  {{ cellIndicators[cellKey(r, c)].label }}<span class="ind-arrow">{{ cellIndicators[cellKey(r, c)].isH ? '→' : '↓' }}</span>
+                </span>
+                {{ cell.value }}
+              </span>
+              <span
+                v-else
+                class="cell blank"
+                :class="cellResultClass(r, c)"
+              >
+                <span v-if="cellIndicators[cellKey(r, c)]" class="cell-indicator" :class="cellIndicators[cellKey(r, c)].isH ? 'ind-h' : 'ind-v'">
+                  {{ cellIndicators[cellKey(r, c)].label }}<span class="ind-arrow">{{ cellIndicators[cellKey(r, c)].isH ? '→' : '↓' }}</span>
+                </span>
+                <input
+                  :ref="(el) => setInputRef(r, c, el)"
+                  type="text"
+                  maxlength="10"
+                  class="cell-input"
+                  :class="{ focused: focusedCell && focusedCell.r === r && focusedCell.c === c }"
+                  @compositionstart="onCompositionStart(r, c)"
+                  @compositionend="onCompositionEnd(r, c, $event)"
+                  @compositionupdate="onCompositionUpdate(r, c, $event)"
+                  @input="onCellInput(r, c, $event)"
+                  @focus="focusedCell = { r, c }"
+                  @keydown="onCellKeydown(r, c, $event)"
+                />
+              </span>
+            </template>
+          </template>
+        </div>
+      </div>
+
+      <!-- 按鈕 -->
+      <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.75rem">
+        <button type="button" class="btn btn-primary" @click="checkAnswer">
           對答案
         </button>
         <span v-if="gameSession.showResult" class="muted">
           答對 {{ correctCount }} / {{ totalBlanks }} 格
+          <span v-if="!allFilled">（尚有 {{ totalBlanks - filledCount }} 格未填）</span>
         </span>
+      </div>
+
+      <!-- 提示在下方 -->
+      <div v-if="gameSession.settings.showHints" class="card clues-card">
+        <div class="clues-columns">
+          <div class="clue-section">
+            <strong class="clue-heading clue-h"><span class="clue-arrow">→</span> 橫向提示</strong>
+            <ul class="clue-list">
+              <li v-for="h in puzzle.horizontalClues" :key="h.id">
+                <span class="clue-label clue-h">{{ h.label }}.</span> {{ h.clue }}
+                <span v-if="gameSession.showResult" :class="resultClass(h.id, 'h')">
+                  {{ resultText(h.id, 'h') }}
+                </span>
+              </li>
+            </ul>
+          </div>
+          <div class="clue-section">
+            <strong class="clue-heading clue-v"><span class="clue-arrow">↓</span> 豎向提示</strong>
+            <ul class="clue-list">
+              <li v-for="v in puzzle.verticalClues" :key="v.id">
+                <span class="clue-label clue-v">{{ v.label }}.</span> {{ v.clue }}
+                <span v-if="gameSession.showResult" :class="resultClass(v.id, 'v')">
+                  {{ resultText(v.id, 'v') }}
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </template>
   </div>
@@ -113,7 +110,7 @@ import { computed, watch, ref, nextTick, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { usePuzzleSetsStore } from "@/stores/puzzleSets";
 import { useGameSessionStore } from "@/stores/gameSession";
-import type { CrosswordPuzzle, CrosswordCell } from "@/lib/types";
+import type { CrosswordCell } from "@/lib/types";
 
 const route = useRoute();
 const puzzleSets = usePuzzleSetsStore();
@@ -123,6 +120,8 @@ const gridContainerRef = ref<HTMLElement | null>(null);
 const inputRefs = ref(new Map<string, HTMLInputElement>());
 const focusedCell = ref<{ r: number; c: number } | null>(null);
 const isComposing = ref(false);
+const composingCellKey = ref<string | null>(null);
+const composingText = ref("");
 
 // Timer
 const elapsedSeconds = ref(0);
@@ -137,9 +136,7 @@ const timerDisplay = computed(() => {
 function startTimer() {
   stopTimer();
   elapsedSeconds.value = 0;
-  timerInterval = setInterval(() => {
-    elapsedSeconds.value++;
-  }, 1000);
+  timerInterval = setInterval(() => elapsedSeconds.value++, 1000);
 }
 
 function stopTimer() {
@@ -155,33 +152,21 @@ const set = computed(() =>
   puzzleSets.sets.find((s) => s.id === setId.value && s.type === "crossword")
 );
 const puzzle = computed(() => set.value?.crossword ?? null);
-const cols = computed(() => puzzle.value?.grid[0]?.length ?? 0);
 
-// Dynamic cell size based on difficulty (1-5 stars)
-const cellSize = computed(() => {
-  const d = puzzle.value?.difficulty ?? 1;
-  if (d >= 5) return "1.6rem";
-  if (d >= 4) return "1.8rem";
-  if (d >= 3) return "2.0rem";
-  if (d >= 2) return "2.4rem";
-  return "2.8rem";
-});
+const gridRows = computed(() => puzzle.value?.grid.length ?? 0);
+const gridCols = computed(() => puzzle.value?.grid[0]?.length ?? 0);
 
-const inputFontSize = computed(() => {
-  const d = puzzle.value?.difficulty ?? 1;
-  if (d >= 4) return "0.75rem";
-  if (d >= 3) return "0.85rem";
-  return "1rem";
-});
+// 動態計算 grid style：填滿畫布
+const gridStyle = computed(() => ({
+  gridTemplateColumns: `repeat(${gridCols.value}, 1fr)`,
+  gridTemplateRows: `repeat(${gridRows.value}, 1fr)`,
+}));
 
-// Cell indicator map: cellKey -> { number, arrow, direction }
+// Cell indicator map
 const cellIndicators = computed(() => {
   const p = puzzle.value;
-  if (!p) return {} as Record<string, { number: string; arrow: string; direction: "h" | "v" | "both" }>;
-
-  const map: Record<string, { number: string; arrow: string; direction: "h" | "v" | "both" }> = {};
-
-  // Build a list of (word, label) in order
+  if (!p) return {} as Record<string, { label: string; isH: boolean }>;
+  const map: Record<string, { label: string; isH: boolean }> = {};
   const hClueMap = new Map<string, string>();
   for (const h of p.horizontalClues) hClueMap.set(h.id, h.label);
   const vClueMap = new Map<string, string>();
@@ -190,26 +175,16 @@ const cellIndicators = computed(() => {
   for (const w of p.words) {
     const key = cellKey(w.startRow, w.startCol);
     const label = w.direction === "horizontal"
-      ? hClueMap.get(w.id) ?? ""
-      : vClueMap.get(w.id) ?? "";
-    const dir = w.direction === "horizontal" ? "h" : "v";
-
+      ? (hClueMap.get(w.id) ?? "")
+      : (vClueMap.get(w.id) ?? "");
+    const isH = w.direction === "horizontal";
+    const entry = { label, isH };
     if (map[key]) {
-      // Already has an indicator — merge to 'both'
-      map[key] = {
-        number: map[key].number,
-        arrow: "→↓",
-        direction: "both",
-      };
+      map[key] = { label: map[key].label + " " + label, isH: map[key].isH };
     } else {
-      map[key] = {
-        number: label,
-        arrow: dir === "h" ? "→" : "↓",
-        direction: dir,
-      };
+      map[key] = entry;
     }
   }
-
   return map;
 });
 
@@ -224,9 +199,7 @@ const blankCells = computed(() => {
   const out: { r: number; c: number; clueId: string }[] = [];
   p.grid.forEach((row, r) => {
     row.forEach((cell, c) => {
-      if (cell.type === "blank") {
-        out.push({ r, c, clueId: cell.clueId });
-      }
+      if (cell.type === "blank") out.push({ r, c, clueId: cell.clueId });
     });
   });
   return out;
@@ -243,23 +216,27 @@ function getCorrectChar(r: number, c: number): string | null {
   if (!p) return null;
   for (const w of p.words) {
     if (w.direction === "horizontal") {
-      if (r === w.startRow && c >= w.startCol && c < w.startCol + w.text.length) {
+      if (r === w.startRow && c >= w.startCol && c < w.startCol + w.text.length)
         return w.text[c - w.startCol] ?? null;
-      }
     } else {
-      if (c === w.startCol && r >= w.startRow && r < w.startRow + w.text.length) {
+      if (c === w.startCol && r >= w.startRow && r < w.startRow + w.text.length)
         return w.text[r - w.startRow] ?? null;
-      }
     }
   }
   return null;
 }
 
-const allFilled = computed(() => {
-  return blankCells.value.every(
+const allFilled = computed(() =>
+  blankCells.value.every(
     ({ r, c }) => (gameSession.userAnswers[cellKey(r, c)] ?? "").trim().length > 0
-  );
-});
+  )
+);
+
+const filledCount = computed(() =>
+  blankCells.value.filter(
+    ({ r, c }) => (gameSession.userAnswers[cellKey(r, c)] ?? "").trim().length > 0
+  ).length
+);
 
 const correctCount = computed(() => {
   let n = 0;
@@ -271,7 +248,7 @@ const correctCount = computed(() => {
   return n;
 });
 
-// Result checking animation state
+// Result animation
 const animatingCells = ref(new Map<string, "correct" | "wrong">());
 
 function cellResultClass(r: number, c: number): Record<string, boolean> {
@@ -316,8 +293,6 @@ function resultText(clueId: string, _dir: "h" | "v"): string {
 function checkAnswer() {
   stopTimer();
   gameSession.setShowResult(true);
-
-  // Trigger cell animations
   const newMap = new Map<string, "correct" | "wrong">();
   for (const { r, c } of blankCells.value) {
     const correct = getCorrectChar(r, c);
@@ -326,41 +301,38 @@ function checkAnswer() {
     newMap.set(key, correct !== null && u === correct ? "correct" : "wrong");
   }
   animatingCells.value = newMap;
-
   setTimeout(() => {
     animatingCells.value = new Map();
   }, 600);
 }
 
-// IME composition handling — critical for Chinese input stability
-function onCompositionStart() {
+// IME — 拼音穩定顯示在方框中，直到選字完成才消失
+function onCompositionStart(r: number, c: number) {
   isComposing.value = true;
+  composingCellKey.value = cellKey(r, c);
+  composingText.value = "";
+  // 清空 input 讓拼音獨占顯示
+  const el = inputRefs.value.get(cellKey(r, c));
+  if (el) el.value = "";
 }
 
-function onCompositionUpdate() {
-  // Keep composing flag true during updates
+function onCompositionUpdate(_r: number, _c: number, e: CompositionEvent) {
   isComposing.value = true;
+  composingText.value = e.data ?? "";
+  // 不做任何 stopPropagation / preventDefault，讓瀏覽器自然渲染拼音在 input 中
 }
 
 function onCellKeydown(r: number, c: number, e: KeyboardEvent) {
-  // During composition, block ALL arrow keys so browser handles pinyin selection
   if (isComposing.value) {
     if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter"].includes(e.key)) {
       e.stopPropagation();
-      // Let the browser handle the event for IME candidate navigation
       return;
     }
   }
-
-  // Handle delete key
   if (e.key === "Delete" || e.key === "Backspace") {
-    if (!isComposing.value) {
-      onCellDelete(r, c);
-    }
+    if (!isComposing.value) onCellDelete(r, c);
     return;
   }
-
-  // Handle arrow keys (only when not composing and cell has content)
   if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
     onGridKeydown(e);
   }
@@ -368,26 +340,28 @@ function onCellKeydown(r: number, c: number, e: KeyboardEvent) {
 
 function onCompositionEnd(r: number, c: number, e: CompositionEvent) {
   isComposing.value = false;
+  composingCellKey.value = null;
+  composingText.value = "";
   const composed = e.data ?? "";
   const lastChar = composed.slice(-1);
   if (lastChar) {
     gameSession.setAnswer(cellKey(r, c), lastChar);
-    const el = inputRefs.value.get(cellKey(r, c));
-    if (el) {
-      el.value = lastChar;
-    }
-    setTimeout(() => advanceToNext(r, c), 50);
+    // 確保 input 顯示最終選中的字
+    nextTick(() => {
+      const el = inputRefs.value.get(cellKey(r, c));
+      if (el) el.value = lastChar;
+    });
+    setTimeout(() => advanceToNext(r, c), 80);
   }
 }
 
 function onCellInput(r: number, c: number, e: Event) {
   if (isComposing.value) {
-    e.stopPropagation();
+    // 組字中不攔截 input 事件，讓瀏覽器自然處理拼音顯示
     return;
   }
   const target = e.target as HTMLInputElement;
-  const rawVal = target.value;
-  const val = rawVal.slice(-1);
+  const val = target.value.slice(-1);
   if (!val) return;
   gameSession.setAnswer(cellKey(r, c), val);
   target.value = val;
@@ -397,131 +371,65 @@ function onCellInput(r: number, c: number, e: Event) {
 function onCellDelete(r: number, c: number) {
   const current = gameSession.userAnswers[cellKey(r, c)] ?? "";
   if (!current) {
-    // Already empty — move to previous blank
     const list = blankCellsOrdered.value;
     const idx = list.findIndex((x) => x.r === r && x.c === c);
-    if (idx > 0) {
-      const prev = list[idx - 1];
-      focusCell(prev.r, prev.c);
-    }
+    if (idx > 0) focusCell(list[idx - 1].r, list[idx - 1].c);
   }
 }
 
 function advanceToNext(r: number, c: number) {
   const p = puzzle.value;
   if (!p) return;
-
-  // Find which word(s) this cell belongs to and pick a direction
   const wordForCell = p.words.find((w) => {
-    if (w.direction === "horizontal") {
+    if (w.direction === "horizontal")
       return r === w.startRow && c >= w.startCol && c < w.startCol + w.text.length;
-    } else {
-      return c === w.startCol && r >= w.startRow && r < w.startRow + w.text.length;
-    }
+    return c === w.startCol && r >= w.startRow && r < w.startRow + w.text.length;
   });
-
   if (wordForCell) {
-    // Move along the word direction
-    let nr = r;
-    let nc = c;
-    if (wordForCell.direction === "horizontal") nc++;
-    else nr++;
-
-    // Look for a blank cell in the same word forward
-    while (
-      nr < p.grid.length &&
-      nc < (p.grid[0]?.length ?? 0) &&
-      nr >= 0 &&
-      nc >= 0
-    ) {
+    let nr = r, nc = c;
+    if (wordForCell.direction === "horizontal") nc++; else nr++;
+    while (nr < p.grid.length && nc < (p.grid[0]?.length ?? 0) && nr >= 0 && nc >= 0) {
       const cell = p.grid[nr]?.[nc];
       if (!cell || cell.type === "block") break;
-      if (cell.type === "blank") {
-        focusCell(nr, nc);
-        return;
-      }
-      if (wordForCell.direction === "horizontal") nc++;
-      else nr++;
+      if (cell.type === "blank") { focusCell(nr, nc); return; }
+      if (wordForCell.direction === "horizontal") nc++; else nr++;
     }
   }
-
-  // Fallback: next blank in reading order
   const list = blankCellsOrdered.value;
   const idx = list.findIndex((x) => x.r === r && x.c === c);
-  if (idx >= 0 && idx < list.length - 1) {
-    const next = list[idx + 1];
-    focusCell(next.r, next.c);
-  }
+  if (idx >= 0 && idx < list.length - 1) focusCell(list[idx + 1].r, list[idx + 1].c);
 }
 
-// Input ref management
 function setInputRef(r: number, c: number, el: unknown) {
-  if (el instanceof HTMLInputElement) {
-    inputRefs.value.set(cellKey(r, c), el);
-  }
+  if (el instanceof HTMLInputElement) inputRefs.value.set(cellKey(r, c), el);
 }
 
 function focusCell(r: number, c: number) {
   const el = inputRefs.value.get(cellKey(r, c));
-  if (el) {
-    el.focus();
-    focusedCell.value = { r, c };
-  }
+  if (el) { el.focus(); focusedCell.value = { r, c }; }
 }
 
-// Keyboard navigation
 function onGridKeydown(e: KeyboardEvent) {
   const p = puzzle.value;
   if (!p || blankCellsOrdered.value.length === 0) return;
-  const key = e.key;
-  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) return;
-
-  // During IME composition, let the browser handle arrow keys for candidate selection
   if (isComposing.value) return;
-
-  // Only navigate if current cell has a completed character or is a given cell
   const current = focusedCell.value;
-  if (current) {
-    const currentAnswer = gameSession.userAnswers[cellKey(current.r, current.c)] ?? "";
-    const currentCell = p.grid[current.r]?.[current.c];
-    const hasContent = currentAnswer.trim().length > 0 || currentCell?.type === "given";
-    if (!hasContent) return; // Cell is empty, don't navigate with arrows
-  }
-
   e.preventDefault();
   const list = blankCellsOrdered.value;
-  const idx = current
-    ? list.findIndex((x) => x.r === current.r && x.c === current.c)
-    : -1;
   let next: { r: number; c: number } | null = null;
-
-  if (key === "ArrowRight") {
-    // Find next blank cell to the right in same row, or next row
-    if (current) {
-      const rightInRow = list.find((x) => x.r === current.r && x.c > current.c);
-      next = rightInRow ?? list.find((x) => x.r > current.r) ?? null;
-    }
+  if (e.key === "ArrowRight") {
+    if (current) next = list.find((x) => x.r === current.r && x.c > current.c) ?? list.find((x) => x.r > current.r) ?? null;
     if (!next && list.length > 0) next = list[0];
-  } else if (key === "ArrowLeft") {
-    if (current) {
-      const leftInRow = [...list].reverse().find((x) => x.r === current.r && x.c < current.c);
-      next = leftInRow ?? [...list].reverse().find((x) => x.r < current.r) ?? null;
-    }
+  } else if (e.key === "ArrowLeft") {
+    if (current) next = [...list].reverse().find((x) => x.r === current.r && x.c < current.c) ?? [...list].reverse().find((x) => x.r < current.r) ?? null;
     if (!next && list.length > 0) next = list[list.length - 1];
-  } else if (key === "ArrowDown") {
-    if (current) {
-      const sameCol = list.filter((x) => x.c === current.c);
-      next = sameCol.find((x) => x.r > current.r) ?? sameCol[0] ?? null;
-    }
+  } else if (e.key === "ArrowDown") {
+    if (current) { const col = list.filter((x) => x.c === current.c); next = col.find((x) => x.r > current.r) ?? col[0] ?? null; }
     if (!next && list.length > 0) next = list[0];
-  } else if (key === "ArrowUp") {
-    if (current) {
-      const sameCol = list.filter((x) => x.c === current.c);
-      next = [...sameCol].reverse().find((x) => x.r < current.r) ?? sameCol[sameCol.length - 1] ?? null;
-    }
+  } else if (e.key === "ArrowUp") {
+    if (current) { const col = list.filter((x) => x.c === current.c); next = [...col].reverse().find((x) => x.r < current.r) ?? col[col.length - 1] ?? null; }
     if (!next && list.length > 0) next = list[list.length - 1];
   }
-
   if (next) focusCell(next.r, next.c);
 }
 
@@ -533,6 +441,8 @@ watch(
       gameSession.setCurrentPuzzle(p);
       inputRefs.value.clear();
       focusedCell.value = null;
+      composingCellKey.value = null;
+      composingText.value = "";
       animatingCells.value = new Map();
       startTimer();
       nextTick(() => {
@@ -544,14 +454,8 @@ watch(
   { immediate: true }
 );
 
-onMounted(() => {
-  gridContainerRef.value?.focus();
-});
-
-onUnmounted(() => {
-  inputRefs.value.clear();
-  stopTimer();
-});
+onMounted(() => gridContainerRef.value?.focus());
+onUnmounted(() => { inputRefs.value.clear(); stopTimer(); });
 </script>
 
 <style scoped>
@@ -569,16 +473,23 @@ onUnmounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
+/* 畫布：格子適應填滿 */
+.grid-canvas {
+  width: 100%;
+  max-width: min(92vw, 82vh);
+  margin: 0.5rem auto 0;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #f8f4ee;
+}
+
 .crossword-grid {
   display: grid;
-  gap: 2px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  margin-top: 0.5rem;
-  width: fit-content;
-  max-width: 100%;
-  overflow: auto;
+  gap: 1px;
+  width: 100%;
 }
 
 .cell {
@@ -586,28 +497,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
   font-weight: 700;
-  border-radius: 4px;
+  border-radius: 2px;
   border: 1px solid var(--border);
-  transition: background 0.2s ease;
+  overflow: hidden;
+  font-size: clamp(0.55rem, 1.8vmin, 1.1rem);
+  line-height: 1;
 }
 
 .cell.block {
   background: #E8DDD0;
   background-image: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 0, 0, 0.03) 3px,
-    rgba(0, 0, 0, 0.03) 4px
+    45deg, transparent, transparent 3px,
+    rgba(0, 0, 0, 0.03) 3px, rgba(0, 0, 0, 0.03) 4px
   );
   border-color: #DDD2C4;
 }
 
 .cell.given {
   background: #DBEAFE;
-  font-weight: 700;
   color: var(--text);
 }
 
@@ -618,14 +526,22 @@ onUnmounted(() => {
 
 .cell-indicator {
   position: absolute;
-  top: 1px;
-  left: 2px;
-  font-size: 0.5em;
-  font-weight: 600;
+  top: 0;
+  left: 1px;
+  font-size: clamp(0.35rem, 0.9vmin, 0.55rem);
+  font-weight: 700;
   line-height: 1;
-  color: var(--primary);
   pointer-events: none;
   white-space: nowrap;
+}
+.cell-indicator.ind-h {
+  color: #2563eb;
+}
+.cell-indicator.ind-v {
+  color: #dc2626;
+}
+.ind-arrow {
+  font-size: 0.9em;
 }
 
 .cell-input {
@@ -637,6 +553,8 @@ onUnmounted(() => {
   background: transparent;
   color: var(--text);
   caret-color: var(--primary);
+  font-size: inherit;
+  padding: 0;
 }
 
 .cell-input:focus {
@@ -648,7 +566,45 @@ onUnmounted(() => {
   background: #FEF3C7;
 }
 
-/* Result animation classes */
+/* 提示在下方，橫豎兩欄並排 */
+.clues-card {
+  margin-top: 0.75rem;
+}
+
+.clues-columns {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.clue-section {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.clue-list {
+  padding-left: 1.25rem;
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.clue-list li {
+  margin-bottom: 0.2rem;
+}
+
+.clue-heading.clue-h,
+.clue-label.clue-h {
+  color: #2563eb;
+}
+.clue-heading.clue-v,
+.clue-label.clue-v {
+  color: #dc2626;
+}
+.clue-arrow {
+  font-weight: 700;
+}
+
+/* Result */
 .animate-correct {
   animation: bounceCorrect 0.6s ease both;
   background: #D1FAE5 !important;
@@ -675,15 +631,6 @@ onUnmounted(() => {
   60% { transform: translateX(3px); }
   75% { transform: translateX(-2px); }
   90% { transform: translateX(2px); }
-}
-
-.clue-list {
-  padding-left: 1.25rem;
-  margin-top: 0.35rem;
-}
-
-.clue-list li {
-  margin-bottom: 0.25rem;
 }
 
 .correct {

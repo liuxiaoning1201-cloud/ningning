@@ -103,41 +103,43 @@
     </div>
   </div>
 
-  <!-- Hidden print area -->
+  <!-- Hidden print area：左右排列，確保一頁內 -->
   <div v-if="printingSet" id="print-area" class="print-area">
     <h1 class="print-title">{{ printingSet.title }}</h1>
     <p class="print-subtitle" v-if="printingSet.crossword">
       難度 {{ printingSet.crossword.difficulty }} 星 · {{ printingSet.crossword.levelTitle }}
     </p>
     <template v-if="printingSet.crossword">
-      <div
-        class="print-grid"
-        :style="{ gridTemplateColumns: `repeat(${printingSet.crossword.grid[0]?.length ?? 0}, 2rem)` }"
-      >
-        <template v-for="(row, r) in printingSet.crossword.grid" :key="r">
-          <template v-for="(cell, c) in row" :key="`${r}-${c}`">
-            <span v-if="cell.type === 'block'" class="print-cell print-block"></span>
-            <span v-else-if="cell.type === 'given'" class="print-cell print-given">{{ cell.value }}</span>
-            <span v-else class="print-cell print-blank"></span>
+      <div class="print-body">
+        <div
+          class="print-grid-wrap"
+          :style="{ gridTemplateColumns: `repeat(${printingSet.crossword.grid[0]?.length ?? 0}, 1.5rem)` }"
+        >
+          <template v-for="(row, r) in printingSet.crossword.grid" :key="r">
+            <template v-for="(cell, c) in row" :key="`${r}-${c}`">
+              <span v-if="cell.type === 'block'" class="print-cell print-block"></span>
+              <span v-else-if="cell.type === 'given'" class="print-cell print-given">{{ cell.value }}</span>
+              <span v-else class="print-cell print-blank"></span>
+            </template>
           </template>
-        </template>
-      </div>
-      <div class="print-clues">
-        <div class="print-clue-section">
-          <strong>→ 橫向提示</strong>
-          <ul>
-            <li v-for="h in printingSet.crossword.horizontalClues" :key="h.id">
-              {{ h.label }}. {{ h.clue }}
-            </li>
-          </ul>
         </div>
-        <div class="print-clue-section">
-          <strong>↓ 豎向提示</strong>
-          <ul>
-            <li v-for="v in printingSet.crossword.verticalClues" :key="v.id">
-              {{ v.label }}. {{ v.clue }}
-            </li>
-          </ul>
+        <div class="print-clues">
+          <div class="print-clue-section">
+            <strong style="color: #2563eb">→ 橫向提示</strong>
+            <ul>
+              <li v-for="h in printingSet.crossword.horizontalClues" :key="h.id">
+                <span style="color: #2563eb; font-weight: 700">{{ h.label }}.</span> {{ h.clue }}
+              </li>
+            </ul>
+          </div>
+          <div class="print-clue-section">
+            <strong style="color: #dc2626">↓ 豎向提示</strong>
+            <ul>
+              <li v-for="v in printingSet.crossword.verticalClues" :key="v.id">
+                <span style="color: #dc2626; font-weight: 700">{{ v.label }}.</span> {{ v.clue }}
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </template>
@@ -161,11 +163,11 @@ const aiProgress = ref("");
 const printingSet = ref<PuzzleSet | null>(null);
 
 const difficultyLabels: Record<number, string> = {
-  1: "1 星 · 5×5 格（最簡單）",
-  2: "2 星 · 7×7 格",
-  3: "3 星 · 9×9 格",
-  4: "4 星 · 11×11 格",
-  5: "5 星 · 13×15 格（最困難）",
+  1: "1 星 · 入門（提示多）",
+  2: "2 星 · 初學",
+  3: "3 星 · 中等",
+  4: "4 星 · 挑戰",
+  5: "5 星 · 大師（提示少）",
 };
 
 const difficultyLabel = computed(() => {
@@ -404,59 +406,48 @@ async function printPuzzle(set: PuzzleSet) {
   color: #92400E;
 }
 
-/* ── Print styles ── */
+/* ── Print styles：左右排列，所有題目在一面內 ── */
 .print-area {
   display: none;
 }
 
-@media print {
-  body * {
-    visibility: hidden !important;
-  }
-  .print-area,
-  .print-area * {
-    visibility: visible !important;
-  }
-  .print-area {
-    display: block !important;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    padding: 1.5cm;
-    background: white;
-    z-index: 99999;
-  }
-}
-
 .print-title {
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 700;
   text-align: center;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .print-subtitle {
   text-align: center;
   color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
 }
 
-.print-grid {
+.print-body {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 1.25rem;
+  max-width: 100%;
+}
+
+.print-grid-wrap {
   display: grid;
   gap: 0;
-  margin: 0 auto 1rem;
+  flex-shrink: 0;
   width: fit-content;
 }
 
 .print-cell {
-  width: 2rem;
-  height: 2rem;
+  width: 1.5rem;
+  height: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 700;
   border: 1px solid #333;
 }
@@ -476,20 +467,60 @@ async function printPuzzle(set: PuzzleSet) {
 
 .print-clues {
   display: flex;
-  gap: 2rem;
-  font-size: 0.85rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .print-clue-section {
-  flex: 1;
+  flex: none;
 }
 
 .print-clue-section ul {
-  padding-left: 1.25rem;
-  margin-top: 0.35rem;
+  padding-left: 1rem;
+  margin-top: 0.25rem;
 }
 
 .print-clue-section li {
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.15rem;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible !important;
+  }
+  .print-area {
+    display: block !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 1rem 1.2cm;
+    background: white;
+    z-index: 99999;
+    overflow: hidden;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+  }
+  .print-area .print-body {
+    max-height: 100%;
+    overflow: hidden;
+  }
+  .print-title { font-size: 1.2rem; margin-bottom: 0.15rem; }
+  .print-subtitle { font-size: 0.8rem; margin-bottom: 0.5rem; }
+  .print-cell {
+    width: 1.35rem;
+    height: 1.35rem;
+    font-size: 0.7rem;
+  }
+  .print-clues { font-size: 0.7rem; }
+  .print-clue-section li { margin-bottom: 0.1rem; }
 }
 </style>

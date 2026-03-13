@@ -9,26 +9,6 @@
     <h1 class="page-title" style="font-family: var(--font-heading)">📝 練習模式</h1>
 
     <div class="card" style="margin-bottom: 1rem">
-      <h2 style="font-size: 1rem; margin-bottom: 0.5rem">🎮 遊戲設定</h2>
-      <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center">
-        <label>
-          難度
-          <select :value="gameSession.settings.difficulty" style="margin-left: 4px; padding: 0.4rem" @change="onDifficultyChange">
-            <option :value="1">★ 入門 (5×5)</option>
-            <option :value="2">★★ 初學 (7×7)</option>
-            <option :value="3">★★★ 中等 (9×9)</option>
-            <option :value="4">★★★★ 挑戰 (11×11)</option>
-            <option :value="5">★★★★★ 大師 (13×15)</option>
-          </select>
-        </label>
-        <label style="display: flex; align-items: center; gap: 0.35rem">
-          <input :checked="gameSession.settings.showHints" type="checkbox" @change="onHintsChange" />
-          顯示提示
-        </label>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom: 1rem">
       <h2 style="font-size: 1rem; margin-bottom: 0.5rem">🎲 出題</h2>
       <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center">
         <label>
@@ -51,6 +31,14 @@
         <label>
           用詞數量
           <input v-model.number="autoWordCount" type="number" min="0" :max="selectedBankItemCount" placeholder="0=全部" style="width: 4rem; padding: 0.4rem; border: 1px solid var(--border); border-radius: var(--radius)" />
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.35rem">
+          <input v-model="excludeUsedItems" type="checkbox" />
+          排除已出過題的詞句
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.35rem">
+          <input :checked="gameSession.settings.showHints" type="checkbox" @change="onHintsChange" />
+          顯示提示
         </label>
         <button type="button" class="btn btn-primary" :disabled="!autoBankId" @click="autoGenerate">隨機出題</button>
       </div>
@@ -103,6 +91,8 @@ const autoTier = ref<DifficultyTier>(1);
 const autoWordCount = ref(0);
 const showHistory = ref(false);
 const selectedItemIds = ref<Set<string>>(new Set());
+/** 排除已在出題記錄中使用過的詞句（不從詞庫刪除，僅本輪不選） */
+const excludeUsedItems = ref(false);
 
 const selectedBankItemCount = computed(() => {
   const bank = wordBanks.banks.find((b) => b.id === autoBankId.value);
@@ -123,11 +113,6 @@ const crosswordSets = computed(() =>
   puzzleSets.sets.filter((s) => s.type === "crossword")
 );
 
-function onDifficultyChange(e: Event) {
-  const v = Number((e.target as HTMLSelectElement).value);
-  gameSession.setSettings({ difficulty: v });
-}
-
 function onHintsChange(e: Event) {
   const v = (e.target as HTMLInputElement).checked;
   gameSession.setSettings({ showHints: v });
@@ -139,11 +124,21 @@ function autoGenerate() {
     alert("請選擇有詞條的詞句庫");
     return;
   }
-  const itemsToUse = selectedItemIds.value.size > 0
+  let itemsToUse = selectedItemIds.value.size > 0
     ? bank.items.filter((it) => selectedItemIds.value.has(it.id))
     : bank.items;
+  if (excludeUsedItems.value && crosswordSets.value.length > 0) {
+    const usedTexts = new Set(
+      crosswordSets.value.flatMap((s) =>
+        (s.crossword?.words ?? []).map((w) => w.text.trim())
+      )
+    );
+    itemsToUse = itemsToUse.filter((it) => !usedTexts.has(it.text.trim()));
+  }
   if (itemsToUse.length === 0) {
-    alert("請至少選擇一個詞句");
+    alert(excludeUsedItems.value
+      ? "已出過題的詞句已排除，目前沒有可用的詞句。可取消「排除已出過題的詞句」或新增詞句。"
+      : "請至少選擇一個詞句");
     return;
   }
   const puzzle = generateCrosswordPuzzle({
