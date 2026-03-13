@@ -20,12 +20,12 @@ const TIER_GIVEN_RATIO: Record<DifficultyTier, number> = {
   5: 0.15,
 };
 
-const TIER_GRID_SIZE: Record<DifficultyTier, { min: number; max: number }> = {
-  1: { min: 4, max: 6 },
-  2: { min: 6, max: 8 },
-  3: { min: 8, max: 11 },
-  4: { min: 11, max: 14 },
-  5: { min: 14, max: 20 },
+const TIER_GRID_SIZE: Record<DifficultyTier, { rows: number; cols: number }> = {
+  1: { rows: 5, cols: 5 },
+  2: { rows: 7, cols: 7 },
+  3: { rows: 9, cols: 9 },
+  4: { rows: 11, cols: 11 },
+  5: { rows: 13, cols: 15 },
 };
 
 const TIER_TITLE: Record<DifficultyTier, string> = {
@@ -199,6 +199,25 @@ export function generateCrosswordPuzzle(input: GeneratorInput): CrosswordPuzzle 
     }
   }
 
+  // Validate all intersections: every cell shared by 2+ words must have the same character
+  for (let i = 0; i < wordInfos.length; i++) {
+    for (let j = i + 1; j < wordInfos.length; j++) {
+      const a = wordInfos[i];
+      const b = wordInfos[j];
+      for (let ka = 0; ka < a.word.length; ka++) {
+        const ra = a.dir === "h" ? a.r : a.r + ka;
+        const ca = a.dir === "h" ? a.c + ka : a.c;
+        for (let kb = 0; kb < b.word.length; kb++) {
+          const rb = b.dir === "h" ? b.r : b.r + kb;
+          const cb = b.dir === "h" ? b.c + kb : b.c;
+          if (ra === rb && ca === cb && a.word[ka] !== b.word[kb]) {
+            return null; // Invalid intersection
+          }
+        }
+      }
+    }
+  }
+
   // Normalize negative coordinates: find min row/col offset among all words
   let minR = 0;
   let minC = 0;
@@ -235,13 +254,29 @@ export function generateCrosswordPuzzle(input: GeneratorInput): CrosswordPuzzle 
     for (const row of newGrid) gridRows.push(row);
   }
 
-  const rawRows = gridRows.length;
-  const rawCols = Math.max(0, ...gridRows.map((row) => row.length));
-  if (rawRows === 0 || rawCols === 0) return null;
+  const sizeTarget = TIER_GRID_SIZE[tier];
+  const targetRows = sizeTarget.rows;
+  const targetCols = sizeTarget.cols;
 
-  // Normalize all rows to same width (don't force square — let grid expand naturally)
+  // Normalize all rows to same width first
+  const rawCols = Math.max(0, ...gridRows.map((row) => row.length));
   for (const row of gridRows) {
     while (row.length < rawCols) row.push(null);
+  }
+
+  // Center content within the target grid if content is smaller
+  const rawRows = gridRows.length;
+  if (rawRows === 0 || rawCols === 0) return null;
+  const finalRows = Math.max(targetRows, rawRows);
+  const finalCols = Math.max(targetCols, rawCols);
+
+  // Pad rows at bottom if needed
+  while (gridRows.length < finalRows) {
+    gridRows.push(new Array(finalCols).fill(null));
+  }
+  // Pad columns at right if needed
+  for (const row of gridRows) {
+    while (row.length < finalCols) row.push(null);
   }
 
   const rows = gridRows.length;

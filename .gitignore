@@ -5,3 +5,7 @@
 
 # Dependencies
 node_modules/
+dist/
+
+# 原始大檔案備份
+春江花月夜/assets/春江花月夜_original.mp4

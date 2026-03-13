@@ -36,10 +36,6 @@
     </div>
 
     <footer class="home-footer animate-fade-in" style="animation-delay: 0.55s">
-      <RouterLink to="/teacher" class="footer-link">
-        <span class="footer-icon">🎓</span>
-        <span>教師後台</span>
-      </RouterLink>
       <RouterLink to="/settings" class="footer-link">
         <span class="footer-icon">⚙️</span>
         <span>設定</span>

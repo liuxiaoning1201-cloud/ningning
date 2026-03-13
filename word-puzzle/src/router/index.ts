@@ -10,32 +10,22 @@ const router = createRouter({
       component: () => import("@/views/settings/Settings.vue"),
     },
     {
-      path: "/teacher",
-      name: "Teacher",
-      component: () => import("@/views/teacher/WordBanks.vue"),
-    },
-    {
-      path: "/teacher/banks/new",
+      path: "/settings/banks/new",
       name: "WordBankNew",
       component: () => import("@/views/teacher/WordBankEdit.vue"),
     },
     {
-      path: "/teacher/banks/:bankId",
+      path: "/settings/banks/:bankId",
       name: "WordBankEdit",
       component: () => import("@/views/teacher/WordBankEdit.vue"),
     },
     {
-      path: "/teacher/puzzles",
-      name: "PuzzleSetList",
-      component: () => import("@/views/teacher/PuzzleSetList.vue"),
-    },
-    {
-      path: "/teacher/puzzles/crossword/new",
+      path: "/settings/puzzles/crossword/new",
       name: "CrosswordNew",
       component: () => import("@/views/teacher/CrosswordEditor.vue"),
     },
     {
-      path: "/teacher/puzzles/crossword/:setId",
+      path: "/settings/puzzles/crossword/:setId",
       name: "CrosswordEdit",
       component: () => import("@/views/teacher/CrosswordEditor.vue"),
     },
@@ -59,6 +49,11 @@ const router = createRouter({
       name: "RemoteBattle",
       component: () => import("@/views/play/RemoteBattle.vue"),
     },
+    // Legacy redirects
+    { path: "/teacher", redirect: "/settings" },
+    { path: "/teacher/banks/new", redirect: "/settings/banks/new" },
+    { path: "/teacher/banks/:bankId", redirect: to => `/settings/banks/${to.params.bankId}` },
+    { path: "/teacher/puzzles", redirect: "/settings" },
   ],
 });
 

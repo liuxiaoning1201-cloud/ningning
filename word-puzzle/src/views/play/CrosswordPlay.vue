@@ -17,7 +17,6 @@
         class="crossword-grid"
         tabindex="0"
         :style="{ gridTemplateColumns: `repeat(${cols}, ${cellSize})` }"
-        @keydown="onGridKeydown"
       >
         <template v-for="(row, r) in puzzle.grid" :key="r">
           <template v-for="(cell, c) in row" :key="`${r}-${c}`">
@@ -61,9 +60,10 @@
                 :style="{ fontSize: inputFontSize }"
                 @compositionstart="onCompositionStart"
                 @compositionend="onCompositionEnd(r, c, $event)"
+                @compositionupdate="onCompositionUpdate"
                 @input="onCellInput(r, c, $event)"
                 @focus="focusedCell = { r, c }"
-                @keydown.delete="onCellDelete(r, c)"
+                @keydown="onCellKeydown(r, c, $event)"
               />
             </span>
           </template>
@@ -337,6 +337,35 @@ function onCompositionStart() {
   isComposing.value = true;
 }
 
+function onCompositionUpdate() {
+  // Keep composing flag true during updates
+  isComposing.value = true;
+}
+
+function onCellKeydown(r: number, c: number, e: KeyboardEvent) {
+  // During composition, block ALL arrow keys so browser handles pinyin selection
+  if (isComposing.value) {
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter"].includes(e.key)) {
+      e.stopPropagation();
+      // Let the browser handle the event for IME candidate navigation
+      return;
+    }
+  }
+
+  // Handle delete key
+  if (e.key === "Delete" || e.key === "Backspace") {
+    if (!isComposing.value) {
+      onCellDelete(r, c);
+    }
+    return;
+  }
+
+  // Handle arrow keys (only when not composing and cell has content)
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+    onGridKeydown(e);
+  }
+}
+
 function onCompositionEnd(r: number, c: number, e: CompositionEvent) {
   isComposing.value = false;
   const composed = e.data ?? "";
@@ -446,8 +475,20 @@ function onGridKeydown(e: KeyboardEvent) {
   if (!p || blankCellsOrdered.value.length === 0) return;
   const key = e.key;
   if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(key)) return;
-  e.preventDefault();
+
+  // During IME composition, let the browser handle arrow keys for candidate selection
+  if (isComposing.value) return;
+
+  // Only navigate if current cell has a completed character or is a given cell
   const current = focusedCell.value;
+  if (current) {
+    const currentAnswer = gameSession.userAnswers[cellKey(current.r, current.c)] ?? "";
+    const currentCell = p.grid[current.r]?.[current.c];
+    const hasContent = currentAnswer.trim().length > 0 || currentCell?.type === "given";
+    if (!hasContent) return; // Cell is empty, don't navigate with arrows
+  }
+
+  e.preventDefault();
   const list = blankCellsOrdered.value;
   const idx = current
     ? list.findIndex((x) => x.r === current.r && x.c === current.c)
@@ -455,23 +496,30 @@ function onGridKeydown(e: KeyboardEvent) {
   let next: { r: number; c: number } | null = null;
 
   if (key === "ArrowRight") {
-    if (idx >= 0 && idx < list.length - 1) next = list[idx + 1];
-    else if (list.length > 0) next = list[0];
+    // Find next blank cell to the right in same row, or next row
+    if (current) {
+      const rightInRow = list.find((x) => x.r === current.r && x.c > current.c);
+      next = rightInRow ?? list.find((x) => x.r > current.r) ?? null;
+    }
+    if (!next && list.length > 0) next = list[0];
   } else if (key === "ArrowLeft") {
-    if (idx > 0) next = list[idx - 1];
-    else if (list.length > 0) next = list[list.length - 1];
+    if (current) {
+      const leftInRow = [...list].reverse().find((x) => x.r === current.r && x.c < current.c);
+      next = leftInRow ?? [...list].reverse().find((x) => x.r < current.r) ?? null;
+    }
+    if (!next && list.length > 0) next = list[list.length - 1];
   } else if (key === "ArrowDown") {
-    const sameCol = list.filter((x) => x.c === (current?.c ?? -1));
-    const nextInCol = current
-      ? sameCol.find((x) => x.r > current.r)
-      : sameCol[0];
-    next = nextInCol ?? sameCol[0] ?? list[0] ?? null;
+    if (current) {
+      const sameCol = list.filter((x) => x.c === current.c);
+      next = sameCol.find((x) => x.r > current.r) ?? sameCol[0] ?? null;
+    }
+    if (!next && list.length > 0) next = list[0];
   } else if (key === "ArrowUp") {
-    const sameCol = list.filter((x) => x.c === (current?.c ?? -1));
-    const prevInCol = current
-      ? [...sameCol].reverse().find((x) => x.r < current.r)
-      : sameCol[sameCol.length - 1];
-    next = prevInCol ?? sameCol[sameCol.length - 1] ?? list[list.length - 1] ?? null;
+    if (current) {
+      const sameCol = list.filter((x) => x.c === current.c);
+      next = [...sameCol].reverse().find((x) => x.r < current.r) ?? sameCol[sameCol.length - 1] ?? null;
+    }
+    if (!next && list.length > 0) next = list[list.length - 1];
   }
 
   if (next) focusCell(next.r, next.c);
@@ -498,11 +546,9 @@ watch(
 
 onMounted(() => {
   gridContainerRef.value?.focus();
-  window.addEventListener("keydown", onGridKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener("keydown", onGridKeydown);
   inputRefs.value.clear();
   stopTimer();
 });

@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <nav class="nav-bar">
-      <RouterLink to="/teacher/puzzles" class="btn btn-secondary">← 題組列表</RouterLink>
+      <RouterLink to="/settings" class="btn btn-secondary">← 題組列表</RouterLink>
     </nav>
     <h1 class="page-title" style="font-family: var(--font-heading)">{{ isNew ? "✨ 新建填字接龍" : "✏️ 編輯填字接龍" }}</h1>
 
@@ -81,7 +81,7 @@
 
     <div style="display: flex; gap: 0.5rem">
       <button type="button" class="btn btn-primary" :disabled="!puzzle" @click="save">儲存題組</button>
-      <RouterLink to="/teacher/puzzles" class="btn btn-secondary">取消</RouterLink>
+      <RouterLink to="/settings" class="btn btn-secondary">取消</RouterLink>
     </div>
   </div>
 </template>
@@ -184,7 +184,7 @@ function save() {
   } else {
     puzzleSets.updateSet(set);
   }
-  router.push("/teacher/puzzles");
+  router.push("/settings");
 }
 </script>
 
