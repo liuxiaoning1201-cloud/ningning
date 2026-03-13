@@ -1,4 +1,4 @@
-import type { PuzzleSet, WordBank, SentenceBank } from "./types";
+import type { PuzzleSet, WordBank } from "./types";
 import { STORAGE_KEYS } from "./types";
 
 function getItem<T>(key: string, defaultValue: T): T {
@@ -21,14 +21,6 @@ export function getWordBanks(): WordBank[] {
 
 export function setWordBanks(banks: WordBank[]): void {
   setItem(STORAGE_KEYS.WORD_BANKS, banks);
-}
-
-export function getSentenceBanks(): SentenceBank[] {
-  return getItem(STORAGE_KEYS.SENTENCE_BANKS, []);
-}
-
-export function setSentenceBanks(banks: SentenceBank[]): void {
-  setItem(STORAGE_KEYS.SENTENCE_BANKS, banks);
 }
 
 export function getPuzzleSets(): PuzzleSet[] {
