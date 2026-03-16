@@ -49,6 +49,21 @@ const router = createRouter({
       name: "RemoteBattle",
       component: () => import("@/views/play/RemoteBattle.vue"),
     },
+    {
+      path: "/play/remote/teacher",
+      name: "RemoteTeacher",
+      component: () => import("@/views/play/RemoteTeacher.vue"),
+    },
+    {
+      path: "/play/remote/room/:roomId",
+      name: "RemoteRoomPlay",
+      component: () => import("@/views/play/RemoteRoomPlay.vue"),
+    },
+    {
+      path: "/play/remote/session/:sessionId",
+      name: "RemoteSessionPlay",
+      component: () => import("@/views/play/RemoteSessionPlay.vue"),
+    },
     // Legacy redirects
     { path: "/teacher", redirect: "/settings" },
     { path: "/teacher/banks/new", redirect: "/settings/banks/new" },

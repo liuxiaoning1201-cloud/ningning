@@ -9,8 +9,14 @@ export interface ApiUser {
   avatarUrl?: string;
 }
 
+/** 開發模式下未設定時，自動使用本機後端，不需手動輸入 API */
+const DEFAULT_DEV_API = "http://localhost:3000";
+
 export function getApiUrl(): string {
-  return localStorage.getItem(API_URL_KEY) || import.meta.env.VITE_API_URL || "";
+  const stored = localStorage.getItem(API_URL_KEY) || import.meta.env.VITE_API_URL || "";
+  if (stored) return stored;
+  if (import.meta.env.DEV) return DEFAULT_DEV_API;
+  return "";
 }
 
 export function setApiUrl(url: string): void {

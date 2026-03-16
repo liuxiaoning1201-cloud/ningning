@@ -38,14 +38,12 @@ npm run preview
 
 ## 遠程對戰（選配）
 
-在專案根目錄建立 `.env`：
-
-```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
-
-並安裝依賴（已含 `@supabase/supabase-js`）。遠程對戰頁面會顯示登入與班級說明。
+- **示範模式**：不設定 API 時，遠程對戰使用本機模擬（班級碼、小組、房間、班級競賽皆可操作）。
+- **使用本專案後端**：
+  1. 安裝並啟動後端：`npm run server:install` 後執行 `npm run server`（預設 http://localhost:3000）。
+  2. 在 `server/` 下複製 `.env.example` 為 `.env`，可設定 `API_KEY=sk-您的金鑰`（選填，供日後後端 AI 功能使用）。
+  3. 前端「設定」→「遠程對戰 API」輸入 `http://localhost:3000` 並儲存，再至遠程對戰頁面使用「示範登入」即可連到後端。
+- **連接其他後端**：在設定頁輸入該後端網址，或於 `.env` 設定 `VITE_API_URL` 後建置。詳見 [docs/API-配置說明.md](docs/API-配置說明.md)。
 
 ## 參考格式
 

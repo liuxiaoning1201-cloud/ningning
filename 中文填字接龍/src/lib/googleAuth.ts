@@ -8,6 +8,11 @@ export function getGoogleClientId(): string {
   return import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 }
 
+/** 是否已設定 Google 登入（未設定時前端不顯示 Google 按鈕，避免點擊報錯） */
+export function isGoogleLoginAvailable(): boolean {
+  return !!getGoogleClientId();
+}
+
 export async function loadGsi(): Promise<void> {
   if (gsiLoaded) return;
   if (typeof document === "undefined") return;
@@ -35,7 +40,7 @@ export async function loadGsi(): Promise<void> {
 export async function signInWithGoogle(): Promise<ApiUser | null> {
   const clientId = getGoogleClientId();
   if (!clientId) {
-    throw new Error("Google Client ID not configured (VITE_GOOGLE_CLIENT_ID)");
+    throw new Error("尚未設定 Google 登入：請在專案根目錄 .env 中加入 VITE_GOOGLE_CLIENT_ID（Google Cloud OAuth 用戶端 ID）。");
   }
 
   await loadGsi();

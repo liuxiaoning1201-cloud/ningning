@@ -5,6 +5,25 @@
     </nav>
     <h1 class="page-title" style="font-family: var(--font-heading)">⚙️ 設定</h1>
 
+    <!-- 遠程對戰 API -->
+    <div class="card settings-card animate-fade-in">
+      <h2 class="section-title">🌐 遠程對戰 API</h2>
+      <p class="section-desc">設定後端 API 網址後，遠程對戰將連接真實伺服器（班級、小組、房間、WebSocket）。<strong>本機開發時可不填</strong>：會自動使用 <code>http://localhost:3000</code>。</p>
+      <div class="api-url-row">
+        <input
+          v-model="apiUrl"
+          type="url"
+          :placeholder="isDev ? '本機開發可不填，自動使用 http://localhost:3000' : '例如 https://your-api.example.com'"
+          class="api-url-input"
+          @keydown.enter="saveApiUrl"
+        />
+        <button type="button" class="btn btn-primary" @click="saveApiUrl">儲存</button>
+      </div>
+      <p v-if="apiUrl" class="api-status">目前：<code>{{ apiUrl }}</code></p>
+      <p v-else class="api-status muted">{{ isDev ? "未手動設定，開發模式自動使用 http://localhost:3000。" : "未設定，使用示範模式（本機資料）。" }}</p>
+      <RouterLink to="/play/remote" class="btn btn-secondary" style="margin-top: 0.5rem; display: inline-block">前往遠程對戰 →</RouterLink>
+    </div>
+
     <!-- Difficulty -->
     <div class="card settings-card animate-fade-in">
       <h2 class="section-title">🎯 遊戲難度</h2>
@@ -147,15 +166,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick } from "vue";
+import { computed, ref, nextTick, onMounted } from "vue";
 import { useGameSessionStore } from "@/stores/gameSession";
 import { useWordBanksStore } from "@/stores/wordBanks";
 import { usePuzzleSetsStore, generateId } from "@/stores/puzzleSets";
 import { parseImportFile } from "@/lib/importExcel";
 import { getAiExplanation } from "@/lib/aiExplain";
+import { getApiUrl, setApiUrl } from "@/lib/api";
 import type { PuzzleSet } from "@/lib/types";
 
 const gameSession = useGameSessionStore();
+const apiUrl = ref("");
+const isDev = import.meta.env.DEV;
+
+onMounted(() => {
+  apiUrl.value = getApiUrl();
+});
+
+function saveApiUrl() {
+  const url = apiUrl.value.trim().replace(/\/$/, "");
+  setApiUrl(url);
+  apiUrl.value = url;
+}
 const wordBanks = useWordBanksStore();
 const puzzleSets = usePuzzleSetsStore();
 
@@ -276,6 +308,43 @@ async function printPuzzle(set: PuzzleSet) {
   color: var(--text-muted);
   font-size: 0.9rem;
   margin-bottom: 0.75rem;
+}
+
+.api-url-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.api-url-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+.api-url-input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.api-status {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.api-status code {
+  background: #f3f4f6;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.api-status.muted {
+  color: var(--text-muted);
 }
 
 .difficulty-selector {
