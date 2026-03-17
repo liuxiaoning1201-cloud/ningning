@@ -15,3 +15,6 @@ dist/
 
 # Wrangler 本地快取
 .wrangler/
+
+# Pages 部署產物
+.pages-deploy/
