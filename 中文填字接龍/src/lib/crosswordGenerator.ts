@@ -134,15 +134,17 @@ export function generateCrosswordPuzzle(
     allItems = shuffled.slice(0, input.wordCount);
   }
 
+  const maxAttempts = allItems.length <= 5 ? 60 : allItems.length <= 10 ? 40 : 25;
   let bestResult: { placed: PlacedWord[]; grid: VirtualGrid; score: number } | null = null;
 
-  for (let attempt = 0; attempt < 20; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const order =
       attempt === 0
         ? [...allItems].sort((a, b) => b.text.trim().length - a.text.trim().length)
         : [...allItems].sort(() => Math.random() - 0.5);
 
-    const result = tryPlace(order);
+    const startDir: "h" | "v" = attempt % 2 === 0 ? "h" : "v";
+    const result = tryPlace(order, startDir);
 
     const bounds = result.grid.getBounds();
     const area =
@@ -150,12 +152,11 @@ export function generateCrosswordPuzzle(
     const w = bounds.maxC - bounds.minC + 1;
     const h = bounds.maxR - bounds.minR + 1;
     const aspectPenalty = Math.abs(w - h) * 5;
-    // 評分：放置數量 × 200 + 交叉數 × 50 − 面積 − 寬高差
-    const score = result.placed.length * 200 + result.totalCrossings * 50 - area - aspectPenalty;
+    const crossingBonus = result.totalCrossings * 80;
+    const score = result.placed.length * 200 + crossingBonus - area - aspectPenalty;
 
     if (!bestResult || score > bestResult.score) {
       bestResult = { ...result, score };
-      if (result.placed.length === allItems.length) break;
     }
   }
 
@@ -171,7 +172,7 @@ export function generateCrosswordPuzzle(
   return buildPuzzle(bestResult.placed, bestResult.grid, tier);
 }
 
-function tryPlace(itemsInOrder: WordBankItem[]): {
+function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
   placed: PlacedWord[];
   grid: VirtualGrid;
   totalCrossings: number;
@@ -180,7 +181,6 @@ function tryPlace(itemsInOrder: WordBankItem[]): {
   const placed: PlacedWord[] = [];
   let totalCrossings = 0;
 
-  // 建立字元索引，加速查找
   const charIndex = new Map<string, { pw: PlacedWord; pi: number }[]>();
   function addToIndex(pw: PlacedWord) {
     for (let pi = 0; pi < pw.word.length; pi++) {
@@ -192,8 +192,8 @@ function tryPlace(itemsInOrder: WordBankItem[]): {
 
   const first = itemsInOrder[0];
   const firstWord = first.text.trim();
-  const firstPw = { word: firstWord, dir: "h" as const, r: 0, c: 0, item: first };
-  grid.place(firstWord, 0, 0, "h");
+  const firstPw = { word: firstWord, dir: startDir, r: 0, c: 0, item: first };
+  grid.place(firstWord, 0, 0, startDir);
   placed.push(firstPw);
   addToIndex(firstPw);
 
@@ -293,29 +293,84 @@ function tryPlace(itemsInOrder: WordBankItem[]): {
   return { placed, grid, totalCrossings };
 }
 
-/** 未能交叉的詞句：橫向排列在底部，每行盡量排多個 */
+/** 未能交叉的詞句：再嘗試一輪交叉放置，實在放不下才橫排底部 */
 function addUnplacedWords(
   grid: VirtualGrid,
   placed: PlacedWord[],
   unplaced: WordBankItem[]
 ) {
-  const bounds = grid.getBounds();
-  const gridWidth = bounds.maxC - bounds.minC + 1;
-  const targetWidth = Math.max(gridWidth, 15);
+  const charIndex = new Map<string, { pw: PlacedWord; pi: number }[]>();
+  for (const pw of placed) {
+    for (let pi = 0; pi < pw.word.length; pi++) {
+      const ch = pw.word[pi];
+      if (!charIndex.has(ch)) charIndex.set(ch, []);
+      charIndex.get(ch)!.push({ pw, pi });
+    }
+  }
 
-  let curR = bounds.maxR + 2;
-  let curC = bounds.minC;
+  const stillUnplaced: WordBankItem[] = [];
 
   for (const item of unplaced) {
     const word = item.text.trim();
     if (word.length === 0) continue;
 
-    // 超過行寬就換行
+    let best: { r: number; c: number; dir: "h" | "v"; crossings: number } | null = null;
+    for (let wi = 0; wi < word.length; wi++) {
+      const entries = charIndex.get(word[wi]);
+      if (!entries) continue;
+      for (const { pw, pi } of entries) {
+        for (const newDir of (["h", "v"] as const)) {
+          let newR: number, newC: number;
+          if (newDir === "v") {
+            newR = pw.dir === "h" ? pw.r - wi : pw.r + pi - wi;
+            newC = pw.dir === "h" ? pw.c + pi : pw.c;
+          } else {
+            newR = pw.dir === "v" ? pw.r + pi : pw.r;
+            newC = pw.dir === "v" ? pw.c - wi : pw.c + pi - wi;
+          }
+          if (!grid.canPlace(word, newR, newC, newDir)) continue;
+          let crossings = 0;
+          for (let k = 0; k < word.length; k++) {
+            const cr = newDir === "h" ? newR : newR + k;
+            const cc = newDir === "h" ? newC + k : newC;
+            if (grid.get(cr, cc) === word[k]) crossings++;
+          }
+          if (!best || crossings > best.crossings) {
+            best = { r: newR, c: newC, dir: newDir, crossings };
+          }
+        }
+      }
+    }
+
+    if (best) {
+      grid.place(word, best.r, best.c, best.dir);
+      const pw = { word, dir: best.dir, r: best.r, c: best.c, item };
+      placed.push(pw);
+      for (let pi = 0; pi < word.length; pi++) {
+        const ch = word[pi];
+        if (!charIndex.has(ch)) charIndex.set(ch, []);
+        charIndex.get(ch)!.push({ pw, pi });
+      }
+    } else {
+      stillUnplaced.push(item);
+    }
+  }
+
+  if (stillUnplaced.length === 0) return;
+
+  const bounds = grid.getBounds();
+  const gridWidth = bounds.maxC - bounds.minC + 1;
+  const targetWidth = Math.max(gridWidth, 15);
+  let curR = bounds.maxR + 2;
+  let curC = bounds.minC;
+
+  for (const item of stillUnplaced) {
+    const word = item.text.trim();
+    if (word.length === 0) continue;
     if (curC - bounds.minC + word.length > targetWidth) {
       curR += 2;
       curC = bounds.minC;
     }
-
     grid.forcePlace(word, curR, curC, "h");
     placed.push({ word, dir: "h", r: curR, c: curC, item });
     curC += word.length + 1;

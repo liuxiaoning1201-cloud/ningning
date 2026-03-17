@@ -5,22 +5,25 @@
     </nav>
     <h1 class="page-title" style="font-family: var(--font-heading, 'LXGW WenKai TC', cursive)">🌐 遠程對戰</h1>
 
-    <!-- 無 API：示範模式 -->
-    <div v-if="!isOnline" class="card notice animate-fade-in">
-      <h3>📡 示範模式（無需伺服器）</h3>
-      <p class="muted">未設定 API URL 時使用本機模擬，可體驗班級碼、小組合作與班級競賽流程。</p>
-      <div class="api-config" style="margin-top: 0.75rem">
-        <input v-model="apiUrlInput" type="text" placeholder="或輸入 API URL 連接真實後端" class="input-field" />
-        <button class="btn btn-primary" @click="saveApiUrl">連接</button>
+    <!-- 後端設定（未登入時可設定，以便收集學生數據） -->
+    <div v-if="!currentUser" class="card notice animate-fade-in">
+      <h3>📡 後端連線</h3>
+      <p class="muted">設定後端 API 網址後，學生登入與作答數據會傳送到伺服器。</p>
+      <div class="api-config" style="margin-top: 0.5rem">
+        <input v-model="apiUrlInput" type="url" placeholder="例如 https://your-api.example.com" class="input-field" />
+        <button type="button" class="btn btn-primary" @click="saveApiUrl">儲存</button>
       </div>
-      <RouterLink to="/settings" class="btn btn-secondary" style="margin-top: 0.5rem">前往設定 →</RouterLink>
+      <p v-if="isOnline" class="muted" style="margin-top: 0.35rem; font-size: 0.85rem">目前：<code>{{ apiUrlDisplay }}</code></p>
     </div>
 
     <!-- 未登入 -->
     <template v-if="!currentUser">
       <div class="card auth-card animate-fade-in">
         <h3>🔐 登入</h3>
-        <p class="muted">輸入顯示名稱與電郵（學生請使用 <code>xxxxxxx@student.isf.edu.hk</code>）</p>
+        <p class="muted">一鍵進入示範帳號；或輸入名稱與電郵後進入（有後端時數據會上傳）。</p>
+        <button type="button" class="btn btn-primary" style="margin-bottom: 0.75rem" :disabled="signingIn" @click="oneClickDemoEnter">
+          {{ signingIn ? "登入中..." : "一鍵進入（示範）" }}
+        </button>
         <div class="demo-form">
           <input v-model="demoName" type="text" placeholder="顯示名稱" class="input-field" />
           <input v-model="demoEmail" type="email" placeholder="電郵" class="input-field" />
@@ -28,8 +31,8 @@
             {{ signingIn ? "登入中..." : "進入" }}
           </button>
         </div>
-        <p v-if="isGoogleLoginAvailable()" class="muted" style="margin-top: 0.5rem">或使用 Google 登入（{{ isOnline ? '需後端支援' : '請先設定後端 API 網址' }}）：</p>
-        <button v-if="isGoogleLoginAvailable()" class="btn btn-secondary" style="margin-top: 0.35rem" :disabled="signingIn" @click="handleGoogleSignIn">
+        <p v-if="isGoogleLoginAvailable() && isOnline" class="muted" style="margin-top: 0.5rem">或使用 Google 登入（需後端支援）：</p>
+        <button v-if="isGoogleLoginAvailable() && isOnline" class="btn btn-secondary" style="margin-top: 0.35rem" :disabled="signingIn" @click="handleGoogleSignIn">
           🔑 Google 登入
         </button>
         <p v-if="authError" class="error-text">{{ authError }}</p>
@@ -151,6 +154,7 @@ const backend = useRemoteBackendStore();
 
 const isOnline = computed(() => isOnlineMode());
 const apiUrlInput = ref(getApiUrl());
+const apiUrlDisplay = computed(() => getApiUrl() || "未設定（本機示範）");
 const currentUser = ref<ApiUser | null>(getSavedUser());
 const signingIn = ref(false);
 const authError = ref("");
@@ -209,7 +213,8 @@ async function loadApiData() {
 watch(currentUser, () => loadApiData(), { immediate: true });
 
 onMounted(() => {
-  signingIn.value = false; // 進入頁面時清除可能卡住的「登入中」狀態
+  signingIn.value = false;
+  apiUrlInput.value = getApiUrl();
   loadApiData();
 });
 
@@ -218,7 +223,45 @@ function saveApiUrl() {
   if (url) setApiUrl(url);
 }
 
-const DEMO_LOGIN_TIMEOUT_MS = 8000; // 8 秒逾時，並用 AbortController 中止請求，避免一直卡在「登入中」
+/** 一鍵進入示範帳號：有後端則呼叫後端（可收集數據），失敗或無後端則本機登入 */
+async function oneClickDemoEnter() {
+  authError.value = "";
+  signingIn.value = true;
+  const demoUser: ApiUser = {
+    id: "demo",
+    displayName: "示範學生",
+    email: "demo@student.isf.edu.hk",
+  };
+  try {
+    if (isRemoteApiAvailable()) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), DEMO_LOGIN_TIMEOUT_MS);
+      try {
+        const result = await authDemo(demoUser.displayName, demoUser.email, controller.signal);
+        clearTimeout(timeoutId);
+        setJwt(result.token);
+        saveUser(result.user);
+        currentUser.value = result.user;
+      } catch (e) {
+        clearTimeout(timeoutId);
+        if (e instanceof Error && e.name === "AbortError") {
+          authError.value = "後端連線逾時，已改為本機示範登入。";
+          saveUser(demoUser);
+          currentUser.value = demoUser;
+        } else {
+          authError.value = e instanceof Error ? e.message : "登入失敗";
+        }
+      }
+    } else {
+      saveUser(demoUser);
+      currentUser.value = demoUser;
+    }
+  } finally {
+    signingIn.value = false;
+  }
+}
+
+const DEMO_LOGIN_TIMEOUT_MS = 6000;
 
 async function handleDemoLogin() {
   authError.value = "";
@@ -226,29 +269,32 @@ async function handleDemoLogin() {
   const email = demoEmail.value.trim();
   if (!name || !email) return;
   signingIn.value = true;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), DEMO_LOGIN_TIMEOUT_MS);
   try {
     if (isRemoteApiAvailable()) {
-      const result = await authDemo(name, email, controller.signal);
-      setJwt(result.token);
-      saveUser(result.user);
-      currentUser.value = result.user;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), DEMO_LOGIN_TIMEOUT_MS);
+      try {
+        const result = await authDemo(name, email, controller.signal);
+        clearTimeout(timeoutId);
+        setJwt(result.token);
+        saveUser(result.user);
+        currentUser.value = result.user;
+      } catch (e) {
+        clearTimeout(timeoutId);
+        if (e instanceof Error) {
+          authError.value = e.name === "AbortError"
+            ? "登入逾時，請檢查後端是否已啟動，或重新整理後使用「一鍵進入（示範）」"
+            : e.message;
+        } else {
+          authError.value = "登入失敗";
+        }
+      }
     } else {
       const user: ApiUser = { id: email, email, displayName: name };
       saveUser(user);
       currentUser.value = user;
     }
-  } catch (e) {
-    if (e instanceof Error) {
-      authError.value = e.name === "AbortError"
-        ? "連線逾時，請確認後端已啟動（在專案目錄執行 npm run server）"
-        : e.message;
-    } else {
-      authError.value = "登入失敗";
-    }
   } finally {
-    clearTimeout(timeoutId);
     signingIn.value = false;
   }
 }
@@ -331,6 +377,7 @@ watch(currentUser, (u) => {
 .notice p { margin-bottom: 0.5rem; }
 
 .api-config, .join-form, .demo-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
+.api-config .input-field { flex: 1; min-width: 200px; }
 .input-field { flex: 1; min-width: 160px; padding: 0.6rem 0.75rem; border: 2px solid var(--border, #F0E6D8); border-radius: 12px; font-size: 0.95rem; }
 .input-field:focus { border-color: var(--primary, #FF6B8A); outline: none; }
 

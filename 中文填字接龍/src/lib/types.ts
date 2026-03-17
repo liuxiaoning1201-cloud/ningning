@@ -43,12 +43,17 @@ export interface CrosswordPuzzle {
   levelTitle: string;
 }
 
+/** 題組來源：練習模式隨機出題 | 設定頁手動出題 */
+export type PuzzleSetSource = "practice" | "manual";
+
 /** 題組（可含多題填字或數獨） */
 export interface PuzzleSet {
   id: string;
   title: string;
   type: "crossword" | "sudoku";
   createdAt: string;
+  /** 練習模式出題 vs 手動出題，用於區分顯示位置 */
+  source?: PuzzleSetSource;
   crossword?: CrosswordPuzzle;
   /** 數獨沿用舊格式，可選保留 */
   sudoku?: {

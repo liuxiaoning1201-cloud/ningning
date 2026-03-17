@@ -5,59 +5,8 @@
     </nav>
     <h1 class="page-title" style="font-family: var(--font-heading)">⚙️ 設定</h1>
 
-    <!-- 遠程對戰 API -->
-    <div class="card settings-card animate-fade-in">
-      <h2 class="section-title">🌐 遠程對戰 API</h2>
-      <p class="section-desc">設定後端 API 網址後，遠程對戰將連接真實伺服器（班級、小組、房間、WebSocket）。<strong>本機開發時可不填</strong>：會自動使用 <code>http://localhost:3000</code>。</p>
-      <div class="api-url-row">
-        <input
-          v-model="apiUrl"
-          type="url"
-          :placeholder="isDev ? '本機開發可不填，自動使用 http://localhost:3000' : '例如 https://your-api.example.com'"
-          class="api-url-input"
-          @keydown.enter="saveApiUrl"
-        />
-        <button type="button" class="btn btn-primary" @click="saveApiUrl">儲存</button>
-      </div>
-      <p v-if="apiUrl" class="api-status">目前：<code>{{ apiUrl }}</code></p>
-      <p v-else class="api-status muted">{{ isDev ? "未手動設定，開發模式自動使用 http://localhost:3000。" : "未設定，使用示範模式（本機資料）。" }}</p>
-      <RouterLink to="/play/remote" class="btn btn-secondary" style="margin-top: 0.5rem; display: inline-block">前往遠程對戰 →</RouterLink>
-    </div>
-
-    <!-- Difficulty -->
-    <div class="card settings-card animate-fade-in">
-      <h2 class="section-title">🎯 遊戲難度</h2>
-      <p class="section-desc">選擇遊戲難度，影響填字格子大小與提示字比例。</p>
-      <div class="difficulty-selector">
-        <button
-          v-for="d in 5"
-          :key="d"
-          class="star-btn"
-          :class="{ active: gameSession.settings.difficulty >= d }"
-          @click="setDifficulty(d)"
-        >
-          {{ gameSession.settings.difficulty >= d ? '★' : '☆' }}
-        </button>
-        <span class="difficulty-label">{{ difficultyLabel }}</span>
-      </div>
-    </div>
-
-    <!-- Hints -->
-    <div class="card settings-card animate-fade-in" style="animation-delay: 0.1s">
-      <h2 class="section-title">💡 提示設定</h2>
-      <label class="toggle-label">
-        <input
-          type="checkbox"
-          :checked="gameSession.settings.showHints"
-          @change="toggleHints"
-        />
-        <span>{{ gameSession.settings.showHints ? '顯示提示（開啟）' : '隱藏提示（關閉）' }}</span>
-      </label>
-      <p class="section-desc">開啟後，遊戲中將顯示橫向與豎向的詞語提示。</p>
-    </div>
-
     <!-- Word banks -->
-    <div class="card settings-card animate-fade-in" style="animation-delay: 0.2s">
+    <div class="card settings-card animate-fade-in">
       <h2 class="section-title">📚 詞庫管理</h2>
       <p class="section-desc">管理詞句庫，支援 TXT、CSV 和 Excel 格式匯入。</p>
       <div class="bank-actions">
@@ -95,26 +44,26 @@
       </ul>
     </div>
 
-    <!-- Puzzle sets (inline management) -->
-    <div class="card settings-card animate-fade-in" style="animation-delay: 0.3s">
+    <!-- 題組管理：練習模式題組在練習模式頁；設定頁僅手動出題 -->
+    <div class="card settings-card animate-fade-in">
       <h2 class="section-title">🧩 題組管理</h2>
-      <p class="section-desc">管理已儲存的填字題組。</p>
+      <p class="section-desc">練習模式產生的題組請至 <RouterLink to="/play">練習模式</RouterLink> 查看。以下為手動出題的填字題。</p>
       <div class="bank-actions">
-        <RouterLink to="/settings/puzzles/crossword/new" class="btn btn-primary">➕ 新建填字題</RouterLink>
+        <RouterLink to="/settings/puzzles/crossword/new" class="btn btn-primary">➕ 新建填字題（手動出題）</RouterLink>
       </div>
-      <div v-if="puzzleSets.sets.length === 0" class="empty-state">
-        尚無題組。
+      <div v-if="manualSets.length === 0" class="empty-state">
+        尚無手動出題的題組。
       </div>
       <ul v-else class="bank-list">
-        <li v-for="set in puzzleSets.sets" :key="set.id" class="bank-item">
+        <li v-for="set in manualSets" :key="set.id" class="bank-item">
           <div class="bank-info">
             <strong>{{ set.title }}</strong>
-            <span class="badge">{{ set.type === 'crossword' ? '填字' : '數獨' }}</span>
+            <span class="badge">填字</span>
           </div>
           <div class="bank-actions-inline">
-            <RouterLink v-if="set.type === 'crossword'" :to="`/settings/puzzles/crossword/${set.id}`" class="btn-icon" title="編輯">✏️</RouterLink>
-            <RouterLink v-if="set.type === 'crossword'" :to="`/play/crossword/${set.id}`" class="btn-icon" title="預覽">👁️</RouterLink>
-            <button v-if="set.type === 'crossword' && set.crossword" type="button" class="btn-icon" title="列印 PDF" @click="printPuzzle(set)">🖨️</button>
+            <RouterLink :to="`/settings/puzzles/crossword/${set.id}`" class="btn-icon" title="編輯">✏️</RouterLink>
+            <RouterLink :to="`/play/crossword/${set.id}`" class="btn-icon" title="預覽">👁️</RouterLink>
+            <button v-if="set.crossword" type="button" class="btn-icon" title="列印" @click="printPuzzle(set)">🖨️</button>
             <button type="button" class="btn-icon danger" title="刪除" @click="removeSet(set.id)">🗑️</button>
           </div>
         </li>
@@ -166,55 +115,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick, onMounted } from "vue";
-import { useGameSessionStore } from "@/stores/gameSession";
+import { computed, ref, nextTick } from "vue";
 import { useWordBanksStore } from "@/stores/wordBanks";
 import { usePuzzleSetsStore, generateId } from "@/stores/puzzleSets";
 import { parseImportFile } from "@/lib/importExcel";
 import { getAiExplanation } from "@/lib/aiExplain";
-import { getApiUrl, setApiUrl } from "@/lib/api";
 import type { PuzzleSet } from "@/lib/types";
 
-const gameSession = useGameSessionStore();
-const apiUrl = ref("");
-const isDev = import.meta.env.DEV;
-
-onMounted(() => {
-  apiUrl.value = getApiUrl();
-});
-
-function saveApiUrl() {
-  const url = apiUrl.value.trim().replace(/\/$/, "");
-  setApiUrl(url);
-  apiUrl.value = url;
-}
 const wordBanks = useWordBanksStore();
 const puzzleSets = usePuzzleSetsStore();
 
 const aiProgress = ref("");
 const printingSet = ref<PuzzleSet | null>(null);
 
-const difficultyLabels: Record<number, string> = {
-  1: "1 星 · 入門（提示多）",
-  2: "2 星 · 初學",
-  3: "3 星 · 中等",
-  4: "4 星 · 挑戰",
-  5: "5 星 · 大師（提示少）",
-};
-
-const difficultyLabel = computed(() => {
-  const d = gameSession.settings.difficulty;
-  return difficultyLabels[d] ?? `${d} 星`;
-});
-
-function setDifficulty(d: number) {
-  gameSession.setSettings({ difficulty: d });
-}
-
-function toggleHints(e: Event) {
-  const checked = (e.target as HTMLInputElement).checked;
-  gameSession.setSettings({ showHints: checked });
-}
+/** 僅手動出題的題組（練習模式題組在 /play 顯示） */
+const manualSets = computed(() =>
+  puzzleSets.sets.filter((s) => s.type === "crossword" && s.source === "manual")
+);
 
 function deleteBank(id: string) {
   if (!confirm("確定要刪除這個詞句庫嗎？")) return;
@@ -310,91 +227,6 @@ async function printPuzzle(set: PuzzleSet) {
   margin-bottom: 0.75rem;
 }
 
-.api-url-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.api-url-input {
-  flex: 1;
-  min-width: 200px;
-  padding: 0.5rem 0.75rem;
-  border: 2px solid var(--border);
-  border-radius: 10px;
-  font-size: 0.95rem;
-}
-
-.api-url-input:focus {
-  border-color: var(--primary);
-  outline: none;
-}
-
-.api-status {
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-}
-
-.api-status code {
-  background: #f3f4f6;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  word-break: break-all;
-}
-
-.api-status.muted {
-  color: var(--text-muted);
-}
-
-.difficulty-selector {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.star-btn {
-  background: none;
-  border: none;
-  font-size: 1.8rem;
-  cursor: pointer;
-  color: #d1d5db;
-  transition: color 0.15s, transform 0.15s;
-  padding: 0;
-  line-height: 1;
-}
-
-.star-btn.active {
-  color: #f59e0b;
-}
-
-.star-btn:hover {
-  transform: scale(1.2);
-}
-
-.difficulty-label {
-  margin-left: 0.75rem;
-  font-size: 0.95rem;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-
-.toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.toggle-label input[type="checkbox"] {
-  width: 1.2rem;
-  height: 1.2rem;
-  accent-color: var(--primary);
-  cursor: pointer;
-}
-
 .bank-actions {
   display: flex;
   gap: 0.5rem;
@@ -475,23 +307,23 @@ async function printPuzzle(set: PuzzleSet) {
   color: #92400E;
 }
 
-/* ── Print styles：左右排列，所有題目在一面內 ── */
+/* ── 列印：一頁內、彩色 ── */
 .print-area {
   display: none;
 }
 
 .print-title {
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 700;
   text-align: center;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.15rem;
 }
 
 .print-subtitle {
   text-align: center;
-  color: #666;
-  font-size: 0.85rem;
-  margin-bottom: 0.75rem;
+  color: #444;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
 }
 
 .print-body {
@@ -499,7 +331,7 @@ async function printPuzzle(set: PuzzleSet) {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 1.25rem;
+  gap: 1rem;
   max-width: 100%;
 }
 
@@ -508,39 +340,47 @@ async function printPuzzle(set: PuzzleSet) {
   gap: 0;
   flex-shrink: 0;
   width: fit-content;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .print-cell {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 700;
   border: 1px solid #333;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .print-block {
   background: #ddd;
-  border-color: #ddd;
+  border-color: #bbb;
 }
 
 .print-given {
-  background: #f0f0f0;
+  background: #dbeafe;
+  color: #1e40af;
 }
 
 .print-blank {
-  background: white;
+  background: #fff;
+  border: 1px dashed #999;
 }
 
 .print-clues {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   flex: 1;
   min-width: 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .print-clue-section {
@@ -553,7 +393,7 @@ async function printPuzzle(set: PuzzleSet) {
 }
 
 .print-clue-section li {
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.1rem;
 }
 
 @media print {
@@ -571,25 +411,31 @@ async function printPuzzle(set: PuzzleSet) {
     left: 0;
     width: 100%;
     height: 100%;
-    padding: 1rem 1.2cm;
+    padding: 0.8rem 1cm;
     background: white;
     z-index: 99999;
     overflow: hidden;
     page-break-inside: avoid;
     box-sizing: border-box;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .print-area .print-body {
     max-height: 100%;
     overflow: hidden;
+    page-break-inside: avoid;
   }
-  .print-title { font-size: 1.2rem; margin-bottom: 0.15rem; }
-  .print-subtitle { font-size: 0.8rem; margin-bottom: 0.5rem; }
+  .print-title { font-size: 1.1rem; margin-bottom: 0.1rem; }
+  .print-subtitle { font-size: 0.75rem; margin-bottom: 0.4rem; }
   .print-cell {
-    width: 1.35rem;
-    height: 1.35rem;
-    font-size: 0.7rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    font-size: 0.6rem;
   }
-  .print-clues { font-size: 0.7rem; }
-  .print-clue-section li { margin-bottom: 0.1rem; }
+  .print-block { background: #ddd !important; }
+  .print-given { background: #dbeafe !important; color: #1e40af !important; }
+  .print-blank { background: #fff !important; }
+  .print-clues { font-size: 0.65rem; }
+  .print-clue-section li { margin-bottom: 0.08rem; }
 }
 </style>

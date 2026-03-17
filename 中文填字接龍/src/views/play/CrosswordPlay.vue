@@ -31,8 +31,9 @@
                 class="cell given"
                 :class="cellResultClass(r, c)"
               >
-                <span v-if="cellIndicators[cellKey(r, c)]" class="cell-indicator" :class="cellIndicators[cellKey(r, c)].isH ? 'ind-h' : 'ind-v'">
-                  {{ cellIndicators[cellKey(r, c)].label }}<span class="ind-arrow">{{ cellIndicators[cellKey(r, c)].isH ? '→' : '↓' }}</span>
+                <span v-if="cellIndicators[cellKey(r, c)]" class="cell-indicator-wrap">
+                  <span v-if="cellIndicators[cellKey(r, c)].hLabel" class="cell-indicator ind-h">{{ cellIndicators[cellKey(r, c)].hLabel }}<span class="ind-arrow">→</span></span>
+                  <span v-if="cellIndicators[cellKey(r, c)].vLabel" class="cell-indicator ind-v">{{ cellIndicators[cellKey(r, c)].vLabel }}<span class="ind-arrow">↓</span></span>
                 </span>
                 {{ cell.value }}
               </span>
@@ -41,8 +42,9 @@
                 class="cell blank"
                 :class="cellResultClass(r, c)"
               >
-                <span v-if="cellIndicators[cellKey(r, c)]" class="cell-indicator" :class="cellIndicators[cellKey(r, c)].isH ? 'ind-h' : 'ind-v'">
-                  {{ cellIndicators[cellKey(r, c)].label }}<span class="ind-arrow">{{ cellIndicators[cellKey(r, c)].isH ? '→' : '↓' }}</span>
+                <span v-if="cellIndicators[cellKey(r, c)]" class="cell-indicator-wrap">
+                  <span v-if="cellIndicators[cellKey(r, c)].hLabel" class="cell-indicator ind-h">{{ cellIndicators[cellKey(r, c)].hLabel }}<span class="ind-arrow">→</span></span>
+                  <span v-if="cellIndicators[cellKey(r, c)].vLabel" class="cell-indicator ind-v">{{ cellIndicators[cellKey(r, c)].vLabel }}<span class="ind-arrow">↓</span></span>
                 </span>
                 <input
                   :ref="(el) => setInputRef(r, c, el)"
@@ -162,11 +164,11 @@ const gridStyle = computed(() => ({
   gridTemplateRows: `repeat(${gridRows.value}, 1fr)`,
 }));
 
-// Cell indicator map
+// Cell indicator：橫向藍色大寫數字+→，豎向紅色小寫數字+↓；交叉格兩者都標
 const cellIndicators = computed(() => {
   const p = puzzle.value;
-  if (!p) return {} as Record<string, { label: string; isH: boolean }>;
-  const map: Record<string, { label: string; isH: boolean }> = {};
+  if (!p) return {} as Record<string, { hLabel?: string; vLabel?: string }>;
+  const map: Record<string, { hLabel?: string; vLabel?: string }> = {};
   const hClueMap = new Map<string, string>();
   for (const h of p.horizontalClues) hClueMap.set(h.id, h.label);
   const vClueMap = new Map<string, string>();
@@ -174,15 +176,11 @@ const cellIndicators = computed(() => {
 
   for (const w of p.words) {
     const key = cellKey(w.startRow, w.startCol);
-    const label = w.direction === "horizontal"
-      ? (hClueMap.get(w.id) ?? "")
-      : (vClueMap.get(w.id) ?? "");
-    const isH = w.direction === "horizontal";
-    const entry = { label, isH };
-    if (map[key]) {
-      map[key] = { label: map[key].label + " " + label, isH: map[key].isH };
+    const cur = map[key] ?? {};
+    if (w.direction === "horizontal") {
+      map[key] = { ...cur, hLabel: hClueMap.get(w.id) ?? cur.hLabel };
     } else {
-      map[key] = entry;
+      map[key] = { ...cur, vLabel: vClueMap.get(w.id) ?? cur.vLabel };
     }
   }
   return map;
@@ -495,14 +493,15 @@ onUnmounted(() => { inputRefs.value.clear(); stopTimer(); });
 .cell {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
   border-radius: 2px;
   border: 1px solid var(--border);
   overflow: hidden;
-  font-size: clamp(0.55rem, 1.8vmin, 1.1rem);
+  font-size: clamp(0.7rem, 2.2vmin, 1.3rem);
   line-height: 1;
+  padding-bottom: 1px;
 }
 
 .cell.block {
@@ -516,32 +515,39 @@ onUnmounted(() => { inputRefs.value.clear(); stopTimer(); });
 
 .cell.given {
   background: #DBEAFE;
-  color: var(--text);
+  color: #1a1a1a;
 }
 
 .cell.blank {
   background: #FFFFFF;
-  border: 1px dashed #E5D5C3;
+  border: 1px dashed #ccc;
 }
 
-.cell-indicator {
+.cell-indicator-wrap {
   position: absolute;
   top: 0;
   left: 1px;
-  font-size: clamp(0.35rem, 0.9vmin, 0.55rem);
-  font-weight: 700;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0 1px;
   line-height: 1;
   pointer-events: none;
+  z-index: 2;
+}
+.cell-indicator {
+  font-size: clamp(0.28rem, 0.7vmin, 0.42rem);
+  font-weight: 600;
   white-space: nowrap;
+  opacity: 0.85;
 }
 .cell-indicator.ind-h {
-  color: #2563eb;
+  color: #3b82f6;
 }
 .cell-indicator.ind-v {
-  color: #dc2626;
+  color: #ef4444;
 }
 .ind-arrow {
-  font-size: 0.9em;
+  font-size: 0.85em;
 }
 
 .cell-input {
