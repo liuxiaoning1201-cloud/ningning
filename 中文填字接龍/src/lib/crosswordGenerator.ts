@@ -134,7 +134,8 @@ export function generateCrosswordPuzzle(
     allItems = shuffled.slice(0, input.wordCount);
   }
 
-  const maxAttempts = allItems.length <= 5 ? 60 : allItems.length <= 10 ? 40 : 25;
+  // 增加嘗試次數，在保證正確的前提下選出縱橫交錯最多的佈局
+  const maxAttempts = allItems.length <= 5 ? 100 : allItems.length <= 10 ? 70 : 50;
   let bestResult: { placed: PlacedWord[]; grid: VirtualGrid; score: number } | null = null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -152,7 +153,8 @@ export function generateCrosswordPuzzle(
     const w = bounds.maxC - bounds.minC + 1;
     const h = bounds.maxR - bounds.minR + 1;
     const aspectPenalty = Math.abs(w - h) * 5;
-    const crossingBonus = result.totalCrossings * 80;
+    // 縱橫交錯權重提高，優先選交叉次數最多的結果
+    const crossingBonus = result.totalCrossings * 150;
     const score = result.placed.length * 200 + crossingBonus - area - aspectPenalty;
 
     if (!bestResult || score > bestResult.score) {
@@ -197,9 +199,9 @@ function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
   placed.push(firstPw);
   addToIndex(firstPw);
 
-  // 多輪嘗試：未放置的詞每輪再試
+  // 多輪嘗試：未放置的詞每輪再試，增加輪數以爭取更多縱橫交叉
   const remaining = itemsInOrder.slice(1).map((it) => it);
-  for (let round = 0; round < 3; round++) {
+  for (let round = 0; round < 5; round++) {
     const stillRemaining: WordBankItem[] = [];
     for (const item of remaining) {
       const word = item.text.trim();
@@ -281,7 +283,7 @@ function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
         placed.push(pw);
         addToIndex(pw);
         totalCrossings += bestCandidate.crossings;
-      } else if (round < 2) {
+      } else if (round < 4) {
         stillRemaining.push(item);
       }
     }

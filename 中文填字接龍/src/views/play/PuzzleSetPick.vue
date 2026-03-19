@@ -41,6 +41,7 @@
           顯示提示
         </label>
         <button type="button" class="btn btn-primary" :disabled="!autoBankId" @click="autoGenerate">隨機出題</button>
+        <button type="button" class="btn btn-secondary" :disabled="!autoBankId || selectedItemIds.size === 0" title="僅使用上方勾選的詞句出題" @click="generateFromSelected">用所選句子出題</button>
       </div>
 
       <!-- Word selection checkboxes -->
@@ -157,6 +158,43 @@ function autoGenerate() {
   const set = {
     id: generateId(),
     title: `隨機出題 · ${puzzle.levelTitle}`,
+    type: "crossword" as const,
+    createdAt: new Date().toISOString(),
+    source: "practice" as const,
+    crossword: puzzle,
+  };
+  puzzleSets.addSet(set);
+  router.push(`/play/crossword/${set.id}`);
+}
+
+/** 僅用勾選的詞句出題（不隨機抽數量，全部選中的句子都放入，並盡量縱橫交錯） */
+function generateFromSelected() {
+  const bank = wordBanks.banks.find((b) => b.id === autoBankId.value);
+  if (!bank || bank.items.length === 0) {
+    alert("請選擇有詞條的詞句庫");
+    return;
+  }
+  if (selectedItemIds.value.size === 0) {
+    alert("請先勾選要使用的詞句");
+    return;
+  }
+  const itemsToUse = bank.items.filter((it) => selectedItemIds.value.has(it.id));
+  if (itemsToUse.length === 0) {
+    alert("請至少勾選一個詞句");
+    return;
+  }
+  const puzzle = generateCrosswordPuzzle({
+    items: itemsToUse,
+    tier: autoTier.value,
+    wordCount: undefined,
+  });
+  if (!puzzle) {
+    alert("無法產生填字題，請確認所選詞句有可交叉的字。");
+    return;
+  }
+  const set = {
+    id: generateId(),
+    title: `所選出題 · ${puzzle.levelTitle}`,
     type: "crossword" as const,
     createdAt: new Date().toISOString(),
     source: "practice" as const,

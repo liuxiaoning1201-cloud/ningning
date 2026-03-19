@@ -10,24 +10,42 @@ import { execSync } from 'child_process';
 const ROOT = join(process.cwd());
 const OUT = join(ROOT, '.pages-deploy');
 
-// 建置中文填字接龍（Vite SPA，base 為 /中文填字接龍/）
+// 建置中文填字接龍（Vite SPA，base 用英文路徑 /crossword/ 避免 Cloudflare Pages 中文路徑問題）
 const WORD_PUZZLE_DIR = join(ROOT, '中文填字接龍');
+const PUZZLE_BASE_PATH = '/crossword/';
+let wordPuzzleBuilt = false;
 try {
   console.log('Building 中文填字接龍...');
   execSync('npm run build', {
     cwd: WORD_PUZZLE_DIR,
-    env: { ...process.env, VITE_BASE_PATH: '/中文填字接龍/' },
+    env: { ...process.env, VITE_BASE_PATH: PUZZLE_BASE_PATH },
     stdio: 'inherit',
   });
+  wordPuzzleBuilt = true;
 } catch (e) {
-  console.error('中文填字接龍 build failed:', e.message);
-  process.exit(1);
+  console.warn('中文填字接龍 build skipped:', e.message);
+}
+
+// 建置班級守護隊
+const CLASS_GUARDIAN_DIR = join(ROOT, '班級守護隊');
+let classGuardianBuilt = false;
+try {
+  console.log('Building 班級守護隊...');
+  execSync('npm run build', {
+    cwd: CLASS_GUARDIAN_DIR,
+    env: { ...process.env, VITE_BASE_PATH: '/班級守護隊/' },
+    stdio: 'inherit',
+  });
+  classGuardianBuilt = true;
+} catch (e) {
+  console.warn('班級守護隊 build skipped:', e.message);
 }
 
 // 要部署的項目（與 index.html 連結一致）
 // 若需包含詩友記（poetpal，約 336MB），請設環境變數 INCLUDE_POETPAL=1
 const COPY = [
   'index.html',
+  '404.html',
   '字詞地鼠戰',
   '手勢點名',
   '春江花月夜',
@@ -44,10 +62,20 @@ for (const name of COPY) {
   console.log('  +', name);
 }
 
-// 複製中文填字接龍建置結果（dist → 中文填字接龍）
-const puzzleDist = join(WORD_PUZZLE_DIR, 'dist');
-const puzzleOut = join(OUT, '中文填字接龍');
-cpSync(puzzleDist, puzzleOut, { recursive: true });
-console.log('  + 中文填字接龍 (built)');
+// 複製中文填字接龍建置結果（dist → crossword）
+if (wordPuzzleBuilt) {
+  const puzzleDist = join(WORD_PUZZLE_DIR, 'dist');
+  const puzzleOut = join(OUT, 'crossword');
+  cpSync(puzzleDist, puzzleOut, { recursive: true });
+  console.log('  + crossword (中文填字接龍, built)');
+}
+
+// 複製班級守護隊建置結果（dist → 班級守護隊）
+if (classGuardianBuilt) {
+  const guardianDist = join(CLASS_GUARDIAN_DIR, 'dist');
+  const guardianOut = join(OUT, '班級守護隊');
+  cpSync(guardianDist, guardianOut, { recursive: true });
+  console.log('  + 班級守護隊 (built)');
+}
 
 console.log('Done. Output:', OUT);
