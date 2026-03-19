@@ -4,10 +4,7 @@
   "private": true,
   "description": "字遊空間靜態站點",
   "scripts": {
-    "pages:build": "node scripts/prepare-pages.mjs",
-    "pages:deploy": "npm run pages:build && wrangler pages deploy .pages-deploy --project-name=ziyoukongjian",
-    "pages:deploy-full": "INCLUDE_POETPAL=1 npm run pages:build && wrangler pages deploy .pages-deploy --project-name=ziyoukongjian",
-    "pages:create": "wrangler pages project create ziyoukongjian --production-branch=main"
+    "build": "cd 中文填字接龍 && npm install && cd ../班級守護隊 && npm install --legacy-peer-deps && cd .. && node scripts/prepare-pages.mjs"
   },
   "devDependencies": {
     "wrangler": "^4"

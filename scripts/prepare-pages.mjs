@@ -3,16 +3,16 @@
  * 準備 Pages 部署用目錄：只複製首頁與連結到的子專案，加快上傳。
  * 會先建置「中文填字接龍」Vue 專案再複製其 dist。
  */
-import { cpSync, mkdirSync, rmSync } from 'fs';
+import { cpSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
 
 const ROOT = join(process.cwd());
-const OUT = join(ROOT, '.pages-deploy');
+const OUT = join(ROOT, 'dist');
 
-// 建置中文填字接龍（Vite SPA，base 用英文路徑 /crossword/ 避免 Cloudflare Pages 中文路徑問題）
+// 建置中文填字接龍：base 用相對路徑 ./ 讓 JS/CSS 隨 index.html 目錄解析，避免 /crossword/ 絕對路徑在部分網域下 404
 const WORD_PUZZLE_DIR = join(ROOT, '中文填字接龍');
-const PUZZLE_BASE_PATH = '/crossword/';
+const PUZZLE_BASE_PATH = './';
 let wordPuzzleBuilt = false;
 try {
   console.log('Building 中文填字接龍...');
@@ -68,6 +68,14 @@ if (wordPuzzleBuilt) {
   const puzzleOut = join(OUT, 'crossword');
   cpSync(puzzleDist, puzzleOut, { recursive: true });
   console.log('  + crossword (中文填字接龍, built)');
+  // 舊書籤 /中文填字接龍/ 轉到 crossword，避免 404
+  const legacyDir = join(OUT, '中文填字接龍');
+  mkdirSync(legacyDir, { recursive: true });
+  writeFileSync(
+    join(legacyDir, 'index.html'),
+    `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"/><meta http-equiv="refresh" content="0;url=../crossword/index.html"/><title>轉址中…</title></head><body><p><a href="../crossword/index.html">前往中文填字接龍</a></p></body></html>`
+  );
+  console.log('  + 中文填字接龍 (轉址 → crossword)');
 }
 
 // 複製班級守護隊建置結果（dist → 班級守護隊）
