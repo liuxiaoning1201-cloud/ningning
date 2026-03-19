@@ -4,9 +4,10 @@
   "private": true,
   "description": "字遊空間靜態站點",
   "scripts": {
-    "build": "cd 中文填字接龍 && npm install && cd ../班級守護隊 && npm install --legacy-peer-deps && cd .. && node scripts/prepare-pages.mjs"
+    "build": "cd apps/中文填字接龍 && npm install && cd ../班級守護隊 && npm install --legacy-peer-deps && cd ../.. && node scripts/build.mjs"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260317.1",
     "wrangler": "^4"
   }
 }
