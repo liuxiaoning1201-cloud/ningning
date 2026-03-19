@@ -1,135 +1,6 @@
 <template>
-  <div class="page">
-    <nav class="nav-bar">
-      <RouterLink to="/" class="btn btn-secondary">← 首頁</RouterLink>
-    </nav>
-    <h1 class="page-title" style="font-family: var(--font-heading, 'LXGW WenKai TC', cursive)">🌐 遠程對戰</h1>
-
-    <!-- 後端設定（未登入時可設定，以便收集學生數據） -->
-    <div v-if="!currentUser" class="card notice animate-fade-in">
-      <h3>📡 後端連線</h3>
-      <p class="muted">設定後端 API 網址後，學生登入與作答數據會傳送到伺服器。</p>
-      <div class="api-config" style="margin-top: 0.5rem">
-        <input v-model="apiUrlInput" type="url" placeholder="例如 https://your-api.example.com" class="input-field" />
-        <button type="button" class="btn btn-primary" @click="saveApiUrl">儲存</button>
-      </div>
-      <p v-if="isOnline" class="muted" style="margin-top: 0.35rem; font-size: 0.85rem">目前：<code>{{ apiUrlDisplay }}</code></p>
-    </div>
-
-    <!-- 未登入 -->
-    <template v-if="!currentUser">
-      <div class="card auth-card animate-fade-in">
-        <h3>🔐 登入</h3>
-        <p class="muted">一鍵進入示範帳號；或輸入名稱與電郵後進入（有後端時數據會上傳）。</p>
-        <button type="button" class="btn btn-primary" style="margin-bottom: 0.75rem" :disabled="signingIn" @click="oneClickDemoEnter">
-          {{ signingIn ? "登入中..." : "一鍵進入（示範）" }}
-        </button>
-        <div class="demo-form">
-          <input v-model="demoName" type="text" placeholder="顯示名稱" class="input-field" />
-          <input v-model="demoEmail" type="email" placeholder="電郵" class="input-field" />
-          <button class="btn btn-primary" :disabled="!demoName.trim() || !demoEmail.trim() || signingIn" @click="handleDemoLogin">
-            {{ signingIn ? "登入中..." : "進入" }}
-          </button>
-        </div>
-        <p v-if="isGoogleLoginAvailable() && isOnline" class="muted" style="margin-top: 0.5rem">或使用 Google 登入（需後端支援）：</p>
-        <button v-if="isGoogleLoginAvailable() && isOnline" class="btn btn-secondary" style="margin-top: 0.35rem" :disabled="signingIn" @click="handleGoogleSignIn">
-          🔑 Google 登入
-        </button>
-        <p v-if="authError" class="error-text">{{ authError }}</p>
-      </div>
-    </template>
-
-    <!-- 已登入 -->
-    <template v-else>
-      <div class="card user-card animate-fade-in">
-        <div class="user-info">
-          <img v-if="currentUser.avatarUrl" :src="currentUser.avatarUrl" class="avatar" alt="" />
-          <div>
-            <strong>{{ currentUser.displayName }}</strong>
-            <p class="muted">
-              {{ currentUser.email }}
-              <span v-if="isStudentEmail(currentUser.email)" class="student-badge">學生</span>
-            </p>
-          </div>
-        </div>
-        <button class="btn btn-secondary" @click="handleSignOut">登出</button>
-      </div>
-
-      <!-- 教師入口（非學生電郵） -->
-      <div v-if="!isStudentEmail(currentUser.email)" class="card animate-fade-in" style="animation-delay: 0.05s">
-        <RouterLink to="/play/remote/teacher" class="btn btn-primary" style="display: inline-block">
-          👩‍🏫 教師後台（班級／小組／發起活動）
-        </RouterLink>
-      </div>
-
-      <!-- 未加入班級：輸入班級碼 -->
-      <div v-if="!myClass" class="card animate-fade-in" style="animation-delay: 0.1s">
-        <h3>📌 加入班級</h3>
-        <p class="muted">輸入教師提供的班級碼加入班級，即可參加小組合作與班級競賽。</p>
-        <div class="join-form">
-          <input v-model="classCodeInput" type="text" placeholder="班級碼" class="input-field" maxlength="12" />
-          <button class="btn btn-primary" :disabled="!classCodeInput.trim() || joiningClass" @click="joinClass">
-            {{ joiningClass ? "加入中..." : "加入班級" }}
-          </button>
-        </div>
-        <p v-if="joinClassError" class="error-text">{{ joinClassError }}</p>
-      </div>
-
-      <!-- 已加入班級：顯示班級與模式選擇 -->
-      <template v-else>
-        <div class="card animate-fade-in" style="animation-delay: 0.1s">
-          <h3>📚 {{ myClass.name }}</h3>
-          <p class="muted">班級碼：<code>{{ myClass.code }}</code></p>
-          <div v-if="myGroups.length > 0" class="my-groups">
-            <span class="muted">我的小組：</span>
-            <span v-for="g in myGroups" :key="g.id" class="group-tag">{{ g.name }}</span>
-          </div>
-        </div>
-
-        <!-- 小組合作 -->
-        <div class="card animate-fade-in" style="animation-delay: 0.15s">
-          <h3>🤝 小組合作</h3>
-          <p class="muted">共用一張填字圖，與組員即時協作。</p>
-          <div class="join-form">
-            <input v-model="joinRoomId" type="text" placeholder="輸入房間碼加入" class="input-field" />
-            <button class="btn btn-primary" :disabled="!joinRoomId.trim() || joining" @click="joinRoomByCode">
-              {{ joining ? "加入中..." : "加入房間" }}
-            </button>
-          </div>
-          <div v-if="groupRooms.length > 0" class="room-list">
-            <p class="muted" style="margin-bottom: 0.5rem">我的小組進行中房間：</p>
-            <RouterLink
-              v-for="r in groupRooms"
-              :key="r.id"
-              :to="`/play/remote/room/${r.id}`"
-              class="room-item"
-            >
-              <span>{{ r.puzzleTitle }}</span>
-              <span class="status-dot" :class="r.status">{{ r.status === "playing" ? "進行中" : "等待中" }}</span>
-            </RouterLink>
-          </div>
-        </div>
-
-        <!-- 班級競賽 -->
-        <div class="card animate-fade-in" style="animation-delay: 0.2s">
-          <h3>🏆 班級競賽</h3>
-          <p class="muted">同一時間作答，以正確數量與時間排名。</p>
-          <div v-if="classSessions.length > 0" class="session-list">
-            <RouterLink
-              v-for="s in classSessions"
-              :key="s.id"
-              :to="`/play/remote/session/${s.id}`"
-              class="session-item"
-            >
-              <span>{{ s.puzzleTitle }}</span>
-              <span class="session-meta">{{ s.durationMinutes }} 分鐘 · {{ s.status === "playing" ? "進行中" : "等待中" }}</span>
-            </RouterLink>
-          </div>
-          <p v-else class="muted">尚無進行中或等待中的競賽場次，請等候教師發起。</p>
-        </div>
-      </template>
-    </template>
-  </div>
+  <!-- 遠程對戰頁目前只顯示平台登入按鈕（由 auth-widget.js 浮動渲染） -->
+  <div class="page" />
 </template>
 
 <script setup lang="ts">
@@ -405,6 +276,22 @@ async function joinRoomByCode() {
 watch(currentUser, (u) => {
   if (!u) joinClassError.value = "";
 }, { immediate: true });
+
+// 這個頁面目前只保留 `auth-widget.js` 浮動登入按鈕，
+// Vue/TS 編譯時模板不再引用這些狀態與方法，會觸發 noUnusedLocals。
+// 用 void 明確引用，避免 vue-tsc 建置失敗。
+void isGoogleLoginAvailable;
+void isStudentEmail;
+void apiUrlDisplay;
+void groupRooms;
+void classSessions;
+void saveApiUrl;
+void oneClickDemoEnter;
+void handleDemoLogin;
+void handleGoogleSignIn;
+void handleSignOut;
+void joinClass;
+void joinRoomByCode;
 </script>
 
 <style scoped>
