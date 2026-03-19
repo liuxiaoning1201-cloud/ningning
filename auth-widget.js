@@ -101,21 +101,63 @@
       .catch(function () {});
   }
 
+  /**
+   * 不用 prompt()（One Tap 常被瀏覽器擋掉而「完全沒反應」），改為 renderButton 顯示官方按鈕。
+   */
   function startGoogleLogin() {
     loadGSI().then(function () {
+      var inner = document.getElementById('zy-auth-inner');
+      if (!inner) return;
+
+      inner.innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">' +
+        '<div id="zy-gsi-mount"></div>' +
+        '<button type="button" id="zy-gsi-cancel" style="font-size:12px;color:#666;background:transparent;border:none;cursor:pointer;text-decoration:underline">取消</button>' +
+        '</div>';
+
       google.accounts.id.initialize({
         client_id: _clientId,
         callback: onGoogleCredential,
         auto_select: false,
+        use_fedcm_for_prompt: false,
       });
-      google.accounts.id.prompt();
+
+      google.accounts.id.renderButton(document.getElementById('zy-gsi-mount'), {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'pill',
+        width: 220,
+        locale: 'zh_TW',
+      });
+
+      document.getElementById('zy-gsi-cancel').onclick = function () {
+        render();
+      };
     }).catch(function (e) {
       console.error('ZYAuth: GSI load failed', e);
       alert('Google 登入載入失敗，請重試。');
+      render();
     });
   }
 
+  function normalizeUser(u) {
+    if (!u) return null;
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.name || u.displayName || u.email || '',
+      avatarUrl: u.avatarUrl || null,
+    };
+  }
+
   function onGoogleCredential(response) {
+    if (!response || !response.credential) {
+      alert('未取得 Google 憑證，請重試。');
+      render();
+      return;
+    }
     fetch('/auth/google', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,7 +169,7 @@
         return r.json();
       })
       .then(function (data) {
-        _user = data.user;
+        _user = normalizeUser(data.user);
         localStorage.setItem('zy_user', JSON.stringify(_user));
         render();
         _loginCallbacks.forEach(function (cb) { cb(_user); });
@@ -135,6 +177,7 @@
       .catch(function (e) {
         console.error('ZYAuth: login error', e);
         alert('登入失敗：' + e.message);
+        render();
       });
   }
 
@@ -155,7 +198,7 @@
   function checkSession() {
     var cached = localStorage.getItem('zy_user');
     if (cached) {
-      try { _user = JSON.parse(cached); } catch (e) { /* ignore */ }
+      try { _user = normalizeUser(JSON.parse(cached)); } catch (e) { /* ignore */ }
     }
 
     fetch('/auth/me', { credentials: 'same-origin' })
@@ -164,7 +207,7 @@
         throw new Error('not authed');
       })
       .then(function (data) {
-        _user = data.user;
+        _user = normalizeUser(data.user);
         localStorage.setItem('zy_user', JSON.stringify(_user));
       })
       .catch(function () {
