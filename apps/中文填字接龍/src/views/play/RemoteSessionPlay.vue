@@ -14,11 +14,12 @@
     <template v-else-if="session.status === 'waiting'">
       <h1 class="page-title">🏆 班級競賽 · {{ session.puzzleTitle }}</h1>
       <div class="card">
+        <p v-if="session.joinCode" class="muted">場次碼：<strong>{{ session.joinCode }}</strong></p>
         <p class="muted">等待主持人開始。計時 {{ session.durationMinutes }} 分鐘，目前 {{ session.participants.length }} 人已加入。</p>
         <ul class="member-list">
           <li v-for="p in session.participants" :key="p.userId">{{ p.displayName }}</li>
         </ul>
-        <button v-if="isHost" class="btn btn-primary" style="margin-top: 1rem" @click="startSession">開始競賽</button>
+        <button v-if="isHost" class="btn btn-primary" style="margin-top: 1rem" @click="onStartSession">開始競賽</button>
       </div>
     </template>
 
@@ -72,7 +73,7 @@
       </div>
 
       <div class="nav-actions">
-        <button v-if="isHost" class="btn btn-secondary" @click="endSession">結束競賽</button>
+        <button v-if="isHost" class="btn btn-secondary" @click="onEndSession">結束競賽</button>
         <RouterLink to="/play/remote" class="btn btn-secondary">離開</RouterLink>
       </div>
     </template>
@@ -103,17 +104,73 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from "vue";
+import { computed, ref, onMounted, onUnmounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { getSavedUser } from "@/lib/api";
 import { useRemoteBackendStore } from "@/stores/remoteBackend";
 import type { CrosswordPuzzle } from "@/lib/types";
+import {
+  isRemoteApiAvailable,
+  getSession,
+  joinSession,
+  startSession,
+  endSession,
+  setSessionAnswer,
+  getRankings,
+} from "@/lib/remoteApi";
+
+interface SessionParticipant {
+  userId: string;
+  displayName: string;
+  answers: Record<string, string>;
+  score?: number;
+  finishedAt?: string | null;
+}
+
+interface SessionView {
+  id: string;
+  joinCode?: string;
+  status: string;
+  puzzleTitle: string;
+  durationMinutes: number;
+  showHints: boolean;
+  hostId: string;
+  puzzleSnapshot: CrosswordPuzzle | null;
+  participants: SessionParticipant[];
+  startedAt?: string | null;
+  endsAt?: string | null;
+}
 
 const route = useRoute();
 const backend = useRemoteBackendStore();
+const useRemote = isRemoteApiAvailable();
 
 const sessionId = computed(() => route.params.sessionId as string);
-const session = computed(() => backend.getSession(sessionId.value));
+const remoteSession = ref<SessionView | null>(null);
+
+const session = computed((): SessionView | null => {
+  if (useRemote) return remoteSession.value;
+  const s = backend.getSession(sessionId.value);
+  if (!s) return null;
+  return {
+    id: s.id,
+    status: s.status,
+    puzzleTitle: s.puzzleTitle,
+    durationMinutes: s.durationMinutes,
+    showHints: s.showHints,
+    hostId: s.hostId,
+    puzzleSnapshot: (s.puzzleSnapshot ?? null) as CrosswordPuzzle | null,
+    participants: s.participants.map((p) => ({
+      userId: p.userId,
+      displayName: p.displayName,
+      answers: p.answers ?? {},
+      score: p.score,
+      finishedAt: p.finishedAt ?? null,
+    })),
+    startedAt: s.startedAt,
+    endsAt: s.endsAt,
+  };
+});
 
 const currentUser = ref(getSavedUser());
 
@@ -144,6 +201,8 @@ const timerDisplay = computed(() => {
 });
 
 let timerId: ReturnType<typeof setInterval> | null = null;
+let pollId: ReturnType<typeof setInterval> | null = null;
+const remoteRankings = ref<{ userId: string; displayName: string; score: number; timeMs: number }[]>([]);
 
 function startTimer() {
   const s = session.value;
@@ -156,30 +215,78 @@ function startTimer() {
     if (left <= 0 && timerId) {
       clearInterval(timerId);
       timerId = null;
-      backend.endSession(sessionId.value);
+      if (!useRemote) {
+        backend.endSession(sessionId.value);
+      } else {
+        void endSession(sessionId.value).then(() => void refreshRemote());
+      }
     }
   }
   tick();
   timerId = setInterval(tick, 1000);
 }
 
-watch(session, (s) => {
-  if (s?.status === "playing" && s.endsAt) {
-    startTimer();
+async function refreshRemote() {
+  if (!useRemote) return;
+  const data = await getSession(sessionId.value);
+  if (data && typeof data === "object") {
+    remoteSession.value = data as SessionView;
   }
-}, { immediate: true });
+  if (remoteSession.value?.status === "ended") {
+    remoteRankings.value = await getRankings(sessionId.value);
+  }
+}
 
-onMounted(() => {
+watch(
+  session,
+  (s) => {
+    if (s?.status === "playing" && s.endsAt) {
+      startTimer();
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => session.value?.status,
+  async (st) => {
+    if (useRemote && st === "ended") {
+      remoteRankings.value = await getRankings(sessionId.value);
+    }
+  },
+);
+
+onMounted(async () => {
   const user = getSavedUser();
   if (!user) return;
   currentUser.value = user;
-  const s = backend.getSession(sessionId.value);
-  if (s && s.status === "waiting" && !s.participants.some((p) => p.userId === user.id)) {
-    backend.joinSession(sessionId.value, user.id, user.displayName, user.email);
+  if (useRemote) {
+    await joinSession(sessionId.value);
+    await refreshRemote();
+    pollId = setInterval(refreshRemote, 2000);
+  } else {
+    const s = backend.getSession(sessionId.value);
+    if (s && s.status === "waiting" && !s.participants.some((p) => p.userId === user.id)) {
+      backend.joinSession(sessionId.value, user.id, user.displayName, user.email);
+    }
   }
 });
 
-const rankings = computed(() => backend.getRankings(sessionId.value));
+onUnmounted(() => {
+  if (timerId) {
+    clearInterval(timerId);
+    timerId = null;
+  }
+  if (pollId) {
+    clearInterval(pollId);
+    pollId = null;
+  }
+});
+
+const rankings = computed(() => {
+  if (useRemote) return remoteRankings.value;
+  return backend.getRankings(sessionId.value);
+});
 
 function cellKey(r: number, c: number): string {
   return `${r},${c}`;
@@ -189,7 +296,8 @@ function onCompositionEnd(r: number, c: number, e: Event) {
   const target = e.target as HTMLInputElement;
   const value = (target.value ?? "").trim().slice(-1);
   if (value && currentUser.value) {
-    backend.setSessionAnswer(sessionId.value, currentUser.value.id, cellKey(r, c), value);
+    if (useRemote) void setSessionAnswer(sessionId.value, cellKey(r, c), value).then(() => void refreshRemote());
+    else backend.setSessionAnswer(sessionId.value, currentUser.value.id, cellKey(r, c), value);
   }
 }
 
@@ -197,18 +305,29 @@ function onCellInput(r: number, c: number, e: Event) {
   const target = e.target as HTMLInputElement;
   const value = (target.value ?? "").trim().slice(-1);
   if (value && currentUser.value) {
-    backend.setSessionAnswer(sessionId.value, currentUser.value.id, cellKey(r, c), value);
+    if (useRemote) void setSessionAnswer(sessionId.value, cellKey(r, c), value).then(() => void refreshRemote());
+    else backend.setSessionAnswer(sessionId.value, currentUser.value.id, cellKey(r, c), value);
   }
 }
 
-function startSession() {
+async function onStartSession() {
   if (!session.value || !isHost.value) return;
-  backend.startSession(sessionId.value);
+  if (useRemote) {
+    const ok = await startSession(sessionId.value);
+    if (ok) await refreshRemote();
+  } else {
+    backend.startSession(sessionId.value);
+  }
 }
 
-function endSession() {
+async function onEndSession() {
   if (!isHost.value) return;
-  backend.endSession(sessionId.value);
+  if (useRemote) {
+    await endSession(sessionId.value);
+    await refreshRemote();
+  } else {
+    backend.endSession(sessionId.value);
+  }
 }
 
 function formatTime(ms: number): string {

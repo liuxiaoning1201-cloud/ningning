@@ -3,7 +3,7 @@
  * 未設定時由元件改用 remoteBackend store（示範模式）。
  */
 
-import { getApiUrl, apiGet, apiPost, apiPut, apiDelete } from "./api";
+import { getApiUrl, apiGet, apiPost, apiPut, apiDelete, type ApiUser } from "./api";
 
 export function isRemoteApiAvailable(): boolean {
   return !!getApiUrl();
@@ -14,7 +14,7 @@ export async function authDemo(
   displayName: string,
   email: string,
   signal?: AbortSignal
-): Promise<{ token: string; user: { id: string; email: string; displayName: string } }> {
+): Promise<{ token: string; user: ApiUser }> {
   const base = getApiUrl();
   if (!base) throw new Error("API URL not set");
   const res = await fetch(`${base}/auth/demo`, {
@@ -24,7 +24,7 @@ export async function authDemo(
     signal,
   });
   if (!res.ok) throw new Error("登入失敗");
-  return res.json();
+  return (await res.json()) as { token: string; user: ApiUser };
 }
 
 export async function getMyClassAndGroups(): Promise<{ class: { id: string; name: string; code: string }; groups: { id: string; name: string; memberEmails: string[] }[] } | null> {
@@ -157,11 +157,37 @@ export async function createSession(body: {
   durationMinutes: number;
   showHints: boolean;
   puzzleSnapshot?: unknown;
-}): Promise<{ id: string } | null> {
+  /** practice：師生訪客可開；class：僅教師 */
+  mode?: "practice" | "class";
+}): Promise<{ id: string; joinCode?: string } | null> {
   try {
-    return await apiPost("/api/sessions", body);
+    return await apiPost<{ id: string; joinCode?: string }>("/api/sessions", body);
   } catch {
     return null;
+  }
+}
+
+/** 以六位數場次碼加入競賽（須已登入） */
+export async function joinSessionByCode(code: string): Promise<unknown | null> {
+  try {
+    const digits = String(code ?? "").replace(/\D/g, "").slice(0, 6);
+    if (digits.length !== 6) return null;
+    return await apiPost("/api/sessions/join-by-code", { code: digits });
+  } catch {
+    return null;
+  }
+}
+
+/** 教師：不依賴班級 API 時列出自己主持的場次 */
+export async function getTeacherHostedSessions(): Promise<
+  { id: string; puzzleTitle: string; status: string; durationMinutes: number; participants: unknown[] }[]
+> {
+  try {
+    const list = await apiGet<unknown[]>("/api/teacher/sessions");
+    if (!Array.isArray(list)) return [];
+    return list as { id: string; puzzleTitle: string; status: string; durationMinutes: number; participants: unknown[] }[];
+  } catch {
+    return [];
   }
 }
 

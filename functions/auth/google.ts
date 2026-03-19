@@ -1,4 +1,5 @@
 import { createJwt } from '../../shared/jwt';
+import { resolveRemoteRole } from '../../shared/remoteRole';
 
 const COOKIE_NAME = 'zy_token';
 const COOKIE_MAX_AGE = 7 * 86400;
@@ -42,34 +43,50 @@ export const onRequestPost: PagesFunction<{
     return Response.json({ error: 'Invalid Google token' }, { status: 401 });
   }
 
-  const userId = generateId();
-  await context.env.DB.prepare(
-    `INSERT INTO users (id, google_id, email, name, avatar_url)
-     VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(google_id) DO UPDATE SET
-       email = excluded.email,
-       name = excluded.name,
-       avatar_url = excluded.avatar_url,
-       last_login_at = datetime('now')`
-  ).bind(userId, google.sub, google.email, google.name || google.email, google.picture || null).run();
+  const existing = await context.env.DB.prepare('SELECT id FROM users WHERE google_id = ?')
+    .bind(google.sub)
+    .first<{ id: string }>();
+
+  if (existing) {
+    await context.env.DB.prepare(
+      `UPDATE users SET email = ?, name = ?, avatar_url = ?, last_login_at = datetime('now') WHERE google_id = ?`,
+    )
+      .bind(google.email, google.name || google.email, google.picture || null, google.sub)
+      .run();
+  } else {
+    const userId = generateId();
+    await context.env.DB.prepare(
+      `INSERT INTO users (id, google_id, email, name, avatar_url, last_login_at)
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    )
+      .bind(userId, google.sub, google.email, google.name || google.email, google.picture || null)
+      .run();
+  }
 
   const user = await context.env.DB.prepare(
-    'SELECT id, email, name, avatar_url FROM users WHERE google_id = ?'
+    'SELECT id, email, name, avatar_url FROM users WHERE google_id = ?',
   ).bind(google.sub).first<{ id: string; email: string; name: string; avatar_url: string | null }>();
 
   if (!user) {
     return Response.json({ error: 'Failed to create user' }, { status: 500 });
   }
 
+  const role = await resolveRemoteRole(context.env.DB, user.email);
   const secret = context.env.JWT_SECRET || 'dev-secret';
   const jwt = await createJwt(
-    { sub: user.id, email: user.email, name: user.name },
+    { sub: user.id, email: user.email, name: user.name, role },
     secret,
     COOKIE_MAX_AGE,
   );
 
   const cookie = `${COOKIE_NAME}=${jwt}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`;
-  const userPayload = { id: user.id, email: user.email, displayName: user.name, avatarUrl: user.avatar_url };
+  const userPayload = {
+    id: user.id,
+    email: user.email,
+    displayName: user.name,
+    avatarUrl: user.avatar_url,
+    role,
+  };
 
   return Response.json(
     { token: jwt, user: userPayload },

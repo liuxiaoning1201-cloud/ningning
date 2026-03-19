@@ -111,7 +111,12 @@
             {{ creatingSession ? "建立中..." : "建立競賽場次" }}
           </button>
           <div v-if="lastCreatedSession" class="session-created">
-            <p>場次已建立，學生可在「班級競賽」區塊看到並加入。</p>
+            <p>場次已建立。</p>
+            <p v-if="lastCreatedSession.joinCode" class="muted">
+              學生六位數場次碼：<code class="class-code">{{ lastCreatedSession.joinCode }}</code>
+              <button type="button" class="btn btn-secondary btn-sm" @click="copyRoomCode(String(lastCreatedSession.joinCode))">複製</button>
+            </p>
+            <p v-else class="muted">學生可在「班級競賽」列表加入，或使用場次碼（若後端有回傳）。</p>
             <RouterLink :to="`/play/remote/session/${lastCreatedSession.id}`" class="btn btn-secondary btn-sm">進入場次（教師視角）</RouterLink>
           </div>
         </div>
@@ -140,7 +145,7 @@
 
 <script setup lang="ts">
 import { ref, computed, reactive, watch, onMounted } from "vue";
-import { getSavedUser } from "@/lib/api";
+import { getSavedUser, fetchAuthMe } from "@/lib/api";
 import type { ApiUser } from "@/lib/api";
 import { useRemoteBackendStore } from "@/stores/remoteBackend";
 import { usePuzzleSetsStore } from "@/stores/puzzleSets";
@@ -156,6 +161,7 @@ import {
   createSession as apiCreateSession,
   getRoomsForClass,
   getSessionsForClass,
+  getTeacherHostedSessions,
 } from "@/lib/remoteApi";
 
 const currentUser = ref<ApiUser | null>(getSavedUser());
@@ -178,7 +184,7 @@ const sessionPuzzleId = ref("");
 const sessionDuration = ref(5);
 const sessionShowHints = ref(true);
 const creatingSession = ref(false);
-const lastCreatedSession = ref<{ id: string } | null>(null);
+const lastCreatedSession = ref<{ id: string; joinCode?: string } | null>(null);
 
 const teacherClass = computed(() => {
   if (!currentUser.value) return null;
@@ -209,16 +215,29 @@ const activeSessions = computed(() => {
 async function loadApiData() {
   if (!isRemoteApiAvailable() || !currentUser.value) return;
   const cls = await getTeacherClass();
-  apiTeacherClassRef.value = cls;
   if (cls) {
+    apiTeacherClassRef.value = cls;
     apiTeacherGroupsRef.value = await getGroupsByClassId(cls.id);
     apiRoomsRef.value = await getRoomsForClass(cls.id);
     apiSessionsRef.value = await getSessionsForClass(cls.id);
-  } else {
+    return;
+  }
+  const me = await fetchAuthMe();
+  if (me?.role === "teacher") {
+    apiTeacherClassRef.value = {
+      id: `virtual-${currentUser.value.id}`,
+      name: "線上教學",
+      code: "",
+    };
     apiTeacherGroupsRef.value = [];
     apiRoomsRef.value = [];
-    apiSessionsRef.value = [];
+    apiSessionsRef.value = await getTeacherHostedSessions();
+    return;
   }
+  apiTeacherClassRef.value = null;
+  apiTeacherGroupsRef.value = [];
+  apiRoomsRef.value = [];
+  apiSessionsRef.value = [];
 }
 
 onMounted(() => loadApiData());
@@ -334,10 +353,15 @@ async function createSession() {
         durationMinutes: sessionDuration.value,
         showHints: sessionShowHints.value,
         puzzleSnapshot: set?.crossword ?? undefined,
+        mode: "class",
       });
       if (session) {
-        lastCreatedSession.value = { id: session.id };
-        apiSessionsRef.value = await getSessionsForClass(teacherClass.value.id);
+        lastCreatedSession.value = { id: session.id, joinCode: session.joinCode };
+        if (teacherClass.value.id.startsWith("virtual-")) {
+          apiSessionsRef.value = await getTeacherHostedSessions();
+        } else {
+          apiSessionsRef.value = await getSessionsForClass(teacherClass.value.id);
+        }
       }
     } else {
       const session = backend.createSession(

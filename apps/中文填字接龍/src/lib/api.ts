@@ -2,11 +2,15 @@ const API_URL_KEY = "word-puzzle:apiUrl";
 const JWT_KEY = "word-puzzle:jwt";
 const USER_KEY = "word-puzzle:user";
 
+export type ApiUserRole = "teacher" | "student" | "guest";
+
 export interface ApiUser {
   id: string;
   email: string;
   displayName: string;
   avatarUrl?: string;
+  /** 後端 JWT／auth/me 回傳，未登入或舊版可能為空 */
+  role?: ApiUserRole;
 }
 
 /** 開發模式下未設定時，自動使用本機後端，不需手動輸入 API */
@@ -53,6 +57,41 @@ export function saveUser(user: ApiUser): void {
 
 export function isOnlineMode(): boolean {
   return !!getApiUrl();
+}
+
+/** 以 Cookie／Bearer 向後端同步使用者與角色（平台浮動登入後可呼叫） */
+export async function fetchAuthMe(): Promise<ApiUser | null> {
+  const baseUrl = getApiUrl();
+  if (!baseUrl) return null;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const jwt = getJwt();
+  if (jwt) headers.Authorization = `Bearer ${jwt}`;
+  try {
+    const res = await fetch(`${baseUrl}/auth/me`, { credentials: "include", headers });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      user: {
+        id: string;
+        email: string;
+        name?: string;
+        displayName?: string;
+        role?: string;
+      };
+    };
+    const u = data.user;
+    if (!u?.id) return null;
+    const role: ApiUserRole | undefined =
+      u.role === "teacher" || u.role === "student" || u.role === "guest" ? u.role : undefined;
+    const out: ApiUser = {
+      id: u.id,
+      email: u.email,
+      displayName: (u.displayName ?? u.name ?? u.email) as string,
+    };
+    if (role) out.role = role;
+    return out;
+  } catch {
+    return null;
+  }
 }
 
 async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {

@@ -1,7 +1,7 @@
 export const onRequestGet: PagesFunction<{
   DB: D1Database;
 }, '/', {
-  user: { id: string; email: string; name: string } | null;
+  user: { id: string; email: string; name: string; role: string } | null;
 }> = async (context) => {
   const user = context.data.user;
   if (!user) {
@@ -16,5 +16,5 @@ export const onRequestGet: PagesFunction<{
     return Response.json({ error: 'User not found' }, { status: 404 });
   }
 
-  return Response.json({ user: row });
+  return Response.json({ user: { ...row, role: user.role } });
 };

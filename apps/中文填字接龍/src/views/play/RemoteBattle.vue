@@ -1,18 +1,140 @@
 <template>
-  <!-- 遠程對戰頁目前只顯示平台登入按鈕（由 auth-widget.js 浮動渲染） -->
-  <div class="page" />
+  <div class="page">
+    <nav class="nav-bar">
+      <RouterLink to="/" class="btn btn-secondary">← 首頁</RouterLink>
+      <RouterLink v-if="currentUser?.role === 'teacher'" to="/play/remote/teacher" class="btn btn-secondary">教師後台</RouterLink>
+    </nav>
+
+    <h1 class="page-title" style="font-family: var(--font-heading)">🌐 遠程對戰</h1>
+
+    <div class="card notice animate-fade-in">
+      <h3>說明</h3>
+      <p>與同學即時協作填字，或參加班級計時競賽。可設定本機示範或連線至學校部署的 API。</p>
+      <p class="muted">學生帳號須為 <code>@student.isf.edu.hk</code>；教師由管理員加入白名單；其他訪客仍可練習模式遊玩。</p>
+    </div>
+
+    <div v-if="!isZyAuthUser" class="card animate-fade-in" style="animation-delay: 0.05s">
+      <h3>後端 API</h3>
+      <p class="muted">目前：<strong>{{ apiUrlDisplay }}</strong></p>
+      <div class="api-config">
+        <input v-model="apiUrlInput" type="url" placeholder="https://…" class="input-field" />
+        <button type="button" class="btn btn-secondary" @click="saveApiUrl">儲存網址</button>
+      </div>
+      <p class="muted" style="margin-top: 0.5rem">正式站若使用右上角平台登入，通常不必改此欄位。</p>
+    </div>
+
+    <div v-if="!currentUser" class="card auth-card animate-fade-in" style="animation-delay: 0.08s">
+      <h3>登入</h3>
+      <p>請使用下方「示範登入」、Google，或右上角平台帳戶。</p>
+      <div class="demo-form">
+        <input v-model="demoName" type="text" placeholder="顯示名稱" class="input-field" />
+        <input v-model="demoEmail" type="email" placeholder="電郵" class="input-field" />
+        <button type="button" class="btn btn-primary" :disabled="signingIn" @click="handleDemoLogin">示範登入（後端）</button>
+        <button
+          v-if="isGoogleLoginAvailable()"
+          type="button"
+          class="btn btn-secondary google-btn"
+          :disabled="signingIn"
+          @click="handleGoogleSignIn"
+        >
+          {{ signingIn ? "登入中…" : "Google 登入" }}
+        </button>
+        <button type="button" class="btn btn-secondary" :disabled="signingIn" @click="oneClickDemoEnter">一鍵示範學生</button>
+      </div>
+      <p v-if="authError" class="error-text">{{ authError }}</p>
+    </div>
+
+    <div v-else class="card user-card animate-fade-in">
+      <div class="user-info">
+        <img v-if="currentUser.avatarUrl" :src="currentUser.avatarUrl" alt="" class="avatar" />
+        <div>
+          <strong>{{ currentUser.displayName }}</strong>
+          <span v-if="currentUser.role" class="student-badge">{{ roleLabel(currentUser.role) }}</span>
+          <div class="muted">{{ currentUser.email }}</div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary" @click="handleSignOut">登出</button>
+    </div>
+
+    <template v-if="currentUser">
+      <div class="card animate-fade-in" style="animation-delay: 0.1s">
+        <h3>🏆 加入競賽場次（六位數碼）</h3>
+        <p class="muted">向教師索取場次碼，登入後在此輸入即可加入計時競賽。</p>
+        <div class="join-form">
+          <input
+            v-model="sessionCodeInput"
+            type="text"
+            inputmode="numeric"
+            maxlength="8"
+            placeholder="例如 123456"
+            class="input-field"
+            style="max-width: 10rem; letter-spacing: 0.15em"
+          />
+          <button type="button" class="btn btn-primary" :disabled="joiningSession || !sessionCodeInput.trim()" @click="joinSessionByCode">
+            {{ joiningSession ? "加入中…" : "加入場次" }}
+          </button>
+        </div>
+      </div>
+
+      <div class="card animate-fade-in" style="animation-delay: 0.12s">
+        <h3>📚 加入班級（選填）</h3>
+        <p class="muted">若學校啟用班級 API，輸入班級碼後可看到房間與場次列表。</p>
+        <div class="join-form">
+          <input v-model="classCodeInput" type="text" placeholder="班級碼" class="input-field" />
+          <button type="button" class="btn btn-primary" :disabled="joiningClass" @click="joinClass">加入班級</button>
+        </div>
+        <p v-if="joinClassError" class="error-text">{{ joinClassError }}</p>
+      </div>
+
+      <div v-if="myClass" class="card animate-fade-in" style="animation-delay: 0.14s">
+        <h3>🤝 小組合作房間</h3>
+        <p class="muted">由教師建立房間後，輸入房間碼加入。</p>
+        <div class="join-form">
+          <input v-model="joinRoomId" type="text" placeholder="房間碼" class="input-field" />
+          <button type="button" class="btn btn-primary" :disabled="joining" @click="joinRoomByCode">加入房間</button>
+        </div>
+        <div v-if="groupRooms.length" class="room-list">
+          <RouterLink v-for="r in groupRooms" :key="r.id" :to="`/play/remote/room/${r.id}`" class="room-item">
+            <span>{{ r.puzzleTitle }}</span>
+            <span class="status-dot" :class="{ playing: r.status === 'playing' }">{{ r.status === "playing" ? "進行中" : "等待中" }}</span>
+          </RouterLink>
+        </div>
+      </div>
+
+      <div v-if="myClass" class="card animate-fade-in" style="animation-delay: 0.16s">
+        <h3>🏁 班級競賽列表</h3>
+        <p class="muted">已加入班級時，由此進入教師發起的場次。</p>
+        <div v-if="classSessions.length" class="session-list">
+          <RouterLink v-for="s in classSessions" :key="s.id" :to="`/play/remote/session/${s.id}`" class="session-item">
+            <span>{{ s.puzzleTitle }}</span>
+            <span class="session-meta">{{ s.durationMinutes }} 分 · {{ s.status === "playing" ? "進行中" : "等待中" }}</span>
+          </RouterLink>
+        </div>
+        <p v-else class="muted">目前沒有可加入的場次（或後端尚未啟用班級 API）。請使用上方「六位數碼」加入。</p>
+      </div>
+    </template>
+
+    <p class="muted" style="margin-top: 1rem; text-align: center">需要浮動登入時，請使用頁面角落的平台按鈕。</p>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { isOnlineMode, getApiUrl, setApiUrl, getSavedUser, saveUser, setJwt, clearAuth, type ApiUser } from "@/lib/api";
+import {
+  isOnlineMode,
+  getApiUrl,
+  setApiUrl,
+  getSavedUser,
+  saveUser,
+  setJwt,
+  clearAuth,
+  fetchAuthMe,
+  type ApiUser,
+  type ApiUserRole,
+} from "@/lib/api";
 import { signInWithGoogle, signOut as googleSignOut, isGoogleLoginAvailable } from "@/lib/googleAuth";
-import { isStudentEmail } from "@/lib/remoteBattle";
 import { useRemoteBackendStore } from "@/stores/remoteBackend";
-
-/** 是否使用平台統一登入（ZYAuth） */
-const isZyAuthUser = ref(false);
 import {
   isRemoteApiAvailable,
   authDemo,
@@ -21,10 +143,13 @@ import {
   getRoomsForClass,
   getSessionsForClass,
   joinRoom as apiJoinRoom,
+  joinSessionByCode as apiJoinSessionByCode,
 } from "@/lib/remoteApi";
 
 const router = useRouter();
 const backend = useRemoteBackendStore();
+
+const isZyAuthUser = ref(false);
 
 const isOnline = computed(() => isOnlineMode());
 const apiUrlInput = ref(getApiUrl());
@@ -39,6 +164,8 @@ const joinClassError = ref("");
 const joiningClass = ref(false);
 const joinRoomId = ref("");
 const joining = ref(false);
+const sessionCodeInput = ref("");
+const joiningSession = ref(false);
 
 const apiClassRef = ref<{ class: { id: string; name: string; code: string }; groups: { id: string; name: string }[] } | null>(null);
 const apiRoomsRef = ref<{ id: string; puzzleTitle: string; status: string }[]>([]);
@@ -61,7 +188,7 @@ const groupRooms = computed(() => {
   if (isRemoteApiAvailable()) return apiRoomsRef.value;
   const groupIds = myGroups.value.map((g) => g.id);
   return backend.rooms.filter(
-    (r) => r.classId === myClass.value!.id && groupIds.includes(r.groupId) && (r.status === "waiting" || r.status === "playing")
+    (r) => r.classId === myClass.value!.id && groupIds.includes(r.groupId) && (r.status === "waiting" || r.status === "playing"),
   );
 });
 
@@ -70,6 +197,12 @@ const classSessions = computed(() => {
   if (isRemoteApiAvailable()) return apiSessionsRef.value;
   return backend.getSessionsByClassId(myClass.value.id).filter((s) => s.status === "waiting" || s.status === "playing");
 });
+
+function roleLabel(r: ApiUserRole): string {
+  if (r === "teacher") return "教師";
+  if (r === "student") return "學生";
+  return "訪客";
+}
 
 async function loadApiData() {
   if (!isRemoteApiAvailable() || !currentUser.value) return;
@@ -86,7 +219,7 @@ async function loadApiData() {
 
 watch(currentUser, () => loadApiData(), { immediate: true });
 
-function syncFromZYAuth() {
+async function syncFromZYAuth() {
   const zy = (window as unknown as { ZYAuth?: { user: { id: string; email: string; name: string; avatarUrl?: string } | null } }).ZYAuth;
   if (zy?.user) {
     currentUser.value = {
@@ -96,6 +229,11 @@ function syncFromZYAuth() {
       avatarUrl: zy.user.avatarUrl ?? undefined,
     };
     isZyAuthUser.value = true;
+    const me = await fetchAuthMe();
+    if (me) {
+      currentUser.value = { ...currentUser.value, ...me, avatarUrl: currentUser.value.avatarUrl ?? me.avatarUrl };
+      saveUser(currentUser.value);
+    }
   }
 }
 
@@ -104,12 +242,21 @@ onMounted(() => {
   apiUrlInput.value = getApiUrl();
   currentUser.value = getSavedUser();
 
-  const zy = (window as unknown as { ZYAuth?: { ready: Promise<unknown>; user: unknown; onLogin: (cb: () => void) => void; onLogout: (cb: () => void) => void } }).ZYAuth;
+  const zy = (window as unknown as {
+    ZYAuth?: {
+      ready: Promise<unknown>;
+      user: unknown;
+      onLogin: (cb: () => void) => void;
+      onLogout: (cb: () => void) => void;
+    };
+  }).ZYAuth;
   if (zy) {
-    zy.ready.then(() => {
-      if (zy.user) syncFromZYAuth();
+    void zy.ready.then(() => {
+      void syncFromZYAuth();
     });
-    zy.onLogin(() => syncFromZYAuth());
+    zy.onLogin(() => {
+      void syncFromZYAuth();
+    });
     zy.onLogout(() => {
       currentUser.value = null;
       isZyAuthUser.value = false;
@@ -117,7 +264,7 @@ onMounted(() => {
     });
   }
 
-  loadApiData();
+  void loadApiData();
 });
 
 function saveApiUrl() {
@@ -125,7 +272,8 @@ function saveApiUrl() {
   if (url) setApiUrl(url);
 }
 
-/** 一鍵進入示範帳號：有後端則呼叫後端（可收集數據），失敗或無後端則本機登入 */
+const DEMO_LOGIN_TIMEOUT_MS = 6000;
+
 async function oneClickDemoEnter() {
   authError.value = "";
   signingIn.value = true;
@@ -163,8 +311,6 @@ async function oneClickDemoEnter() {
   }
 }
 
-const DEMO_LOGIN_TIMEOUT_MS = 6000;
-
 async function handleDemoLogin() {
   authError.value = "";
   const name = demoName.value.trim();
@@ -184,9 +330,10 @@ async function handleDemoLogin() {
       } catch (e) {
         clearTimeout(timeoutId);
         if (e instanceof Error) {
-          authError.value = e.name === "AbortError"
-            ? "登入逾時，請檢查後端是否已啟動，或重新整理後使用「一鍵進入（示範）」"
-            : e.message;
+          authError.value =
+            e.name === "AbortError"
+              ? "登入逾時，請檢查後端是否已啟動，或重新整理後使用「一鍵進入（示範）」"
+              : e.message;
         } else {
           authError.value = "登入失敗";
         }
@@ -208,12 +355,12 @@ async function handleGoogleSignIn() {
   }
   signingIn.value = true;
   authError.value = "";
-  const timeoutMs = 90000; // 90 秒逾時，避免一直卡在「登入中」
+  const timeoutMs = 90000;
   try {
     const user = await Promise.race([
       signInWithGoogle(),
       new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error("登入逾時，請重試。若曾出現 Google 視窗請關閉後再按一次登入。")), timeoutMs)
+        setTimeout(() => reject(new Error("登入逾時，請重試。若曾出現 Google 視窗請關閉後再按一次登入。")), timeoutMs),
       ),
     ]);
     if (user) currentUser.value = user;
@@ -273,25 +420,28 @@ async function joinRoomByCode() {
   }
 }
 
+async function joinSessionByCode() {
+  if (!currentUser.value || !sessionCodeInput.value.trim()) return;
+  if (!isRemoteApiAvailable()) {
+    alert("請先設定並連線至後端 API，或使用本機示範時由教師頁建立場次後從列表進入。");
+    return;
+  }
+  joiningSession.value = true;
+  try {
+    const sess = await apiJoinSessionByCode(sessionCodeInput.value.trim());
+    if (sess && typeof sess === "object" && "id" in sess && typeof (sess as { id: string }).id === "string") {
+      router.push(`/play/remote/session/${(sess as { id: string }).id}`);
+    } else {
+      alert("場次碼錯誤、場次已開始或已結束，或無法加入。請確認已登入。");
+    }
+  } finally {
+    joiningSession.value = false;
+  }
+}
+
 watch(currentUser, (u) => {
   if (!u) joinClassError.value = "";
 }, { immediate: true });
-
-// 這個頁面目前只保留 `auth-widget.js` 浮動登入按鈕，
-// Vue/TS 編譯時模板不再引用這些狀態與方法，會觸發 noUnusedLocals。
-// 用 void 明確引用，避免 vue-tsc 建置失敗。
-void isGoogleLoginAvailable;
-void isStudentEmail;
-void apiUrlDisplay;
-void groupRooms;
-void classSessions;
-void saveApiUrl;
-void oneClickDemoEnter;
-void handleDemoLogin;
-void handleGoogleSignIn;
-void handleSignOut;
-void joinClass;
-void joinRoomByCode;
 </script>
 
 <style scoped>
