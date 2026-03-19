@@ -18,3 +18,7 @@ dist/
 
 # Pages 部署產物
 .pages-deploy/
+
+.dev.vars*
+!.dev.vars.example
+!.env.example

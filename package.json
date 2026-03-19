@@ -4,9 +4,11 @@
   "private": true,
   "description": "字遊空間靜態站點",
   "scripts": {
-    "build": "cd 中文填字接龍 && npm install && cd ../班級守護隊 && npm install --legacy-peer-deps && cd .. && node scripts/prepare-pages.mjs"
+    "build": "cd 中文填字接龍 && npm install && cd ../班級守護隊 && npm install --legacy-peer-deps && cd .. && node scripts/prepare-pages.mjs",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "devDependencies": {
-    "wrangler": "^4"
+    "wrangler": "^4.75.0"
   }
 }
