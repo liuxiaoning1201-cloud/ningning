@@ -16,6 +16,8 @@ export function getApiUrl(): string {
   const stored = localStorage.getItem(API_URL_KEY) || import.meta.env.VITE_API_URL || "";
   if (stored) return stored;
   if (import.meta.env.DEV) return DEFAULT_DEV_API;
+  /** 生產環境未設定時，使用當前網域（平台統一登入 + Pages Functions） */
+  if (typeof window !== "undefined") return window.location.origin;
   return "";
 }
 
@@ -70,6 +72,7 @@ async function apiFetch(path: string, options: RequestInit = {}): Promise<Respon
   return fetch(`${baseUrl}${path}`, {
     ...options,
     headers,
+    credentials: "include",
   });
 }
 

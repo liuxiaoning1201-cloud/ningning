@@ -69,9 +69,10 @@ export const onRequestPost: PagesFunction<{
   );
 
   const cookie = `${COOKIE_NAME}=${jwt}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`;
+  const userPayload = { id: user.id, email: user.email, displayName: user.name, avatarUrl: user.avatar_url };
 
   return Response.json(
-    { user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatar_url } },
+    { token: jwt, user: userPayload },
     { headers: { 'Set-Cookie': cookie } },
   );
 };

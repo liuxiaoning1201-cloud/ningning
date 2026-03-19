@@ -9,9 +9,14 @@ interface ContextData {
 export const onRequest: PagesFunction<{
   JWT_SECRET: string;
 }, '/', ContextData> = async (context) => {
+  let token: string | undefined;
+
   const cookie = context.request.headers.get('Cookie') || '';
-  const match = cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-  const token = match?.[1];
+  const cookieMatch = cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
+  if (cookieMatch?.[1]) token = cookieMatch[1];
+
+  const authHeader = context.request.headers.get('Authorization');
+  if (!token && authHeader?.startsWith('Bearer ')) token = authHeader.slice(7);
 
   let user: ContextData['user'] = null;
   if (token && context.env.JWT_SECRET) {

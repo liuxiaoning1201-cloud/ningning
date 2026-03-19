@@ -135,10 +135,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { isOnlineMode, getApiUrl, setApiUrl, getSavedUser, saveUser, setJwt, type ApiUser } from "@/lib/api";
+import { isOnlineMode, getApiUrl, setApiUrl, getSavedUser, saveUser, setJwt, clearAuth, type ApiUser } from "@/lib/api";
 import { signInWithGoogle, signOut as googleSignOut, isGoogleLoginAvailable } from "@/lib/googleAuth";
 import { isStudentEmail } from "@/lib/remoteBattle";
 import { useRemoteBackendStore } from "@/stores/remoteBackend";
+
+/** 是否使用平台統一登入（ZYAuth） */
+const isZyAuthUser = ref(false);
 import {
   isRemoteApiAvailable,
   authDemo,
@@ -212,9 +215,37 @@ async function loadApiData() {
 
 watch(currentUser, () => loadApiData(), { immediate: true });
 
+function syncFromZYAuth() {
+  const zy = (window as unknown as { ZYAuth?: { user: { id: string; email: string; name: string; avatarUrl?: string } | null } }).ZYAuth;
+  if (zy?.user) {
+    currentUser.value = {
+      id: zy.user.id,
+      email: zy.user.email,
+      displayName: zy.user.name,
+      avatarUrl: zy.user.avatarUrl ?? undefined,
+    };
+    isZyAuthUser.value = true;
+  }
+}
+
 onMounted(() => {
   signingIn.value = false;
   apiUrlInput.value = getApiUrl();
+  currentUser.value = getSavedUser();
+
+  const zy = (window as unknown as { ZYAuth?: { ready: Promise<unknown>; user: unknown; onLogin: (cb: () => void) => void; onLogout: (cb: () => void) => void } }).ZYAuth;
+  if (zy) {
+    zy.ready.then(() => {
+      if (zy.user) syncFromZYAuth();
+    });
+    zy.onLogin(() => syncFromZYAuth());
+    zy.onLogout(() => {
+      currentUser.value = null;
+      isZyAuthUser.value = false;
+      clearAuth();
+    });
+  }
+
   loadApiData();
 });
 
@@ -322,9 +353,14 @@ async function handleGoogleSignIn() {
   }
 }
 
-function handleSignOut() {
+async function handleSignOut() {
+  if (isOnline.value) {
+    await fetch("/auth/logout", { method: "POST", credentials: "include" });
+  }
   googleSignOut();
+  clearAuth();
   currentUser.value = null;
+  isZyAuthUser.value = false;
 }
 
 async function joinClass() {
