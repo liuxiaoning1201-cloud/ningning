@@ -33,3 +33,5 @@ npm run build          # 建置所有應用到 dist/
 ## 部署
 
 推送到 `main` 分支會自動觸發 Cloudflare Pages 建置和部署。
+
+`npm run build` 會一併輸出 `poetpal/`（詩友記）到 `dist/`；若線上曾出現詩友記 404，多半是舊版建置未包含該目錄，重新部署即可。

@@ -58,7 +58,7 @@ const STATIC_APPS = [
   '字詞地鼠戰',
   '手勢點名',
   '春江花月夜',
-  ...(process.env.INCLUDE_POETPAL === '1' ? ['poetpal'] : []),
+  'poetpal',
 ];
 
 for (const name of STATIC_APPS) {
