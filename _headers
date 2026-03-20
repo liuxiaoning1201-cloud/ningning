@@ -1,0 +1,3 @@
+# 讓瀏覽器較常重新驗證填字 SPA 入口，減少舊版 JS 快取導致 Google Client ID 錯誤
+/crossword/index.html
+  Cache-Control: public, max-age=0, must-revalidate

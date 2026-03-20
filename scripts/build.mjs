@@ -43,7 +43,7 @@ mkdirSync(OUT, { recursive: true });
 
 // ── 根目錄靜態檔案 ──
 
-const ROOT_FILES = ['index.html', '404.html', 'auth-widget.js'];
+const ROOT_FILES = ['index.html', '404.html', 'auth-widget.js', '_headers'];
 for (const file of ROOT_FILES) {
   const src = join(ROOT, file);
   if (existsSync(src)) {

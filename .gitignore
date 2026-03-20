@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .wrangler/
+# wrangler pages download config 產生的檔案，勿提交
+wrangler.toml
 .env
 *.env
 !*.env.example
