@@ -13,9 +13,25 @@ export function getGoogleClientId(): string {
 let resolvedClientId: string | undefined;
 
 /**
- * 實際用於 GSI 的 Client ID：優先環境變數，否則向後端 /auth/config 取得（與右上角平台登入一致）。
+ * 實際用於 GSI 的 Client ID：
+ * - **正式建置**：一律向 `/auth/config` 取得（與 Cloudflare Secret 一致），避免 Pages 建置變數裡殘留已刪除的舊 ID 導致 `deleted_client`。
+ * - **開發模式**：優先 `VITE_GOOGLE_CLIENT_ID`，否則再請求後端。
  */
 export async function resolveGoogleClientId(): Promise<string> {
+  if (import.meta.env.PROD) {
+    if (resolvedClientId !== undefined) return resolvedClientId;
+    try {
+      const base = typeof window !== "undefined" ? window.location.origin : "";
+      const r = await fetch(`${base}/auth/config`, { credentials: "include" });
+      const data = (await r.json()) as { googleClientId?: string };
+      resolvedClientId = (data.googleClientId || "").trim();
+      return resolvedClientId;
+    } catch {
+      resolvedClientId = "";
+      return "";
+    }
+  }
+
   const fromEnv = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim();
   if (fromEnv) return fromEnv;
 
