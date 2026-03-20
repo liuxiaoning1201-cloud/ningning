@@ -36,7 +36,9 @@
 2. **Secrets** 裡的 **`GOOGLE_CLIENT_ID`** 必須與 Google Console **正在使用** 的那個用戶端 ID 一致。
 3. 改完後請 **強制重新整理**（Ctrl+Shift+R / Cmd+Shift+R）或清除快取。
 
-專案已改為：未設定 `VITE_GOOGLE_CLIENT_ID` 時，會向 **`/auth/config`** 取得 ID（與後端 Secret 一致），可避免打包進舊 ID。
+專案已改為：**正式建置（`import.meta.env.PROD`）一律只向 `/auth/config` 取 ID**，不再使用建置變數 `VITE_GOOGLE_CLIENT_ID`，避免 Cloudflare Git 自動建置把**已刪除的舊用戶端 ID** 打進 JS 導致 `deleted_client`。
+
+> 若你曾只用本機 `wrangler pages deploy` 成功、但 Git 推送後又失敗，多半是 **Pages 用 Git 建置**時帶了舊的 `VITE_GOOGLE_CLIENT_ID`；請刪除該建置變數，並確保 **main** 已包含上述修正（commit `fix(auth): 正式環境一律從 /auth/config 取得 Google Client ID`）。
 
 ## 常見錯誤
 
