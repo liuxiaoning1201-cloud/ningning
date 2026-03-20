@@ -1,143 +1,150 @@
 <template>
-  <div class="page">
+  <div class="page teacher-page">
     <nav class="nav-bar">
       <RouterLink to="/play/remote" class="btn btn-secondary">← 遠程對戰</RouterLink>
     </nav>
-    <h1 class="page-title" style="font-family: var(--font-heading)">👩‍🏫 教師後台</h1>
+    <h1 class="page-title teacher-title">教師開場</h1>
+    <p class="teacher-lead muted">先選活動類型；請學生在「遠程對戰」頁<strong>登入後只輸入一個碼</strong>。<strong>6 位數字</strong>＝競賽，<strong>較長的合作碼</strong>＝小組同一張圖。</p>
 
     <template v-if="!currentUser">
       <div class="card">
-        <p class="muted">請先至遠程對戰頁面登入後再使用教師後台。</p>
-        <RouterLink to="/play/remote" class="btn btn-primary" style="margin-top: 0.75rem">前往遠程對戰</RouterLink>
+        <p class="muted">請先在遠程對戰頁登入，再回來此頁。</p>
+        <RouterLink to="/play/remote" class="btn btn-primary" style="margin-top: 0.75rem">前往登入</RouterLink>
       </div>
     </template>
 
     <template v-else>
-      <!-- 建立班級 -->
-      <div class="card animate-fade-in">
-        <h3>📚 班級</h3>
-        <template v-if="!teacherClass">
-          <p class="muted">建立班級後可取得班級碼，學生輸入班級碼即可加入。</p>
-          <div class="form-row">
-            <input v-model="newClassName" type="text" placeholder="班級名稱" class="input-field" />
-            <button class="btn btn-primary" :disabled="!newClassName.trim()" @click="createClass">建立班級</button>
-          </div>
-        </template>
-        <template v-else>
-          <p><strong>{{ teacherClass.name }}</strong></p>
-          <p class="muted">班級碼：<code class="class-code">{{ teacherClass.code }}</code> <button class="btn btn-secondary btn-sm" @click="copyClassCode">複製</button></p>
-        </template>
+      <!-- 建立班級（僅在未建立時顯眼） -->
+      <div v-if="!teacherClass" class="card animate-fade-in card-spotlight">
+        <h3 class="h3-compact">📚 先建立班級</h3>
+        <p class="muted small-mb">建立後會取得<strong>班級碼</strong>（選修：讓學生加入後從列表進房）。發起競賽／合作可不經班級碼，直接給學生活動碼。</p>
+        <div class="form-row">
+          <input v-model="newClassName" type="text" placeholder="班級名稱" class="input-field" />
+          <button class="btn btn-primary" :disabled="!newClassName.trim()" @click="createClass">建立班級</button>
+        </div>
       </div>
 
       <template v-if="teacherClass">
-        <!-- 小組管理 -->
-        <div class="card animate-fade-in" style="animation-delay: 0.05s">
-          <h3>👥 小組</h3>
-          <p class="muted">建立小組並貼上學生電郵（<code>xxxxxxx@student.isf.edu.hk</code>），每行一筆。</p>
-          <div class="form-row">
-            <input v-model="newGroupName" type="text" placeholder="小組名稱" class="input-field" />
-            <button class="btn btn-primary" :disabled="!newGroupName.trim()" @click="addGroup">新增小組</button>
-          </div>
-          <div v-for="g in teacherGroups" :key="g.id" class="group-block">
-            <div class="group-header">
-              <strong>{{ g.name }}</strong>
-              <button type="button" class="btn btn-secondary btn-sm" @click="removeGroup(g.id)">刪除</button>
+        <!-- 班級一覽（精簡一列） -->
+        <div class="card card-inline class-strip animate-fade-in">
+          <span class="strip-name"><strong>{{ teacherClass.name }}</strong></span>
+          <span v-if="teacherClass.code" class="strip-code muted">
+            班級碼 <code class="class-code">{{ teacherClass.code }}</code>
+            <button type="button" class="btn btn-secondary btn-sm" @click="copyClassCode">複製</button>
+          </span>
+        </div>
+
+        <!-- 快速發起：兩種活動並排 -->
+        <div class="quick-grid animate-fade-in">
+          <div class="action-card action-competition">
+            <h3 class="action-title">🏆 計時競賽</h3>
+            <p class="action-hint muted">每人自己答，比正確與速度。給學生<strong>6 位數競賽碼</strong>。</p>
+            <div class="form-stack">
+              <select v-model="sessionPuzzleId" class="input-field full">
+                <option value="">選擇題組</option>
+                <option v-for="s in crosswordSets" :key="s.id" :value="s.id">{{ s.title }}</option>
+              </select>
+              <div class="form-inline">
+                <label class="lbl-sm">分鐘</label>
+                <input v-model.number="sessionDuration" type="number" min="1" max="60" class="input-field num" />
+                <label class="chk-inline">
+                  <input v-model="sessionShowHints" type="checkbox" />
+                  提示
+                </label>
+              </div>
+              <button
+                class="btn btn-primary btn-block"
+                :disabled="!sessionPuzzleId || creatingSession"
+                @click="createSession"
+              >
+                {{ creatingSession ? "建立中…" : "建立競賽並取得競賽碼" }}
+              </button>
             </div>
-            <textarea
-              v-model="groupEmails[g.id]"
-              placeholder="貼上學生電郵，每行一筆"
-              class="email-textarea"
-              rows="3"
-              @blur="saveGroupEmails(g.id)"
-            />
+            <div v-if="lastCreatedSession" class="code-box code-competition">
+              <p class="code-label">請學生輸入（6 位數）</p>
+              <p v-if="lastCreatedSession.joinCode" class="code-big">
+                <code>{{ lastCreatedSession.joinCode }}</code>
+                <button type="button" class="btn btn-secondary btn-sm" @click="copyRoomCode(String(lastCreatedSession.joinCode))">複製</button>
+              </p>
+              <p v-else class="muted small-mb">後端未回傳六位碼時，請從下方「進行中」進入場次查看。</p>
+              <RouterLink :to="`/play/remote/session/${lastCreatedSession.id}`" class="btn btn-secondary btn-sm">教師進入場次</RouterLink>
+            </div>
+          </div>
+
+          <div class="action-card action-collab">
+            <h3 class="action-title">🤝 小組合作</h3>
+            <p class="action-hint muted">全組<strong>同一張圖</strong>。給學生<strong>合作碼</strong>（目前為完整房間 ID，勿與六位競賽碼混淆）。</p>
+            <div class="form-stack">
+              <select v-model="roomPuzzleId" class="input-field full">
+                <option value="">選擇題組</option>
+                <option v-for="s in crosswordSets" :key="s.id" :value="s.id">{{ s.title }}</option>
+              </select>
+              <select v-model="roomGroupId" class="input-field full">
+                <option value="">選擇小組</option>
+                <option v-for="g in teacherGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
+              </select>
+              <button
+                class="btn btn-primary btn-block"
+                :disabled="!roomPuzzleId || !roomGroupId || creatingRoom"
+                @click="createRoom"
+              >
+                {{ creatingRoom ? "建立中…" : "建立合作房並取得合作碼" }}
+              </button>
+            </div>
+            <div v-if="lastCreatedRoom" class="code-box code-collab">
+              <p class="code-label">請學生輸入（合作碼）</p>
+              <p class="code-raw">
+                <code>{{ lastCreatedRoom.id }}</code>
+                <button type="button" class="btn btn-secondary btn-sm" @click="copyRoomCode(lastCreatedRoom.id)">複製</button>
+              </p>
+              <RouterLink :to="`/play/remote/room/${lastCreatedRoom.id}`" class="btn btn-secondary btn-sm">教師進入房間</RouterLink>
+            </div>
           </div>
         </div>
 
-        <!-- 發起小組合作（房間） -->
-        <div class="card animate-fade-in" style="animation-delay: 0.1s">
-          <h3>🤝 發起小組合作</h3>
-          <p class="muted">選擇題組與小組，建立房間後將房間碼分享給該組學生。</p>
-          <div class="form-row">
-            <label>題組</label>
-            <select v-model="roomPuzzleId" class="input-field">
-              <option value="">— 選擇題組 —</option>
-              <option v-for="s in crosswordSets" :key="s.id" :value="s.id">{{ s.title }}</option>
-            </select>
+        <details class="fold-card">
+          <summary>小組名單與電郵（需小組合作時再開）</summary>
+          <div class="fold-inner">
+            <p class="muted small-mb">建立小組並貼上學生電郵（<code>xxxxxxx@student.isf.edu.hk</code>），每行一筆。</p>
+            <div class="form-row">
+              <input v-model="newGroupName" type="text" placeholder="小組名稱" class="input-field" />
+              <button class="btn btn-primary" :disabled="!newGroupName.trim()" @click="addGroup">新增小組</button>
+            </div>
+            <div v-for="g in teacherGroups" :key="g.id" class="group-block">
+              <div class="group-header">
+                <strong>{{ g.name }}</strong>
+                <button type="button" class="btn btn-secondary btn-sm" @click="removeGroup(g.id)">刪除</button>
+              </div>
+              <textarea
+                v-model="groupEmails[g.id]"
+                placeholder="貼上學生電郵，每行一筆"
+                class="email-textarea"
+                rows="3"
+                @blur="saveGroupEmails(g.id)"
+              />
+            </div>
+            <p v-if="teacherGroups.length === 0" class="muted">尚無小組，請先新增。</p>
           </div>
-          <div class="form-row">
-            <label>小組</label>
-            <select v-model="roomGroupId" class="input-field">
-              <option value="">— 選擇小組 —</option>
-              <option v-for="g in teacherGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
-            </select>
-          </div>
-          <button
-            class="btn btn-primary"
-            :disabled="!roomPuzzleId || !roomGroupId || creatingRoom"
-            @click="createRoom"
-          >
-            {{ creatingRoom ? "建立中..." : "建立房間" }}
-          </button>
-          <div v-if="lastCreatedRoom" class="room-created">
-            <p>房間已建立，房間碼：<code>{{ lastCreatedRoom.id }}</code> <button class="btn btn-secondary btn-sm" @click="copyRoomCode(lastCreatedRoom.id)">複製</button></p>
-            <RouterLink :to="`/play/remote/room/${lastCreatedRoom.id}`" class="btn btn-secondary btn-sm">進入房間</RouterLink>
-          </div>
-        </div>
+        </details>
 
-        <!-- 發起班級競賽 -->
-        <div class="card animate-fade-in" style="animation-delay: 0.15s">
-          <h3>🏆 發起班級競賽</h3>
-          <p class="muted">選擇題組與計時，建立場次後學生在遠程對戰頁可看到並加入。</p>
-          <div class="form-row">
-            <label>題組</label>
-            <select v-model="sessionPuzzleId" class="input-field">
-              <option value="">— 選擇題組 —</option>
-              <option v-for="s in crosswordSets" :key="s.id" :value="s.id">{{ s.title }}</option>
-            </select>
+        <details class="fold-card">
+          <summary>進行中的競賽與合作房</summary>
+          <div class="fold-inner">
+            <div v-if="activeRooms.length > 0" class="list-section">
+              <p class="muted">小組合作：</p>
+              <RouterLink v-for="r in activeRooms" :key="r.id" :to="`/play/remote/room/${r.id}`" class="list-item">
+                {{ r.puzzleTitle }} · {{ r.status === "playing" ? "進行中" : "等待中" }} · {{ r.members.length }} 人
+              </RouterLink>
+            </div>
+            <div v-if="activeSessions.length > 0" class="list-section">
+              <p class="muted">計時競賽：</p>
+              <RouterLink v-for="s in activeSessions" :key="s.id" :to="`/play/remote/session/${s.id}`" class="list-item">
+                {{ s.puzzleTitle }} · {{ s.status === "playing" ? "進行中" : "等待中" }} · {{ s.participants.length }} 人
+              </RouterLink>
+            </div>
+            <p v-if="activeRooms.length === 0 && activeSessions.length === 0" class="muted">尚無進行中的活動。</p>
           </div>
-          <div class="form-row">
-            <label>計時（分鐘）</label>
-            <input v-model.number="sessionDuration" type="number" min="1" max="60" class="input-field" style="max-width: 6rem" />
-          </div>
-          <label class="checkbox-label">
-            <input v-model="sessionShowHints" type="checkbox" />
-            顯示提示
-          </label>
-          <button
-            class="btn btn-primary"
-            :disabled="!sessionPuzzleId || creatingSession"
-            @click="createSession"
-          >
-            {{ creatingSession ? "建立中..." : "建立競賽場次" }}
-          </button>
-          <div v-if="lastCreatedSession" class="session-created">
-            <p>場次已建立。</p>
-            <p v-if="lastCreatedSession.joinCode" class="muted">
-              學生六位數場次碼：<code class="class-code">{{ lastCreatedSession.joinCode }}</code>
-              <button type="button" class="btn btn-secondary btn-sm" @click="copyRoomCode(String(lastCreatedSession.joinCode))">複製</button>
-            </p>
-            <p v-else class="muted">學生可在「班級競賽」列表加入，或使用場次碼（若後端有回傳）。</p>
-            <RouterLink :to="`/play/remote/session/${lastCreatedSession.id}`" class="btn btn-secondary btn-sm">進入場次（教師視角）</RouterLink>
-          </div>
-        </div>
-
-        <!-- 進行中的房間與場次 -->
-        <div class="card animate-fade-in" style="animation-delay: 0.2s">
-          <h3>📋 進行中</h3>
-          <div v-if="activeRooms.length > 0" class="list-section">
-            <p class="muted">小組合作房間：</p>
-            <RouterLink v-for="r in activeRooms" :key="r.id" :to="`/play/remote/room/${r.id}`" class="list-item">
-              {{ r.puzzleTitle }} · {{ r.status === "playing" ? "進行中" : "等待中" }} · {{ r.members.length }} 人
-            </RouterLink>
-          </div>
-          <div v-if="activeSessions.length > 0" class="list-section">
-            <p class="muted">班級競賽場次：</p>
-            <RouterLink v-for="s in activeSessions" :key="s.id" :to="`/play/remote/session/${s.id}`" class="list-item">
-              {{ s.puzzleTitle }} · {{ s.status === "playing" ? "進行中" : "等待中" }} · {{ s.participants.length }} 人
-            </RouterLink>
-          </div>
-          <p v-if="activeRooms.length === 0 && activeSessions.length === 0" class="muted">尚無進行中的房間或場次。</p>
-        </div>
+        </details>
       </template>
     </template>
   </div>
@@ -391,17 +398,83 @@ watch(teacherGroups, (groups) => {
 </script>
 
 <style scoped>
+.teacher-page { max-width: 900px; margin: 0 auto; }
+.teacher-title { font-family: var(--font-heading); margin-bottom: 0.35rem; }
+.teacher-lead { font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem; }
+.h3-compact { margin: 0 0 0.35rem; font-size: 1.1rem; }
+.small-mb { margin-bottom: 0.65rem; }
+.card-spotlight { border: 2px dashed var(--border, #e5d5c3); }
+.class-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.65rem 1rem;
+  margin-bottom: 1rem;
+}
+.strip-code { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.35rem; }
 .muted { color: var(--text-muted, #8B8B8B); font-size: 0.9rem; }
 .form-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
 .form-row label { min-width: 5rem; }
 .input-field { flex: 1; min-width: 160px; padding: 0.5rem 0.75rem; border: 2px solid var(--border); border-radius: 10px; }
-.class-code { font-size: 1.1rem; background: #F9F5F0; padding: 0.2rem 0.5rem; border-radius: 6px; }
+.input-field.full { width: 100%; flex: none; }
+.input-field.num { max-width: 5rem; flex: none; min-width: 0; }
+.form-stack { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+.form-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.lbl-sm { font-size: 0.85rem; color: var(--text-muted); }
+.chk-inline { display: flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer; }
+.btn-block { width: 100%; justify-content: center; }
+.class-code { font-size: 1.05rem; background: #F9F5F0; padding: 0.2rem 0.5rem; border-radius: 6px; }
 .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+.quick-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (min-width: 720px) {
+  .quick-grid { grid-template-columns: 1fr 1fr; align-items: stretch; }
+}
+.action-card {
+  border: 2px solid var(--border, #f0e6d8);
+  border-radius: 14px;
+  padding: 1rem 1rem 0.85rem;
+  background: #fff;
+}
+.action-competition { border-color: #fcd34d; background: linear-gradient(180deg, #fffbeb 0%, #fff 50%); }
+.action-collab { border-color: #a5b4fc; background: linear-gradient(180deg, #eef2ff 0%, #fff 50%); }
+.action-title { margin: 0 0 0.35rem; font-size: 1.05rem; }
+.action-hint { font-size: 0.85rem; line-height: 1.45; margin: 0 0 0.25rem; }
+.code-box {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+.code-competition { background: #ecfdf5; border: 1px solid #a7f3d0; }
+.code-collab { background: #f5f3ff; border: 1px solid #ddd6fe; }
+.code-label { margin: 0 0 0.35rem; font-weight: 600; font-size: 0.85rem; }
+.code-big { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.code-big code { font-size: 1.35rem; font-weight: 700; letter-spacing: 0.08em; }
+.code-raw { margin: 0; word-break: break-all; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.5rem; }
+.code-raw code { font-size: 0.8rem; line-height: 1.4; }
+.fold-card {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border, #e5d5c3);
+  border-radius: 12px;
+  padding: 0.35rem 0.75rem;
+  background: #faf8f5;
+}
+.fold-card summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.35rem 0;
+}
+.fold-inner { padding: 0.5rem 0 0.75rem; border-top: 1px solid var(--border); margin-top: 0.25rem; }
 .group-block { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
 .email-textarea { width: 100%; padding: 0.5rem; border: 2px solid var(--border); border-radius: 8px; font-size: 0.9rem; resize: vertical; margin-top: 0.25rem; }
-.checkbox-label { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; cursor: pointer; }
-.room-created, .session-created { margin-top: 0.75rem; padding: 0.5rem; background: #F0FDF4; border-radius: 8px; }
 .list-section { margin-top: 0.5rem; }
 .list-item { display: block; padding: 0.5rem 0.75rem; margin-bottom: 0.25rem; background: #F9F5F0; border-radius: 8px; text-decoration: none; color: inherit; }
 .list-item:hover { background: #FFF0F3; }

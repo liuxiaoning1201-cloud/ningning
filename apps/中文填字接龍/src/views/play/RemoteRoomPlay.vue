@@ -6,7 +6,7 @@
 
     <template v-if="!room">
       <div class="card">
-        <p>找不到房間或無法加入，請確認房間碼。</p>
+        <p>找不到房間或無法加入，請向教師確認<strong>合作碼</strong>是否正確。</p>
         <RouterLink to="/play/remote" class="btn btn-primary" style="margin-top: 0.5rem">返回</RouterLink>
       </div>
     </template>

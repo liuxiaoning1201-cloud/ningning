@@ -14,7 +14,7 @@
     <template v-else-if="session.status === 'waiting'">
       <h1 class="page-title">🏆 班級競賽 · {{ session.puzzleTitle }}</h1>
       <div class="card">
-        <p v-if="session.joinCode" class="muted">場次碼：<strong>{{ session.joinCode }}</strong></p>
+        <p v-if="session.joinCode" class="muted">競賽碼（6 位數）：<strong>{{ session.joinCode }}</strong></p>
         <p class="muted">等待主持人開始。計時 {{ session.durationMinutes }} 分鐘，目前 {{ session.participants.length }} 人已加入。</p>
         <ul class="member-list">
           <li v-for="p in session.participants" :key="p.userId">{{ p.displayName }}</li>

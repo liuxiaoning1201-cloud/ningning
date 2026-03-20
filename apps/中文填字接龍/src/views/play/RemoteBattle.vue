@@ -1,120 +1,146 @@
 <template>
-  <div class="page">
-    <nav class="nav-bar">
+  <div class="page remote-simple">
+    <nav class="nav-bar nav-bar-min">
       <RouterLink to="/" class="btn btn-secondary">← 首頁</RouterLink>
-      <RouterLink v-if="currentUser?.role === 'teacher'" to="/play/remote/teacher" class="btn btn-secondary">教師後台</RouterLink>
+      <RouterLink v-if="currentUser?.role === 'teacher'" to="/play/remote/teacher" class="btn btn-secondary">
+        教師開場
+      </RouterLink>
     </nav>
 
-    <h1 class="page-title" style="font-family: var(--font-heading)">🌐 遠程對戰</h1>
+    <h1 class="page-title page-title-tight">遠程對戰</h1>
+    <p v-if="showStudentMinimalCopy" class="lead lead-one">
+      登入後輸入教師給的<strong>活動碼</strong>即可開始。
+    </p>
+    <p v-else class="lead">
+      登入後輸入教師提供的<strong>活動碼</strong>：<strong>6 位數字</strong>為計時競賽；其他格式為小組合作（需本機或學校已開通）。
+    </p>
 
-    <div class="card notice animate-fade-in">
-      <h3>說明</h3>
-      <p>與同學即時協作填字，或參加班級計時競賽。可設定本機示範或連線至學校部署的 API。</p>
-      <p class="muted">學生帳號須為 <code>@student.isf.edu.hk</code>；教師由管理員加入白名單；其他訪客仍可練習模式遊玩。</p>
-    </div>
-
-    <div v-if="!isZyAuthUser" class="card animate-fade-in" style="animation-delay: 0.05s">
-      <h3>後端 API</h3>
-      <p class="muted">目前：<strong>{{ apiUrlDisplay }}</strong></p>
-      <div class="api-config">
-        <input v-model="apiUrlInput" type="url" placeholder="https://…" class="input-field" />
-        <button type="button" class="btn btn-secondary" @click="saveApiUrl">儲存網址</button>
-      </div>
-      <p class="muted" style="margin-top: 0.5rem">正式站若使用右上角平台登入，通常不必改此欄位。</p>
-    </div>
-
-    <div v-if="!currentUser" class="card auth-card animate-fade-in" style="animation-delay: 0.08s">
-      <h3>登入</h3>
-      <p>請使用下方「示範登入」、Google，或右上角平台帳戶。</p>
-      <div class="demo-form">
-        <input v-model="demoName" type="text" placeholder="顯示名稱" class="input-field" />
-        <input v-model="demoEmail" type="email" placeholder="電郵" class="input-field" />
-        <button type="button" class="btn btn-primary" :disabled="signingIn" @click="handleDemoLogin">示範登入（後端）</button>
-        <button
-          v-if="isGoogleLoginAvailable()"
-          type="button"
-          class="btn btn-secondary google-btn"
-          :disabled="signingIn"
-          @click="handleGoogleSignIn"
-        >
-          {{ signingIn ? "登入中…" : "Google 登入" }}
-        </button>
-        <button type="button" class="btn btn-secondary" :disabled="signingIn" @click="oneClickDemoEnter">一鍵示範學生</button>
-      </div>
+    <!-- 未登入：只做登入 -->
+    <div v-if="!currentUser" class="card hero-card">
+      <h2 class="card-title">{{ showStudentMinimalCopy ? "登入" : "步驟 1：登入" }}</h2>
+      <p class="muted small-gap">
+        {{ showStudentMinimalCopy ? "使用學校 Google 帳戶登入。" : "使用學校 Google 帳戶，或點頁面右上角的「Google 登入」。" }}
+      </p>
+      <button
+        v-if="isGoogleLoginAvailable()"
+        type="button"
+        class="btn btn-primary btn-block btn-lg"
+        :disabled="signingIn"
+        @click="handleGoogleSignIn"
+      >
+        {{ signingIn ? "登入中…" : "使用 Google 登入" }}
+      </button>
       <p v-if="authError" class="error-text">{{ authError }}</p>
-    </div>
 
-    <div v-else class="card user-card animate-fade-in">
-      <div class="user-info">
-        <img v-if="currentUser.avatarUrl" :src="currentUser.avatarUrl" alt="" class="avatar" />
-        <div>
-          <strong>{{ currentUser.displayName }}</strong>
-          <span v-if="currentUser.role" class="student-badge">{{ roleLabel(currentUser.role) }}</span>
-          <div class="muted">{{ currentUser.email }}</div>
+      <details v-if="showAdvancedPanel" class="advanced">
+        <summary>進階：本機示範／手動 API</summary>
+        <div v-if="showApiUrlCard" class="advanced-inner">
+          <p class="muted">API 網址：{{ apiUrlDisplay }}</p>
+          <div class="row">
+            <input v-model="apiUrlInput" type="url" placeholder="https://…" class="input-field" />
+            <button type="button" class="btn btn-secondary" @click="saveApiUrl">儲存</button>
+          </div>
         </div>
-      </div>
-      <button type="button" class="btn btn-secondary" @click="handleSignOut">登出</button>
+        <div class="advanced-inner demo-block">
+          <input v-model="demoName" type="text" placeholder="顯示名稱" class="input-field" />
+          <input v-model="demoEmail" type="email" placeholder="電郵" class="input-field" />
+          <div class="row">
+            <button type="button" class="btn btn-secondary" :disabled="signingIn" @click="handleDemoLogin">示範登入</button>
+            <button type="button" class="btn btn-secondary" :disabled="signingIn" @click="oneClickDemoEnter">一鍵示範學生</button>
+          </div>
+        </div>
+      </details>
     </div>
 
-    <template v-if="currentUser">
-      <div class="card animate-fade-in" style="animation-delay: 0.1s">
-        <h3>🏆 加入競賽場次（六位數碼）</h3>
-        <p class="muted">向教師索取場次碼，登入後在此輸入即可加入計時競賽。</p>
-        <div class="join-form">
+    <!-- 已登入：活動碼為主 -->
+    <template v-else>
+      <div class="card hero-card join-card">
+        <div class="join-head">
+          <div class="join-head-text">
+            <h2 class="card-title join-title">{{ showStudentMinimalCopy ? "輸入活動碼" : "步驟 2：輸入活動碼" }}</h2>
+            <p class="muted hint-tight">
+              <template v-if="showStudentMinimalCopy">
+                <strong>6 位數字</strong>＝競賽；教師若給較長的碼＝小組合作。
+              </template>
+              <template v-else>
+                <strong>競賽碼</strong>：剛好 6 位數字。<br />
+                <strong>合作碼</strong>：非純六位（本機示範可用房間 ID）。
+              </template>
+            </p>
+          </div>
+          <div class="user-chip">
+            <span class="user-name">{{ currentUser.displayName }}</span>
+            <button type="button" class="btn-text" @click="handleSignOut">登出</button>
+          </div>
+        </div>
+        <div class="code-row">
           <input
-            v-model="sessionCodeInput"
+            v-model="unifiedCodeInput"
             type="text"
-            inputmode="numeric"
-            maxlength="8"
-            placeholder="例如 123456"
-            class="input-field"
-            style="max-width: 10rem; letter-spacing: 0.15em"
+            inputmode="text"
+            autocomplete="one-time-code"
+            maxlength="64"
+            :placeholder="showStudentMinimalCopy ? '輸入 6 位數或其他活動碼' : '例如 123456 或合作碼'"
+            class="input-field input-code"
+            @keydown.enter.prevent="joinByUnifiedCode"
           />
-          <button type="button" class="btn btn-primary" :disabled="joiningSession || !sessionCodeInput.trim()" @click="joinSessionByCode">
-            {{ joiningSession ? "加入中…" : "加入場次" }}
+          <button
+            type="button"
+            class="btn btn-primary btn-lg"
+            :disabled="joining || !unifiedCodeInput.trim()"
+            @click="joinByUnifiedCode"
+          >
+            {{ joining ? "進入中…" : "進入" }}
           </button>
         </div>
+        <p v-if="joinError" class="error-text">{{ joinError }}</p>
       </div>
 
-      <div class="card animate-fade-in" style="animation-delay: 0.12s">
-        <h3>📚 加入班級（選填）</h3>
-        <p class="muted">若學校啟用班級 API，輸入班級碼後可看到房間與場次列表。</p>
-        <div class="join-form">
-          <input v-model="classCodeInput" type="text" placeholder="班級碼" class="input-field" />
-          <button type="button" class="btn btn-primary" :disabled="joiningClass" @click="joinClass">加入班級</button>
+      <details v-if="showAdvancedPanel" class="advanced wide">
+        <summary>更多：班級碼、場次與合作房列表</summary>
+        <div class="advanced-inner">
+          <h3 class="h3-adv">加入班級（選填）</h3>
+          <p class="muted">若學校啟用班級 API，可輸入班級碼以顯示房間／場次捷徑。</p>
+          <div class="row">
+            <input v-model="classCodeInput" type="text" placeholder="班級碼" class="input-field" />
+            <button type="button" class="btn btn-primary" :disabled="joiningClass" @click="joinClass">加入班級</button>
+          </div>
+          <p v-if="joinClassError" class="error-text">{{ joinClassError }}</p>
         </div>
-        <p v-if="joinClassError" class="error-text">{{ joinClassError }}</p>
-      </div>
 
-      <div v-if="myClass" class="card animate-fade-in" style="animation-delay: 0.14s">
-        <h3>🤝 小組合作房間</h3>
-        <p class="muted">由教師建立房間後，輸入房間碼加入。</p>
-        <div class="join-form">
-          <input v-model="joinRoomId" type="text" placeholder="房間碼" class="input-field" />
-          <button type="button" class="btn btn-primary" :disabled="joining" @click="joinRoomByCode">加入房間</button>
+        <div v-if="myClass" class="advanced-inner">
+          <h3 class="h3-adv">小組合作房</h3>
+          <div class="row">
+            <input v-model="joinRoomId" type="text" placeholder="合作碼／房間 ID" class="input-field" />
+            <button type="button" class="btn btn-secondary" :disabled="joining" @click="joinRoomByCode">加入合作房</button>
+          </div>
+          <div v-if="groupRooms.length" class="link-list">
+            <RouterLink v-for="r in groupRooms" :key="r.id" :to="`/play/remote/room/${r.id}`" class="link-item">
+              {{ r.puzzleTitle }} · {{ r.status === "playing" ? "進行中" : "等待中" }}
+            </RouterLink>
+          </div>
         </div>
-        <div v-if="groupRooms.length" class="room-list">
-          <RouterLink v-for="r in groupRooms" :key="r.id" :to="`/play/remote/room/${r.id}`" class="room-item">
-            <span>{{ r.puzzleTitle }}</span>
-            <span class="status-dot" :class="{ playing: r.status === 'playing' }">{{ r.status === "playing" ? "進行中" : "等待中" }}</span>
-          </RouterLink>
-        </div>
-      </div>
 
-      <div v-if="myClass" class="card animate-fade-in" style="animation-delay: 0.16s">
-        <h3>🏁 班級競賽列表</h3>
-        <p class="muted">已加入班級時，由此進入教師發起的場次。</p>
-        <div v-if="classSessions.length" class="session-list">
-          <RouterLink v-for="s in classSessions" :key="s.id" :to="`/play/remote/session/${s.id}`" class="session-item">
-            <span>{{ s.puzzleTitle }}</span>
-            <span class="session-meta">{{ s.durationMinutes }} 分 · {{ s.status === "playing" ? "進行中" : "等待中" }}</span>
-          </RouterLink>
+        <div v-if="myClass" class="advanced-inner">
+          <h3 class="h3-adv">班級競賽列表</h3>
+          <div v-if="classSessions.length" class="link-list">
+            <RouterLink v-for="s in classSessions" :key="s.id" :to="`/play/remote/session/${s.id}`" class="link-item">
+              {{ s.puzzleTitle }} · {{ s.durationMinutes }} 分 · {{ s.status === "playing" ? "進行中" : "等待中" }}
+            </RouterLink>
+          </div>
+          <p v-else class="muted">目前沒有列表中的場次，請直接用上方六位對戰碼加入。</p>
         </div>
-        <p v-else class="muted">目前沒有可加入的場次（或後端尚未啟用班級 API）。請使用上方「六位數碼」加入。</p>
-      </div>
+
+        <div v-if="showApiUrlCard" class="advanced-inner">
+          <h3 class="h3-adv">後端 API 網址</h3>
+          <p class="muted">{{ apiUrlDisplay }}</p>
+          <div class="row">
+            <input v-model="apiUrlInput" type="url" class="input-field" />
+            <button type="button" class="btn btn-secondary" @click="saveApiUrl">儲存</button>
+          </div>
+        </div>
+      </details>
     </template>
-
-    <p class="muted" style="margin-top: 1rem; text-align: center">需要浮動登入時，請使用頁面角落的平台按鈕。</p>
   </div>
 </template>
 
@@ -131,7 +157,6 @@ import {
   clearAuth,
   fetchAuthMe,
   type ApiUser,
-  type ApiUserRole,
 } from "@/lib/api";
 import { signInWithGoogle, signOut as googleSignOut, isGoogleLoginAvailable } from "@/lib/googleAuth";
 import { useRemoteBackendStore } from "@/stores/remoteBackend";
@@ -151,7 +176,27 @@ const backend = useRemoteBackendStore();
 
 const isZyAuthUser = ref(false);
 
-const isOnline = computed(() => isOnlineMode());
+/** 正式託管站：一般學生介面極簡；開發本機、教師仍可看進階 */
+const isHostedProduction = computed(() => {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  return h.endsWith("pages.dev") || h.includes("zykongjian");
+});
+
+const showAdvancedPanel = computed(() => {
+  if (import.meta.env.DEV) return true;
+  if (!isHostedProduction.value) return true;
+  return currentUser.value?.role === "teacher";
+});
+/** 正式站一般學生：極簡文案與單卡動線（教師帳號仍看完整標籤） */
+const showStudentMinimalCopy = computed(() => {
+  if (import.meta.env.DEV) return false;
+  if (!isHostedProduction.value) return false;
+  if (!currentUser.value) return true;
+  return currentUser.value.role !== "teacher";
+});
+const showApiUrlCard = computed(() => import.meta.env.DEV && !isZyAuthUser.value);
+
 const apiUrlInput = ref(getApiUrl());
 const apiUrlDisplay = computed(() => getApiUrl() || "未設定（本機示範）");
 const currentUser = ref<ApiUser | null>(getSavedUser());
@@ -164,8 +209,8 @@ const joinClassError = ref("");
 const joiningClass = ref(false);
 const joinRoomId = ref("");
 const joining = ref(false);
-const sessionCodeInput = ref("");
-const joiningSession = ref(false);
+const unifiedCodeInput = ref("");
+const joinError = ref("");
 
 const apiClassRef = ref<{ class: { id: string; name: string; code: string }; groups: { id: string; name: string }[] } | null>(null);
 const apiRoomsRef = ref<{ id: string; puzzleTitle: string; status: string }[]>([]);
@@ -197,12 +242,6 @@ const classSessions = computed(() => {
   if (isRemoteApiAvailable()) return apiSessionsRef.value;
   return backend.getSessionsByClassId(myClass.value.id).filter((s) => s.status === "waiting" || s.status === "playing");
 });
-
-function roleLabel(r: ApiUserRole): string {
-  if (r === "teacher") return "教師";
-  if (r === "student") return "學生";
-  return "訪客";
-}
 
 async function loadApiData() {
   if (!isRemoteApiAvailable() || !currentUser.value) return;
@@ -332,7 +371,7 @@ async function handleDemoLogin() {
         if (e instanceof Error) {
           authError.value =
             e.name === "AbortError"
-              ? "登入逾時，請檢查後端是否已啟動，或重新整理後使用「一鍵進入（示範）」"
+              ? "登入逾時，請檢查後端是否已啟動，或重新整理後再試。"
               : e.message;
         } else {
           authError.value = "登入失敗";
@@ -350,7 +389,7 @@ async function handleDemoLogin() {
 
 async function handleGoogleSignIn() {
   if (!isRemoteApiAvailable()) {
-    authError.value = "請先設定後端 API 網址（上方輸入或前往設定頁），後端需支援 Google 登入。";
+    authError.value = "請先在「進階」設定後端 API 網址，或使用右上角平台登入。";
     return;
   }
   signingIn.value = true;
@@ -360,7 +399,7 @@ async function handleGoogleSignIn() {
     const user = await Promise.race([
       signInWithGoogle(),
       new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error("登入逾時，請重試。若曾出現 Google 視窗請關閉後再按一次登入。")), timeoutMs),
+        setTimeout(() => reject(new Error("登入逾時，請重試。")), timeoutMs),
       ),
     ]);
     if (user) currentUser.value = user;
@@ -372,13 +411,15 @@ async function handleGoogleSignIn() {
 }
 
 async function handleSignOut() {
-  if (isOnline.value) {
+  if (isOnlineMode()) {
     await fetch("/auth/logout", { method: "POST", credentials: "include" });
   }
   googleSignOut();
   clearAuth();
   currentUser.value = null;
   isZyAuthUser.value = false;
+  joinError.value = "";
+  unifiedCodeInput.value = "";
 }
 
 async function joinClass() {
@@ -392,10 +433,10 @@ async function joinClass() {
         apiClassRef.value = result as { class: { id: string; name: string; code: string }; groups: { id: string; name: string }[] };
         apiRoomsRef.value = await getRoomsForClass((result.class as { id: string }).id);
         apiSessionsRef.value = await getSessionsForClass((result.class as { id: string }).id);
-      } else joinClassError.value = "班級碼錯誤或不存在，請確認後再試。";
+      } else joinClassError.value = "班級碼錯誤或後端尚未開通此功能。";
     } else {
       const result = backend.joinClass(currentUser.value.id, currentUser.value.email, classCodeInput.value.trim());
-      if (!result) joinClassError.value = "班級碼錯誤或不存在，請確認後再試。";
+      if (!result) joinClassError.value = "班級碼錯誤或不存在。";
     }
   } finally {
     joiningClass.value = false;
@@ -404,38 +445,67 @@ async function joinClass() {
 
 async function joinRoomByCode() {
   if (!currentUser.value || !joinRoomId.value.trim()) return;
+  joinError.value = "";
   joining.value = true;
   try {
     if (isRemoteApiAvailable()) {
       const room = await apiJoinRoom(joinRoomId.value.trim());
       if (room) router.push(`/play/remote/room/${room.id}`);
-      else alert("房間碼錯誤或房間已開始/結束，無法加入。");
+      else joinError.value = "找不到房間。雲端站目前僅支援「六位數」競賽碼；小組房間請使用本機後端。";
     } else {
       const room = backend.joinRoom(joinRoomId.value.trim(), currentUser.value.id, currentUser.value.displayName, currentUser.value.email);
       if (room) router.push(`/play/remote/room/${room.id}`);
-      else alert("房間碼錯誤或房間已開始/結束，無法加入。");
+      else joinError.value = "房間碼錯誤或房間已關閉。";
     }
   } finally {
     joining.value = false;
   }
 }
 
-async function joinSessionByCode() {
-  if (!currentUser.value || !sessionCodeInput.value.trim()) return;
-  if (!isRemoteApiAvailable()) {
-    alert("請先設定並連線至後端 API，或使用本機示範時由教師頁建立場次後從列表進入。");
-    return;
-  }
-  joiningSession.value = true;
+/** 六位數 → 競賽場次；否則 → 房間（本機或日後 API） */
+async function joinByUnifiedCode() {
+  if (!currentUser.value) return;
+  const raw = unifiedCodeInput.value.trim();
+  if (!raw) return;
+  joinError.value = "";
+  joining.value = true;
   try {
-    const sess = await apiJoinSessionByCode(sessionCodeInput.value.trim());
-    if (sess && typeof sess === "object" && "id" in sess && typeof (sess as { id: string }).id === "string") {
-      router.push(`/play/remote/session/${(sess as { id: string }).id}`);
-    } else {
-      alert("場次碼錯誤、場次已開始或已結束，或無法加入。請確認已登入。");
+    const digitsOnly = raw.replace(/\D/g, "");
+    const isSixDigitCompetition = digitsOnly.length === 6 && /^\d{6}$/.test(digitsOnly);
+
+    if (isSixDigitCompetition) {
+      if (!isRemoteApiAvailable()) {
+        joinError.value = "未連線後端時，請用本機示範並由教師頁建立場次。";
+        return;
+      }
+      const sess = await apiJoinSessionByCode(digitsOnly);
+      if (sess && typeof sess === "object" && "id" in sess && typeof (sess as { id: string }).id === "string") {
+        router.push(`/play/remote/session/${(sess as { id: string }).id}`);
+        return;
+      }
+      joinError.value = "找不到此競賽碼，或場次已開始／已結束。請向教師確認六位數字。";
+      return;
     }
+
+    if (isRemoteApiAvailable()) {
+      const room = await apiJoinRoom(raw);
+      if (room) {
+        router.push(`/play/remote/room/${room.id}`);
+        return;
+      }
+      joinError.value =
+        "此碼不是有效的房間。在 zykongjian.pages.dev 上請使用教師提供的「六位數競賽碼」。小組合作房間需本機伺服器。";
+      return;
+    }
+
+    const room = backend.joinRoom(raw, currentUser.value.id, currentUser.value.displayName, currentUser.value.email);
+    if (room) {
+      router.push(`/play/remote/room/${room.id}`);
+      return;
+    }
+    joinError.value = "找不到房間或無法加入。";
   } finally {
-    joiningSession.value = false;
+    joining.value = false;
   }
 }
 
@@ -445,45 +515,123 @@ watch(currentUser, (u) => {
 </script>
 
 <style scoped>
-.notice { border-left: 4px solid #F59E0B; }
-.notice h3 { margin-bottom: 0.5rem; }
-.notice p { margin-bottom: 0.5rem; }
-
-.api-config, .join-form, .demo-form { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
-.api-config .input-field { flex: 1; min-width: 200px; }
-.input-field { flex: 1; min-width: 160px; padding: 0.6rem 0.75rem; border: 2px solid var(--border, #F0E6D8); border-radius: 12px; font-size: 0.95rem; }
-.input-field:focus { border-color: var(--primary, #FF6B8A); outline: none; }
-
-.auth-card { text-align: center; }
-.auth-card h3 { margin-bottom: 0.5rem; }
-.auth-card p { margin-bottom: 0.75rem; }
-.demo-form { flex-direction: column; align-items: stretch; }
-.google-btn { font-size: 1.1rem; padding: 0.75rem 2rem; }
-.error-text { color: var(--danger, #F87171); margin-top: 0.5rem; font-size: 0.9rem; }
-
-.user-card { display: flex; justify-content: space-between; align-items: center; }
-.user-info { display: flex; align-items: center; gap: 0.75rem; }
-.avatar { width: 40px; height: 40px; border-radius: 50%; }
-.muted { color: var(--text-muted, #8B8B8B); font-size: 0.9rem; }
-
-.my-groups { margin-top: 0.5rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
-.group-tag { display: inline-block; padding: 0.2rem 0.6rem; background: #EFF6FF; color: #1D4ED8; border-radius: 999px; font-size: 0.85rem; }
-
-.room-list, .session-list { margin-top: 0.75rem; }
-.room-item, .session-item {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 0.6rem 0.75rem; margin-bottom: 0.35rem;
-  background: #F9F5F0; border-radius: 10px; text-decoration: none; color: inherit;
-  transition: background 0.2s;
+.remote-simple { max-width: 520px; margin: 0 auto; }
+.nav-bar-min { flex-wrap: wrap; gap: 0.35rem; }
+.page-title-tight { margin-bottom: 0.35rem; }
+.lead {
+  color: var(--text-muted, #6b6b6b);
+  font-size: 0.95rem;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
 }
-.room-item:hover, .session-item:hover { background: #FFF0F3; }
-.status-dot { font-size: 0.8rem; color: var(--text-muted); }
-.status-dot.playing { color: #059669; font-weight: 600; }
-.session-meta { font-size: 0.85rem; color: var(--text-muted); }
-
-.student-badge {
-  display: inline-block; margin-left: 0.5rem; padding: 0.15rem 0.5rem; font-size: 0.75rem; font-weight: 600;
-  color: #065F46; background: #D1FAE5; border-radius: 999px;
+.lead-one { margin-bottom: 1rem; }
+.hero-card { margin-bottom: 1rem; }
+.card-title {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+  font-family: var(--font-heading, inherit);
 }
-.auth-card code { font-size: 0.85em; background: #F3F4F6; padding: 0.1rem 0.3rem; border-radius: 4px; }
+.small-gap { margin-bottom: 1rem; }
+.btn-block { width: 100%; justify-content: center; }
+.btn-lg { padding: 0.75rem 1.25rem; font-size: 1.05rem; }
+.join-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.join-head-text { flex: 1; min-width: 0; }
+.join-title { margin-bottom: 0.25rem !important; }
+.hint-tight { margin-bottom: 0 !important; font-size: 0.85rem; line-height: 1.45; }
+.user-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  max-width: 42%;
+  text-align: right;
+}
+.user-name { font-weight: 600; font-size: 0.9rem; line-height: 1.25; word-break: break-all; }
+.btn-text {
+  border: none;
+  background: none;
+  color: var(--text-muted, #888);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.btn-text:hover { color: var(--primary, #ff6b8a); }
+.btn-sm { font-size: 0.85rem; padding: 0.35rem 0.65rem; }
+.join-card { border: 2px solid var(--primary, #ff6b8a); box-shadow: 0 4px 20px rgba(255, 107, 138, 0.12); }
+.code-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+@media (min-width: 480px) {
+  .code-row {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .code-row .input-code { flex: 1; min-width: 0; }
+  .code-row .btn-lg { flex-shrink: 0; }
+}
+.input-field {
+  padding: 0.65rem 0.85rem;
+  border: 2px solid var(--border, #f0e6d8);
+  border-radius: 12px;
+  font-size: 1rem;
+}
+.input-field:focus {
+  border-color: var(--primary, #ff6b8a);
+  outline: none;
+}
+.input-code {
+  font-size: 1.35rem;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  text-align: center;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+.row .input-field { flex: 1; min-width: 160px; }
+.muted { color: var(--text-muted, #8b8b8b); font-size: 0.9rem; }
+.error-text { color: var(--danger, #f87171); margin-top: 0.65rem; font-size: 0.9rem; }
+.advanced {
+  margin-top: 1rem;
+  border: 1px dashed var(--border, #e5d5c3);
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  background: #faf8f5;
+}
+.advanced.wide { max-width: 100%; }
+.advanced summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted, #666);
+  font-size: 0.9rem;
+}
+.advanced-inner { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border, #eee); }
+.advanced-inner:first-of-type { border-top: none; padding-top: 0; }
+.demo-block .input-field { width: 100%; margin-bottom: 0.5rem; }
+.h3-adv { font-size: 1rem; margin: 0 0 0.35rem; }
+.link-list { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem; }
+.link-item {
+  padding: 0.5rem 0.65rem;
+  background: #fff;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--border, #f0e6d8);
+}
+.link-item:hover { background: #fff5f7; }
 </style>
