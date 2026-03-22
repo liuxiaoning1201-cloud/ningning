@@ -90,4 +90,8 @@ buildVueApp('班級守護隊', {
   env: { VITE_BASE_PATH: '/班級守護隊/' },
 });
 
+buildVueApp('句子排序小火車', {
+  env: { VITE_BASE_PATH: '/句子排序小火車/' },
+});
+
 console.log('Done. Output:', OUT);

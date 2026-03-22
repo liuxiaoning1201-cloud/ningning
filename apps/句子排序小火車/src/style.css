@@ -1,0 +1,29 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: "Noto Sans TC", system-ui, sans-serif;
+  background: linear-gradient(180deg, #b8e0ff 0%, #e8f4ff 38%, #fff5e6 100%);
+  color: #2c3e50;
+  min-height: 100dvh;
+}
+
+#app {
+  min-height: 100dvh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}

@@ -25,13 +25,25 @@
       </div>
 
       <template v-if="teacherClass">
-        <!-- 班級一覽（精簡一列） -->
-        <div class="card card-inline class-strip animate-fade-in">
+        <!-- 僅限正式班級：顯示名稱與班級碼（隱藏「線上教學」等虛擬班級列） -->
+        <div v-if="!isVirtualClass" class="card card-inline class-strip animate-fade-in">
           <span class="strip-name"><strong>{{ teacherClass.name }}</strong></span>
           <span v-if="teacherClass.code" class="strip-code muted">
             班級碼 <code class="class-code">{{ teacherClass.code }}</code>
             <button type="button" class="btn btn-secondary btn-sm" @click="copyClassCode">複製</button>
           </span>
+        </div>
+
+        <!-- 雲端僅虛擬班級：可升級為正式班級以使用小組合作 -->
+        <div v-if="isVirtualClass" class="card card-spotlight animate-fade-in">
+          <h3 class="h3-compact">📚 建立正式班級</h3>
+          <p class="muted small-mb">
+            您目前可直接發起<strong>計時競賽</strong>。若要<strong>小組合作</strong>、班級碼與小組名單，請先建立班級：
+          </p>
+          <div class="form-row">
+            <input v-model="newClassName" type="text" placeholder="班級名稱" class="input-field" />
+            <button class="btn btn-primary" :disabled="!newClassName.trim()" @click="createClass">建立班級</button>
+          </div>
         </div>
 
         <!-- 快速發起：兩種活動並排 -->
@@ -79,13 +91,13 @@
                 <option value="">選擇題組</option>
                 <option v-for="s in crosswordSets" :key="s.id" :value="s.id">{{ s.title }}</option>
               </select>
-              <select v-model="roomGroupId" class="input-field full">
-                <option value="">選擇小組</option>
+              <select v-model="roomGroupId" class="input-field full" :disabled="isVirtualClass">
+                <option value="">{{ isVirtualClass ? "請先建立正式班級並新增小組" : "選擇小組" }}</option>
                 <option v-for="g in teacherGroups" :key="g.id" :value="g.id">{{ g.name }}</option>
               </select>
               <button
                 class="btn btn-primary btn-block"
-                :disabled="!roomPuzzleId || !roomGroupId || creatingRoom"
+                :disabled="!roomPuzzleId || !roomGroupId || creatingRoom || isVirtualClass"
                 @click="createRoom"
               >
                 {{ creatingRoom ? "建立中…" : "建立合作房並取得合作碼" }}
@@ -102,30 +114,51 @@
           </div>
         </div>
 
-        <details class="fold-card">
-          <summary>小組名單與電郵（需小組合作時再開）</summary>
-          <div class="fold-inner">
-            <p class="muted small-mb">建立小組並貼上學生電郵（<code>xxxxxxx@student.isf.edu.hk</code>），每行一筆。</p>
-            <div class="form-row">
-              <input v-model="newGroupName" type="text" placeholder="小組名稱" class="input-field" />
-              <button class="btn btn-primary" :disabled="!newGroupName.trim()" @click="addGroup">新增小組</button>
-            </div>
-            <div v-for="g in teacherGroups" :key="g.id" class="group-block">
-              <div class="group-header">
-                <strong>{{ g.name }}</strong>
+        <div v-if="!isVirtualClass" class="card fold-equivalent animate-fade-in">
+          <h3 class="h3-compact">👥 小組</h3>
+          <p class="muted small-mb">
+            填寫小組名稱與學生電郵後按<strong>添加小組</strong>；可重複添加多組。多人電郵可一次貼上，用<strong>英文逗號</strong>、分號或換行隔開（例如：
+            <code>a@student.isf.edu.hk, b@student.isf.edu.hk</code>）。
+          </p>
+          <div class="group-add-panel">
+            <input
+              v-model="newGroupName"
+              type="text"
+              placeholder="小組名稱"
+              class="input-field full"
+            />
+            <textarea
+              v-model="newGroupEmailsRaw"
+              placeholder="學生電郵（可逗號或換行分隔多人）"
+              class="email-textarea"
+              rows="3"
+            />
+            <button
+              type="button"
+              class="btn btn-primary btn-add-group"
+              :disabled="!newGroupName.trim() || addingGroup"
+              @click="addGroupWithEmails"
+            >
+              {{ addingGroup ? "添加中…" : "➕ 添加小組" }}
+            </button>
+          </div>
+          <div v-for="g in teacherGroups" :key="g.id" class="group-block">
+            <div class="group-header">
+              <strong>{{ g.name }}</strong>
+              <div class="group-actions">
+                <button type="button" class="btn btn-secondary btn-sm" @click="saveGroupEmails(g.id)">儲存名單</button>
                 <button type="button" class="btn btn-secondary btn-sm" @click="removeGroup(g.id)">刪除</button>
               </div>
-              <textarea
-                v-model="groupEmails[g.id]"
-                placeholder="貼上學生電郵，每行一筆"
-                class="email-textarea"
-                rows="3"
-                @blur="saveGroupEmails(g.id)"
-              />
             </div>
-            <p v-if="teacherGroups.length === 0" class="muted">尚無小組，請先新增。</p>
+            <textarea
+              v-model="groupEmails[g.id]"
+              placeholder="學生電郵，逗號、分號或換行隔開"
+              class="email-textarea"
+              rows="3"
+            />
           </div>
-        </details>
+          <p v-if="teacherGroups.length === 0" class="muted">尚無小組，請用上方表單添加。</p>
+        </div>
 
         <details class="fold-card">
           <summary>進行中的競賽與合作房</summary>
@@ -182,6 +215,9 @@ const apiSessionsRef = ref<{ id: string; puzzleTitle: string; status: string; pa
 
 const newClassName = ref("");
 const newGroupName = ref("");
+/** 新增小組時一次貼上的電郵（逗號／分號／換行皆可） */
+const newGroupEmailsRaw = ref("");
+const addingGroup = ref(false);
 const groupEmails = reactive<Record<string, string>>({});
 const roomPuzzleId = ref("");
 const roomGroupId = ref("");
@@ -197,6 +233,12 @@ const teacherClass = computed(() => {
   if (!currentUser.value) return null;
   if (isRemoteApiAvailable()) return apiTeacherClassRef.value;
   return backend.getTeacherCurrentClass(currentUser.value.id);
+});
+
+/** 雲端無 D1 班級時使用的佔位班級（不顯示「線上教學」列，僅支援競賽） */
+const isVirtualClass = computed(() => {
+  const c = teacherClass.value;
+  return !!c && c.id.startsWith("virtual-");
 });
 
 const teacherGroups = computed(() => {
@@ -233,7 +275,7 @@ async function loadApiData() {
   if (me?.role === "teacher") {
     apiTeacherClassRef.value = {
       id: `virtual-${currentUser.value.id}`,
-      name: "線上教學",
+      name: "",
       code: "",
     };
     apiTeacherGroupsRef.value = [];
@@ -267,18 +309,39 @@ async function createClass() {
 }
 
 function copyClassCode() {
-  if (teacherClass.value) navigator.clipboard.writeText(teacherClass.value.code);
+  if (teacherClass.value?.code) navigator.clipboard.writeText(teacherClass.value.code);
 }
 
-async function addGroup() {
-  if (!teacherClass.value || !newGroupName.value.trim()) return;
-  if (isRemoteApiAvailable()) {
-    const g = await apiCreateGroup(teacherClass.value.id, newGroupName.value.trim());
-    if (g) apiTeacherGroupsRef.value = [...apiTeacherGroupsRef.value, { ...g, memberEmails: [] }];
-  } else {
-    backend.createGroup(teacherClass.value.id, newGroupName.value.trim());
+function parseStudentEmails(raw: string): string[] {
+  return raw
+    .split(/[\n,;，]+/)
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+async function addGroupWithEmails() {
+  if (!teacherClass.value || isVirtualClass.value || !newGroupName.value.trim()) return;
+  const emails = parseStudentEmails(newGroupEmailsRaw.value);
+  addingGroup.value = true;
+  try {
+    if (isRemoteApiAvailable()) {
+      const g = await apiCreateGroup(teacherClass.value.id, newGroupName.value.trim());
+      if (g) {
+        const full = { ...g, memberEmails: emails };
+        apiTeacherGroupsRef.value = [...apiTeacherGroupsRef.value, full];
+        if (emails.length) {
+          await apiUpdateGroupMembers(teacherClass.value.id, g.id, emails);
+        }
+      }
+    } else {
+      const g = backend.createGroup(teacherClass.value.id, newGroupName.value.trim());
+      if (emails.length) backend.updateGroupMembers(g.id, emails);
+    }
+    newGroupName.value = "";
+    newGroupEmailsRaw.value = "";
+  } finally {
+    addingGroup.value = false;
   }
-  newGroupName.value = "";
 }
 
 async function removeGroup(groupId: string) {
@@ -293,10 +356,7 @@ async function removeGroup(groupId: string) {
 
 async function saveGroupEmails(groupId: string) {
   const raw = groupEmails[groupId] ?? "";
-  const emails = raw
-    .split(/[\n,;]+/)
-    .map((e) => e.trim())
-    .filter(Boolean);
+  const emails = parseStudentEmails(raw);
   if (!teacherClass.value) return;
   if (isRemoteApiAvailable()) {
     await apiUpdateGroupMembers(teacherClass.value.id, groupId, emails);
@@ -392,7 +452,9 @@ watch(teacherGroups, (groups) => {
   groups.forEach((g) => {
     const id = g.id;
     const emails = "memberEmails" in g ? (g as { memberEmails: string[] }).memberEmails : [];
-    if (!(id in groupEmails)) groupEmails[id] = Array.isArray(emails) ? emails.join("\n") : "";
+    if (!(id in groupEmails)) {
+      groupEmails[id] = Array.isArray(emails) ? emails.join(", ") : "";
+    }
   });
 }, { immediate: true });
 </script>
@@ -472,8 +534,21 @@ watch(teacherGroups, (groups) => {
   padding: 0.35rem 0;
 }
 .fold-inner { padding: 0.5rem 0 0.75rem; border-top: 1px solid var(--border); margin-top: 0.25rem; }
+.fold-equivalent { margin-bottom: 1rem; border: 1px solid var(--border, #e5d5c3); border-radius: 12px; padding: 1rem; background: #fff; }
+.group-add-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.75rem;
+  background: #faf8f5;
+  border-radius: 10px;
+  border: 1px dashed var(--border, #e5d5c3);
+}
+.btn-add-group { align-self: flex-start; }
 .group-block { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-.group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
+.group-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.35rem; flex-wrap: wrap; }
+.group-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .email-textarea { width: 100%; padding: 0.5rem; border: 2px solid var(--border); border-radius: 8px; font-size: 0.9rem; resize: vertical; margin-top: 0.25rem; }
 .list-section { margin-top: 0.5rem; }
 .list-item { display: block; padding: 0.5rem 0.75rem; margin-bottom: 0.25rem; background: #F9F5F0; border-radius: 8px; text-decoration: none; color: inherit; }
