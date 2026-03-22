@@ -37,6 +37,9 @@ const instantTrackReset = ref(false);
 const celebrate = ref(false);
 const excelError = ref("");
 
+/** 火車開走時汽笛（public/train-whistle.mp3） */
+const trainWhistle = ref<HTMLAudioElement | null>(null);
+
 const seasonNames = ["春", "夏", "秋", "冬"];
 
 const currentLevelLabel = computed(
@@ -175,6 +178,17 @@ function startDrag(e: PointerEvent, token: Token, fromSlot: number | null) {
   window.addEventListener("pointercancel", endDrag);
 }
 
+function playTrainWhistle() {
+  const a = trainWhistle.value;
+  if (!a) return;
+  try {
+    a.currentTime = 0;
+    void a.play().catch(() => {});
+  } catch {
+    /* 略過 */
+  }
+}
+
 function checkWin() {
   const ans = answer.value;
   const sl = slots.value;
@@ -185,6 +199,7 @@ function checkWin() {
   setTimeout(() => {
     celebrate.value = false;
     departAnim.value = true;
+    playTrainWhistle();
   }, 650);
 }
 
@@ -263,6 +278,9 @@ function isDraggingToken(token: Token, fromSlot: number | null) {
 
 onMounted(() => {
   loadBankFromStorage();
+  const url = `${import.meta.env.BASE_URL}train-whistle.mp3`;
+  trainWhistle.value = new Audio(url);
+  trainWhistle.value.preload = "auto";
 });
 
 onUnmounted(() => {
