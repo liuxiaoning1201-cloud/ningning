@@ -239,43 +239,70 @@ body::after {
     padding: 0.5rem;
     text-align: left;
 }
-/* 地鼠探頭動畫樣式 - 平鋪在首頁底部 */
+/* 地鼠探頭動畫樣式 - 首頁置中完整顯示 */
 .mole-animation {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 200px;
+    width: min(90vw, 420px);
+    height: min(56vw, 260px);
+    margin: 0 auto 1rem auto;
     pointer-events: none;
-    z-index: 0;
-    opacity: 1;
-    overflow: hidden;
-    border-radius: 0 0 0.75rem 0.75rem;
+    z-index: 1;
+    overflow: visible;
+    border-radius: 0.75rem;
 }
 
 .mole-animation video {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    object-position: center bottom;
+    object-fit: contain;
+    object-position: center center;
 }
 
-/* 確保 start-screen 的內容在上層 */
-#start-screen > * {
+#mode-selection-view {
     position: relative;
     z-index: 1;
 }
 
-#user-selection-view,
-#main-menu-view {
-    position: relative;
-    z-index: 1;
+#start-screen,
+#mode-selection-view {
+    backdrop-filter: blur(2px);
+}
+
+#mode-selection-view {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.mode-card {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    padding: 0.5rem;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.mode-main-btn {
+    box-shadow: 0 6px 14px rgba(30, 64, 175, 0.18);
+}
+
+.mode-settings-btn {
+    width: 52px;
+    height: 52px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+}
+
+.mode-settings-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 12px rgba(15, 23, 42, 0.15);
 }
 
 /* 響應式調整 */
 @media (max-width: 640px) {
     .mole-animation {
-        height: 150px;
+        width: min(94vw, 360px);
+        height: min(60vw, 220px);
     }
 }
 </style>
@@ -313,33 +340,32 @@ body::after {
 
 <!-- 開始畫面 -->
 <div id="start-screen" class="p-6 bg-white rounded-xl shadow-lg relative">
-    <!-- 地鼠探頭動畫 - 平鋪在底部 -->
+    <h2 class="text-2xl font-bold text-slate-800 mb-4">準備好了嗎？</h2>
     <div class="mole-animation">
         <video autoplay loop muted playsinline>
             <source src="assets/動畫效果/地鼠探頭.mp4" type="video/mp4">
         </video>
     </div>
-    <button id="settings-btn" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800 transition z-10">
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-    </button>
-    <div id="user-selection-view">
-        <h2 class="text-2xl font-bold text-slate-800 mb-4">選擇學生</h2>
-        <select id="user-select" class="w-full p-2 border border-slate-300 rounded-md mb-3"></select>
-        <div class="flex space-x-2">
-            <input type="text" id="new-user-name" placeholder="輸入新學生姓名" class="flex-grow p-2 border border-slate-300 rounded-md">
-            <button id="add-user-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">新增</button>
+    <button id="start-adventure-btn" class="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">開始闖關吧</button>
+</div>
+
+<div id="mode-selection-view" class="hidden p-6 bg-white rounded-xl shadow-lg relative">
+    <h2 class="text-2xl font-bold text-slate-800 mb-4">選擇模式</h2>
+    <div class="flex flex-col space-y-3">
+        <div class="mode-card flex items-center space-x-3">
+            <button id="practice-mode-btn" class="mode-main-btn flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">闖關模式</button>
+            <button class="mode-settings-btn text-slate-700 font-bold rounded-lg transition" aria-label="打開設定">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
         </div>
-        <button id="confirm-user-btn" class="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">確定</button>
-    </div>
-    <div id="main-menu-view" class="hidden">
-        <h2 class="text-2xl font-bold text-slate-800 mb-2">主選單</h2>
-        <p class="text-lg text-slate-600 mb-4">歡迎, <span id="current-user-name" class="font-bold"></span>!</p>
-        <div class="flex flex-col space-y-3">
-            <button id="practice-mode-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">闖關練習</button>
-            <button id="timed-mode-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">計時比賽</button>
+        <div class="mode-card flex items-center space-x-3">
+            <button id="timed-mode-btn" class="mode-main-btn flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">計時模式</button>
+            <button class="mode-settings-btn text-slate-700 font-bold rounded-lg transition" aria-label="打開設定">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
         </div>
-        <p class="text-slate-500 mt-4 text-lg">最高紀錄：<span id="high-score-start" class="font-bold">0</span></p>
     </div>
+    <p class="text-slate-500 mt-4 text-lg">最高紀錄：<span id="high-score-start" class="font-bold">0</span></p>
 </div>
 
 <!-- 關卡選擇畫面 -->
@@ -436,18 +462,13 @@ body::after {
         const levelSelectionScreen = document.getElementById('level-selection-screen');
 
         const gameBoard = document.getElementById('game-board');
-        const settingsBtn = document.getElementById('settings-btn');
+        const startAdventureBtn = document.getElementById('start-adventure-btn');
+        const modeSelectionView = document.getElementById('mode-selection-view');
+        const modeSettingsBtns = document.querySelectorAll('.mode-settings-btn');
         const closeSettingsBtn = document.getElementById('close-settings-btn');
         const restartBtn = document.getElementById('restart-btn');
         
-        // 開始畫面
-        const userSelectionView = document.getElementById('user-selection-view');
-        const mainMenuView = document.getElementById('main-menu-view');
-        const userSelect = document.getElementById('user-select');
-        const newUserInput = document.getElementById('new-user-name');
-        const addUserBtn = document.getElementById('add-user-btn');
-        const confirmUserBtn = document.getElementById('confirm-user-btn');
-        const currentUserEl = document.getElementById('current-user-name');
+        // 模式選單
         const practiceModeBtn = document.getElementById('practice-mode-btn');
         const timedModeBtn = document.getElementById('timed-mode-btn');
         const highScoreStartEl = document.getElementById('high-score-start');
@@ -561,6 +582,22 @@ body::after {
         // 獲勝音效
         const winnerSound = new Audio('assets/winner-game-sound-404167.mp3');
         winnerSound.volume = 0.7; // 設置音量為 70%
+        const failClickSound = new Audio('assets/audio/fail.mp3');
+        const successClickSound = new Audio('assets/audio/success.mp3');
+        failClickSound.preload = 'auto';
+        successClickSound.preload = 'auto';
+        failClickSound.volume = 0.95;
+        successClickSound.volume = 0.9;
+
+        function playClickFeedbackSound(type) {
+            const audio = type === 'success' ? successClickSound : failClickSound;
+            audio.currentTime = 0;
+            audio.play().catch(() => {
+                // Fallback to synth if file playback is blocked by browser policy.
+                if (type === 'success' && correctSound) correctSound.triggerAttackRelease('C5', '8n');
+                if (type === 'fail' && incorrectSound) incorrectSound.triggerAttackRelease('A2', '8n');
+            });
+        }
         
         // --- 核心遊戲邏輯 ---
         
@@ -583,6 +620,7 @@ body::after {
 
         function startGame(mode, levels, startIndex = 0) {
             startScreen.classList.add('hidden');
+            modeSelectionView.classList.add('hidden');
             gameScreen.classList.remove('hidden');
             allMistakesInGame = [];
 
@@ -661,7 +699,7 @@ body::after {
 
         function handleWhack(e) {
             const animalContainer = e.currentTarget;
-            if (correctSound && Tone.context.state !== 'running') Tone.context.resume();
+            if (typeof Tone !== 'undefined' && correctSound && Tone.context.state !== 'running') Tone.context.resume();
             if (!animalContainer.classList.contains('up')) return;
             
             animalContainer.classList.remove('up');
@@ -673,7 +711,7 @@ body::after {
                 const points = 10 + Math.min(gameState.combo, 10);
                 gameState.score += points;
                 gameState.correctHitsThisLevel++;
-                if (correctSound) correctSound.triggerAttackRelease('C5', '8n');
+                playClickFeedbackSound('success');
                 showScorePopup(`+${points}`, animalContainer, 'text-green-500');
                 showHammerAnimation(animalContainer);
                 
@@ -697,7 +735,7 @@ body::after {
                 gameState.mistakesThisLevel.push(mistake);
                 allMistakesInGame.push(mistake);
 
-                if (incorrectSound) incorrectSound.triggerAttackRelease('A2', '8n');
+                playClickFeedbackSound('fail');
                 showScorePopup('-5', animalContainer, 'text-red-500');
             }
             updateUI();
@@ -921,52 +959,25 @@ body::after {
             localStorage.setItem('whackACharGameData', JSON.stringify(gameData));
         }
 
-        function loadUserProfiles() {
-            userSelect.innerHTML = '';
-            if (!gameData.users || Object.keys(gameData.users).length === 0) {
-                userSelect.innerHTML = '<option>請新增學生</option>';
-                confirmUserBtn.disabled = true;
-                return;
-            }
-            Object.keys(gameData.users).forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name;
-                userSelect.appendChild(option);
-            });
-            confirmUserBtn.disabled = false;
-        }
-
-        function addUser() {
-            const name = newUserInput.value.trim();
-            if (name && !gameData.users[name]) {
-                gameData.users[name] = {
+        function ensureDefaultUser() {
+            if (!gameData.users) gameData.users = {};
+            currentUser = '玩家';
+            if (!gameData.users[currentUser]) {
+                gameData.users[currentUser] = {
                     highScore: 0,
                     customLibrary: {},
                     skillTokens: 0,
                     savedTimedGame: null
                 };
-                saveGameData();
-                loadUserProfiles();
-                userSelect.value = name;
-                newUserInput.value = '';
             }
-        }
-
-        function confirmUser() {
-            currentUser = userSelect.value;
-            if (currentUser && gameData.users[currentUser]) {
-                showMainMenu();
-            }
+            saveGameData();
         }
 
         function showMainMenu() {
-            userSelectionView.classList.add('hidden');
-            mainMenuView.classList.remove('hidden');
             startScreen.classList.remove('hidden');
+            modeSelectionView.classList.add('hidden');
             gameScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
-            currentUserEl.textContent = currentUser;
             updateHighScoreDisplay();
 
             // Check for a saved timed game
@@ -1128,6 +1139,7 @@ body::after {
 
         function resumeGame(savedGameState) {
             startScreen.classList.add('hidden');
+            modeSelectionView.classList.add('hidden');
             gameScreen.classList.remove('hidden');
             allMistakesInGame = []; // For simplicity, don't resume mistakes list
 
@@ -1178,7 +1190,7 @@ body::after {
                             loadCustomLibrary();
                             alert(`成功導入 ${newLevels.length} 題！`);
                         } else {
-                            alert('導入失敗，請先選擇一位學生！');
+                            alert('導入失敗，請稍後再試。');
                         }
                     } else {
                         alert('Excel 檔案中沒有找到有效格式的題目。');
@@ -1193,10 +1205,6 @@ body::after {
         }
 
         function handleExport() {
-            if (!currentUser || !gameData.users[currentUser]) {
-                alert("請先選擇一位學生！");
-                return;
-            }
             const library = gameData.users[currentUser].customLibrary;
             if (Object.keys(library).length === 0) {
                 alert("自定義題庫是空的！");
@@ -1217,8 +1225,11 @@ body::after {
         // --- 事件監聽器 ---
 
         // 主流程按鈕
-        addUserBtn.addEventListener('click', addUser);
-        confirmUserBtn.addEventListener('click', confirmUser);
+        startAdventureBtn.addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            modeSelectionView.classList.remove('hidden');
+            updateHighScoreDisplay();
+        });
         practiceModeBtn.addEventListener('click', () => {
             levelSelectionScreen.classList.remove('hidden');
         });
@@ -1293,14 +1304,10 @@ body::after {
         closeLevelSelectionBtn.addEventListener('click', () => levelSelectionScreen.classList.add('hidden'));
 
         // 設定頁面
-        settingsBtn.addEventListener('click', () => {
-            if (!currentUser) {
-                alert("請先選擇一位學生！");
-                return;
-            }
+        modeSettingsBtns.forEach((btn) => btn.addEventListener('click', () => {
             loadCustomLibrary();
             settingsScreen.classList.remove('hidden');
-        });
+        }));
         closeSettingsBtn.addEventListener('click', () => {
             settingsScreen.classList.add('hidden');
             customErrorMsg.textContent = '';
@@ -1316,9 +1323,6 @@ body::after {
                     loadCustomLibrary();
                     customLevelsInput.value = '';
                     customErrorMsg.textContent = '成功新增！';
-                    setTimeout(() => customErrorMsg.textContent = '', 2000);
-                } else {
-                    customErrorMsg.textContent = '請先選擇一位學生！';
                     setTimeout(() => customErrorMsg.textContent = '', 2000);
                 }
             }
@@ -1352,7 +1356,7 @@ body::after {
             createBoard();
             holes = Array.from(document.querySelectorAll('.hole'));
             loadGameData();
-            loadUserProfiles();
+            ensureDefaultUser();
             populateLevelSelectionGrid();
         }
 
