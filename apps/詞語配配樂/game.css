@@ -281,6 +281,12 @@ h1 span {
   animation: fadeIn 0.35s ease;
 }
 
+/* hidden 屬性須壓過上方的 display:flex，否則面板會一進頁就蓋住畫面 */
+.win-layer[hidden],
+.modal-backdrop[hidden] {
+  display: none !important;
+}
+
 .win-box {
   background: #fff;
   border-radius: 28px;
