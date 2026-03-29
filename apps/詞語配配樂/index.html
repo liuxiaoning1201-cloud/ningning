@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>詞語配配樂</title>
+  <link rel="stylesheet" href="./game.css" />
+</head>
+<body>
+  <div class="stars-deco" style="top: 8%; left: 5%">✦</div>
+  <div class="stars-deco" style="top: 20%; right: 8%; animation-delay: -2s">★</div>
+  <div class="stars-deco" style="bottom: 15%; left: 12%; animation-delay: -4s">✧</div>
+
+  <div class="app-wrap">
+    <div class="top-bar">
+      <h1>詞語配配樂 <span>點詞語，再點解釋</span></h1>
+      <button type="button" class="btn-settings" id="btn-settings" aria-label="開啟設定">
+        ⚙️ 設定
+      </button>
+    </div>
+    <p class="hint" id="hint">先點左邊詞語或右邊解釋，再點另一邊配成一對！</p>
+    <div class="board" id="board" aria-live="polite"></div>
+  </div>
+
+  <div class="win-layer" id="win-layer" hidden>
+    <div class="win-box">
+      <h2>太棒了！</h2>
+      <p>全部配對完成，要再玩一輪嗎？</p>
+      <button type="button" class="btn-primary" id="btn-play-again">再玩一輪</button>
+    </div>
+  </div>
+
+  <div
+    class="modal-backdrop"
+    id="settings-modal"
+    hidden
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settings-title"
+    aria-hidden="true"
+  >
+    <div class="modal" role="document">
+      <h2 id="settings-title">教師設定</h2>
+      <p class="sub">每行一組，格式為 <strong>詞語/解釋</strong>（只認第一個斜線）。解釋裡若要寫斜線也可以。</p>
+
+      <div class="row-field">
+        <label for="bank-text">自訂題庫</label>
+        <textarea id="bank-text" spellcheck="false" placeholder="勇敢/不怕困難"></textarea>
+        <div class="parse-hint" id="parse-hint"></div>
+      </div>
+
+      <div class="row-field">
+        <label for="pairs-select">本輪要出幾組配對</label>
+        <div class="pairs-row">
+          <select id="pairs-select" aria-describedby="pairs-help"></select>
+          <span id="pairs-help" style="font-size: 0.9rem; color: #636e72">畫面上會有「組數 × 2」張牌</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-save" id="btn-save-settings">儲存並重新發牌</button>
+        <button type="button" class="btn-demo" id="btn-restore-demo">還原示範題庫</button>
+        <button type="button" class="btn-close" id="btn-close-settings">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./game.js"></script>
+</body>
+</html>

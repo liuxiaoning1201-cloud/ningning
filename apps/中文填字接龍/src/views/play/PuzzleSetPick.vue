@@ -77,13 +77,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { usePuzzleSetsStore, generateId } from "@/stores/puzzleSets";
 import { useGameSessionStore } from "@/stores/gameSession";
 import { useWordBanksStore } from "@/stores/wordBanks";
 import { generateCrosswordPuzzle } from "@/lib/crosswordGenerator";
 import type { DifficultyTier, PuzzleSet } from "@/lib/types";
+import { BUILTIN_CHENGYU_BANK_ID } from "@/data/defaultChengyuBank";
 
 const router = useRouter();
 const puzzleSets = usePuzzleSetsStore();
@@ -97,6 +98,12 @@ const showHistory = ref(false);
 const selectedItemIds = ref<Set<string>>(new Set());
 /** 排除已在出題記錄中使用過的詞句（不從詞庫刪除，僅本輪不選） */
 const excludeUsedItems = ref(false);
+
+watchEffect(() => {
+  if (autoBankId.value) return;
+  const builtIn = wordBanks.banks.find((b) => b.id === BUILTIN_CHENGYU_BANK_ID);
+  autoBankId.value = builtIn?.id ?? wordBanks.banks[0]?.id ?? "";
+});
 
 const selectedBankItemCount = computed(() => {
   const bank = wordBanks.banks.find((b) => b.id === autoBankId.value);

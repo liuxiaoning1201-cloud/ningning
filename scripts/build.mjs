@@ -59,6 +59,7 @@ const STATIC_APPS = [
   '手勢點名',
   '春江花月夜',
   'poetpal',
+  '詞語配配樂',
 ];
 
 for (const name of STATIC_APPS) {

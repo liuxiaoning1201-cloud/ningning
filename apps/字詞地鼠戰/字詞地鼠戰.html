@@ -241,20 +241,37 @@ body::after {
 }
 /* 地鼠探頭動畫樣式 - 首頁置中完整顯示 */
 .mole-animation {
-    width: min(90vw, 420px);
-    height: min(56vw, 260px);
-    margin: 0 auto 1rem auto;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    margin: 0;
     pointer-events: none;
     z-index: 1;
-    overflow: visible;
+    overflow: hidden;
     border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.45);
 }
 
 .mole-animation video {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     object-position: center center;
+}
+
+#start-screen {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: min(92vw, 500px);
+    height: min(78vh, 620px);
+}
+
+#start-screen.hidden,
+#mode-selection-view.hidden,
+#game-screen.hidden,
+#game-over-screen.hidden {
+    display: none !important;
 }
 
 #mode-selection-view {
@@ -300,9 +317,11 @@ body::after {
 
 /* 響應式調整 */
 @media (max-width: 640px) {
+    #start-screen {
+        height: min(76vh, 560px);
+    }
     .mole-animation {
-        width: min(94vw, 360px);
-        height: min(60vw, 220px);
+        border-radius: 0.65rem;
     }
 }
 </style>
@@ -322,6 +341,10 @@ body::after {
 <!-- 遊戲資訊欄 -->
 <div class="flex justify-around items-center bg-sky-100 rounded-lg p-3 mb-4 shadow-md border-2 border-sky-300">
     <div><p class="text-lg text-slate-600">目標字</p><p id="target-char" class="text-5xl font-bold text-sky-600">太</p></div>
+    <div>
+        <p class="text-lg text-slate-600">讀音</p>
+        <button id="pronounce-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition">普通話</button>
+    </div>
     <div><p class="text-lg text-slate-600">分數</p><p id="score" class="text-3xl font-bold text-green-600">0</p></div>
     <div id="timer-display"><p class="text-lg text-slate-600">時間</p><p id="timer" class="text-3xl font-bold text-red-600">60</p></div>
     <div id="combo-display"><p class="text-lg text-slate-600">連擊</p><p id="combo" class="text-3xl font-bold text-orange-500">0</p></div>
@@ -342,7 +365,7 @@ body::after {
 <div id="start-screen" class="p-6 bg-white rounded-xl shadow-lg relative">
     <h2 class="text-2xl font-bold text-slate-800 mb-4">準備好了嗎？</h2>
     <div class="mole-animation">
-        <video autoplay loop muted playsinline>
+        <video id="mole-intro-video" autoplay muted playsinline preload="auto" poster="assets/動畫效果/地鼠探頭_poster.png">
             <source src="assets/動畫效果/地鼠探頭.mp4" type="video/mp4">
         </video>
     </div>
@@ -462,6 +485,7 @@ body::after {
         const levelSelectionScreen = document.getElementById('level-selection-screen');
 
         const gameBoard = document.getElementById('game-board');
+        const moleIntroVideo = document.getElementById('mole-intro-video');
         const startAdventureBtn = document.getElementById('start-adventure-btn');
         const modeSelectionView = document.getElementById('mode-selection-view');
         const modeSettingsBtns = document.querySelectorAll('.mode-settings-btn');
@@ -484,6 +508,7 @@ body::after {
         const comboEl = document.getElementById('combo');
         const hitsDisplay = document.getElementById('hits-display');
         const hitsEl = document.getElementById('hits');
+        const pronounceBtn = document.getElementById('pronounce-btn');
         const skillSlowBtn = document.getElementById('skill-slow');
         const skillSlowTokensEl = document.getElementById('skill-slow-tokens');
 
@@ -582,21 +607,71 @@ body::after {
         // 獲勝音效
         const winnerSound = new Audio('assets/winner-game-sound-404167.mp3');
         winnerSound.volume = 0.7; // 設置音量為 70%
-        const failClickSound = new Audio('assets/audio/fail.mp3');
-        const successClickSound = new Audio('assets/audio/success.mp3');
-        failClickSound.preload = 'auto';
-        successClickSound.preload = 'auto';
-        failClickSound.volume = 0.95;
-        successClickSound.volume = 0.9;
+        const failClickSoundSrc = 'assets/audio/fail.mp3';
+        const successClickSoundSrc = 'assets/audio/success.mp3';
 
         function playClickFeedbackSound(type) {
-            const audio = type === 'success' ? successClickSound : failClickSound;
-            audio.currentTime = 0;
+            // 每次新建音訊實例，避免「只播第一次」或快速連點時被中斷。
+            const audio = new Audio(type === 'success' ? successClickSoundSrc : failClickSoundSrc);
+            audio.volume = type === 'success' ? 0.9 : 0.95;
+            audio.preload = 'auto';
             audio.play().catch(() => {
                 // Fallback to synth if file playback is blocked by browser policy.
                 if (type === 'success' && correctSound) correctSound.triggerAttackRelease('C5', '8n');
                 if (type === 'fail' && incorrectSound) incorrectSound.triggerAttackRelease('A2', '8n');
             });
+        }
+
+        let cachedMandarinVoice = null;
+        let voicesLoaded = false;
+
+        function findMandarinVoice() {
+            const voices = window.speechSynthesis.getVoices();
+            if (!voices || voices.length === 0) return null;
+
+            const mandarinLangs = ['zh-CN', 'zh-TW', 'cmn', 'cmn-Hans-CN', 'cmn-Hant-TW'];
+            const cantoneseLangs = ['zh-HK', 'yue', 'yue-Hant-HK', 'zh-Hant-HK'];
+
+            for (const preferredLang of mandarinLangs) {
+                const match = voices.find(v => v.lang === preferredLang);
+                if (match) return match;
+            }
+            const fuzzy = voices.find(v =>
+                (v.lang.startsWith('zh') || v.lang.startsWith('cmn')) &&
+                !cantoneseLangs.some(c => v.lang === c) &&
+                !v.name.toLowerCase().includes('cantonese') &&
+                !v.name.includes('粵') &&
+                !v.name.includes('廣東')
+            );
+            if (fuzzy) return fuzzy;
+            return null;
+        }
+
+        function loadVoices() {
+            cachedMandarinVoice = findMandarinVoice();
+            voicesLoaded = true;
+        }
+
+        if (window.speechSynthesis) {
+            loadVoices();
+            window.speechSynthesis.addEventListener('voiceschanged', loadVoices);
+        }
+
+        function speakCurrentTarget() {
+            const currentLevel = gameState.levelList?.[gameState.currentLevelIndex];
+            if (!currentLevel || !currentLevel.target || !window.speechSynthesis) return;
+
+            if (!voicesLoaded) loadVoices();
+
+            const utterance = new SpeechSynthesisUtterance(currentLevel.target);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.9;
+            utterance.pitch = 1;
+            if (cachedMandarinVoice) {
+                utterance.voice = cachedMandarinVoice;
+            }
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(utterance);
         }
         
         // --- 核心遊戲邏輯 ---
@@ -682,6 +757,7 @@ body::after {
             gameState.mistakesThisLevel = [];
             
             updateUI();
+            setTimeout(speakCurrentTarget, 120);
 
             clearInterval(animalIntervalId);
             animalIntervalId = setInterval(peep, gameState.gameSpeed);
@@ -1346,6 +1422,7 @@ body::after {
         exportExcelBtn.addEventListener('click', handleExport);
         
         skillSlowBtn.addEventListener('click', activateSlowSkill);
+        pronounceBtn.addEventListener('click', speakCurrentTarget);
 
         // --- 初始化 ---
         function init() {
@@ -1358,6 +1435,14 @@ body::after {
             loadGameData();
             ensureDefaultUser();
             populateLevelSelectionGrid();
+            if (moleIntroVideo) {
+                moleIntroVideo.playbackRate = 1.15;
+                moleIntroVideo.loop = true;
+                moleIntroVideo.play().catch(() => {});
+                moleIntroVideo.addEventListener('canplay', () => {
+                    moleIntroVideo.play().catch(() => {});
+                }, { once: true });
+            }
         }
 
         init();

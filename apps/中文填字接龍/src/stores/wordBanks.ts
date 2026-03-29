@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import type { WordBank } from "@/lib/types";
 import { STORAGE_KEYS } from "@/lib/types";
+import { defaultChengyuBank } from "@/data/defaultChengyuBank";
 
 function load<T>(key: string, defaultValue: T): T {
   try {
@@ -16,9 +17,18 @@ function save(key: string, value: unknown): void {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function loadWithBuiltins(): WordBank[] {
+  const banks = load<WordBank[]>(STORAGE_KEYS.WORD_BANKS, []);
+  // 沒有任何詞庫時，自動回填系統內建成語庫，避免首次使用為空殼。
+  if (!Array.isArray(banks) || banks.length === 0) {
+    return [defaultChengyuBank];
+  }
+  return banks;
+}
+
 export const useWordBanksStore = defineStore("wordBanks", {
   state: () => ({
-    banks: load<WordBank[]>(STORAGE_KEYS.WORD_BANKS, []),
+    banks: loadWithBuiltins(),
   }),
   actions: {
     setBanks(banks: WordBank[]) {
