@@ -63,10 +63,10 @@ export default {
       return Response.json(data, { headers: CORS });
     }
 
-    // GET /api/ai-words?topic=XXX&count=N → AI 生成詞對
+    // GET /api/ai-words?topic=XXX → AI 生成 10 組詞對
     if (url.pathname === '/api/ai-words') {
       const topic = url.searchParams.get('topic') || '常見事物';
-      const count = Math.min(20, Math.max(1, Number(url.searchParams.get('count')) || 10));
+      const count = 10;
       try {
         const words = await generateAiWords(env, topic, count);
         return Response.json({ words }, { headers: CORS });
@@ -182,7 +182,7 @@ export class GameRoom {
       wordBank: [...DEFAULT_WORD_BANK],
       chatLog: [],
       paused: false,
-      usedWordIndices: [],
+      seriesIndex: 0,
     };
   }
 
@@ -247,6 +247,7 @@ export class GameRoom {
       ready: () => this.handleReady(ws),
       start: () => this.handleStart(ws),
       speak: () => this.handleSpeak(ws, msg),
+      'speak-done': () => this.handleSpeakDone(ws),
       vote: () => this.handleVote(ws, msg),
       'update-settings': () => this.handleUpdateSettings(ws, msg),
       'update-words': () => this.handleUpdateWords(ws, msg),
@@ -310,6 +311,8 @@ export class GameRoom {
           })),
           currentSpeakerId: this.room.speakOrder[this.room.currentSpeakerIdx],
           alivePlayers: this.getAlivePlayers().map(([id, p]) => ({ id, name: p.name })),
+          seriesIndex: this.room.seriesIndex,
+          seriesTotal: this.room.wordBank.length,
         });
         // 補發歷史聊天
         for (const chatMsg of this.room.chatLog) {
@@ -399,24 +402,14 @@ export class GameRoom {
     this.startGame();
   }
 
-  startGame() {
+  startGame(seriesIdx) {
     const players = this.getActivePlayers();
     const spyCount = Math.min(this.room.settings.spyCount, Math.floor(players.length / 3));
 
-    // 選詞
-    const availableIndices = [];
-    for (let i = 0; i < this.room.wordBank.length; i++) {
-      if (!this.room.usedWordIndices.includes(i)) availableIndices.push(i);
-    }
-    if (availableIndices.length === 0) {
-      this.room.usedWordIndices = [];
-      for (let i = 0; i < this.room.wordBank.length; i++) availableIndices.push(i);
-    }
-    const wordIdx = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-    this.room.usedWordIndices.push(wordIdx);
-    this.room.wordPair = { ...this.room.wordBank[wordIdx] };
+    const idx = seriesIdx != null ? seriesIdx : 0;
+    this.room.seriesIndex = idx;
+    this.room.wordPair = { ...this.room.wordBank[idx] };
 
-    // 分配角色
     const shuffled = [...players].sort(() => Math.random() - 0.5);
     const spyIds = new Set(shuffled.slice(0, spyCount).map(([id]) => id));
 
@@ -439,11 +432,10 @@ export class GameRoom {
     this.room.chatLog = [];
     this.room.votes = {};
 
-    // 發言順序（隨機）
     this.room.speakOrder = this.getAlivePlayers().map(([id]) => id).sort(() => Math.random() - 0.5);
     this.room.currentSpeakerIdx = 0;
 
-    // 通知各玩家
+    const seriesTotal = this.room.wordBank.length;
     for (const [id, player] of Object.entries(this.room.players)) {
       const ws = this.playerSockets.get(id);
       if (!ws) continue;
@@ -458,6 +450,8 @@ export class GameRoom {
         })),
         currentSpeakerId: this.room.speakOrder[0],
         alivePlayers: this.getAlivePlayers().map(([id, p]) => ({ id, name: p.name })),
+        seriesIndex: idx,
+        seriesTotal,
       });
     }
 
@@ -492,6 +486,30 @@ export class GameRoom {
     };
     this.room.chatLog.push(chatMsg);
 
+    this.broadcast({ type: 'chat', ...chatMsg });
+    this.nextSpeaker();
+  }
+
+  handleSpeakDone(ws) {
+    const pid = this.getPlayerId(ws);
+    if (this.room.phase !== 'speaking') return;
+    if (this.room.paused) return;
+    const currentSpeaker = this.room.speakOrder[this.room.currentSpeakerIdx];
+    if (pid !== currentSpeaker) {
+      return this.send(ws, { type: 'error', message: '還沒輪到你發言' });
+    }
+    if (this.room.players[pid]?.muted) {
+      return this.send(ws, { type: 'error', message: '你已被禁言' });
+    }
+
+    const chatMsg = {
+      senderId: 'system',
+      senderName: '系統',
+      text: `${this.room.players[pid].name} 已結束發言`,
+      round: this.room.round,
+      timestamp: Date.now(),
+    };
+    this.room.chatLog.push(chatMsg);
     this.broadcast({ type: 'chat', ...chatMsg });
     this.nextSpeaker();
   }
@@ -677,12 +695,17 @@ export class GameRoom {
       }
     }
 
+    const seriesTotal = this.room.wordBank.length;
+    const seriesIndex = this.room.seriesIndex;
     this.broadcast({
       type: 'game-end',
       winner,
       wordPair: this.room.wordPair,
       roles,
       chatLog: this.room.chatLog,
+      seriesIndex,
+      seriesTotal,
+      hasNextMatch: seriesIndex + 1 < seriesTotal,
     });
   }
 
@@ -730,13 +753,11 @@ export class GameRoom {
     const words = msg.words;
     if (words === null) {
       this.room.wordBank = [...DEFAULT_WORD_BANK];
-      this.room.usedWordIndices = [];
       this.broadcast({ type: 'words-updated', count: this.room.wordBank.length });
       return;
     }
     if (Array.isArray(words) && words.length > 0) {
-      this.room.wordBank = words.filter(w => w.civilian && w.spy);
-      this.room.usedWordIndices = [];
+      this.room.wordBank = words.filter(w => w.civilian && w.spy).slice(0, 10);
       this.broadcast({
         type: 'words-updated',
         count: this.room.wordBank.length,
@@ -807,6 +828,12 @@ export class GameRoom {
       case 'new-game':
         this.resetForNewGame();
         break;
+
+      case 'next-series-match':
+        if (this.room.phase === 'gameEnd' && this.room.seriesIndex + 1 < this.room.wordBank.length) {
+          this.startGame(this.room.seriesIndex + 1);
+        }
+        break;
     }
   }
 
@@ -828,6 +855,7 @@ export class GameRoom {
     this.room.speakOrder = [];
     this.room.currentSpeakerIdx = -1;
     this.room.paused = false;
+    this.room.seriesIndex = 0;
 
     this.broadcast({ type: 'new-game-reset', room: this.getPublicRoomState() });
     this.broadcastPlayerList();
