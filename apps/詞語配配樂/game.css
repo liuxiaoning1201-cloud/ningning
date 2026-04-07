@@ -281,8 +281,40 @@ h1 span {
   animation: fadeIn 0.35s ease;
 }
 
+.level-progress {
+  display: block;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #6c5ce7;
+  margin: 0 0 10px;
+  letter-spacing: 0.04em;
+}
+
+.level-progress[hidden] {
+  display: none !important;
+}
+
+.level-complete-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 52, 54, 0.4);
+  backdrop-filter: blur(5px);
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+.level-complete-layer .win-box h2 {
+  color: #6c5ce7;
+}
+
 /* hidden 屬性須壓過上方的 display:flex，否則面板會一進頁就蓋住畫面 */
 .win-layer[hidden],
+.level-complete-layer[hidden],
 .modal-backdrop[hidden] {
   display: none !important;
 }
@@ -406,6 +438,30 @@ h1 span {
   background: #fff;
 }
 
+.check-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 500;
+  font-size: 0.98rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.check-label input {
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.level-mode-toggle {
+  padding: 12px 14px;
+  background: rgba(108, 92, 231, 0.08);
+  border-radius: 14px;
+  border: 1px solid rgba(108, 92, 231, 0.2);
+}
+
 .modal-actions {
   display: flex;
   flex-wrap: wrap;
@@ -437,6 +493,42 @@ h1 span {
   color: #636e72;
   background: transparent;
   border: 2px solid #b2bec3 !important;
+}
+
+.excel-row .excel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-excel {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  border: none;
+  color: #2d3436;
+  background: linear-gradient(135deg, #dfe6e9 0%, #b2bec3 100%);
+  box-shadow: 0 2px 8px rgba(45, 52, 54, 0.1);
+}
+
+.btn-excel:hover {
+  filter: brightness(1.05);
+}
+
+.excel-filename {
+  font-size: 0.9rem;
+  color: #636e72;
+  max-width: 100%;
+  word-break: break-all;
+}
+
+.excel-msg {
+  margin-top: 6px;
+  min-height: 1.2em;
 }
 
 .parse-hint {

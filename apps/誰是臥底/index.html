@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>誰是臥底</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+<!-- ====== 大廳：暱稱 + 建房/加入 ====== -->
+<div id="screen-lobby" class="screen active">
+  <div class="lobby-container">
+    <div class="logo">
+      <span class="logo-icon">🕵️</span>
+      <h1>誰是臥底</h1>
+      <p class="subtitle">線上多人文字推理遊戲</p>
+    </div>
+    <div class="lobby-card">
+      <div class="field">
+        <label for="input-name">你的暱稱</label>
+        <input id="input-name" type="text" maxlength="12" placeholder="輸入暱稱開始遊戲" autocomplete="off" />
+      </div>
+      <div class="lobby-actions">
+        <button id="btn-create" class="btn btn-primary">建立房間</button>
+        <div class="divider"><span>或</span></div>
+        <div class="field">
+          <label for="input-room-code">房間碼</label>
+          <input id="input-room-code" type="text" maxlength="6" placeholder="輸入 6 位房間碼" autocomplete="off" style="text-transform:uppercase" />
+        </div>
+        <button id="btn-join" class="btn btn-secondary">加入房間</button>
+      </div>
+      <p id="lobby-error" class="error-text" hidden></p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 房間等待 ====== -->
+<div id="screen-room" class="screen">
+  <div class="room-container">
+    <div class="room-header">
+      <button id="btn-leave-room" class="btn-icon" title="離開房間">← 離開</button>
+      <div class="room-code-display">
+        房間碼：<strong id="display-room-code"></strong>
+        <button id="btn-copy-code" class="btn-tiny" title="複製">📋</button>
+      </div>
+    </div>
+
+    <div class="room-body">
+      <!-- 玩家列表 -->
+      <div class="room-players">
+        <h3>玩家 <span id="player-count"></span></h3>
+        <ul id="player-list" class="player-list"></ul>
+      </div>
+
+      <!-- 房主設定面板 -->
+      <div id="host-settings" class="host-settings" hidden>
+        <h3>遊戲設定</h3>
+        <div class="settings-grid">
+          <div class="field">
+            <label>臥底人數</label>
+            <select id="set-spy-count">
+              <option value="1">1 人</option>
+              <option value="2">2 人</option>
+              <option value="3">3 人</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>發言時間（秒）</label>
+            <select id="set-speak-time">
+              <option value="30">30 秒</option>
+              <option value="45">45 秒</option>
+              <option value="60" selected>60 秒</option>
+              <option value="90">90 秒</option>
+              <option value="120">120 秒</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>投票時間（秒）</label>
+            <select id="set-vote-time">
+              <option value="15">15 秒</option>
+              <option value="20">20 秒</option>
+              <option value="30" selected>30 秒</option>
+              <option value="45">45 秒</option>
+              <option value="60">60 秒</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>平票處理</label>
+            <select id="set-tie-rule">
+              <option value="no-eliminate">不淘汰</option>
+              <option value="eliminate-first">淘汰票最高者</option>
+            </select>
+          </div>
+          <div class="field field-full">
+            <label class="check-label">
+              <input type="checkbox" id="set-observer" /> 老師旁觀模式（不參與遊戲，擁有上帝視角）
+            </label>
+          </div>
+        </div>
+
+        <!-- 詞庫設定 -->
+        <h3 style="margin-top:18px">詞庫設定 <span id="word-count" class="badge"></span></h3>
+        <div class="word-source-tabs">
+          <button class="tab active" data-tab="default">預設詞庫</button>
+          <button class="tab" data-tab="custom">自訂輸入</button>
+          <button class="tab" data-tab="excel">Excel 匯入</button>
+          <button class="tab" data-tab="ai">AI 生成</button>
+        </div>
+        <div class="tab-panel active" data-panel="default">
+          <p class="hint">使用內建的古代文學、生活常識等主題詞對。</p>
+          <button id="btn-reset-words" class="btn btn-ghost">重置為預設詞庫</button>
+        </div>
+        <div class="tab-panel" data-panel="custom">
+          <p class="hint">每行一組詞對，用 <strong>/</strong> 分隔平民詞和臥底詞。例如：李白/杜甫</p>
+          <textarea id="custom-words" rows="6" placeholder="李白/杜甫&#10;《靜夜思》/《春曉》&#10;蘋果/梨子"></textarea>
+          <button id="btn-apply-custom" class="btn btn-primary">套用詞庫</button>
+        </div>
+        <div class="tab-panel" data-panel="excel">
+          <p class="hint">上傳 Excel 檔案（.xlsx/.xls），第一欄為平民詞，第二欄為臥底詞。</p>
+          <input type="file" id="excel-upload" accept=".xlsx,.xls" hidden />
+          <button id="btn-pick-excel" class="btn btn-secondary">選擇 Excel 檔</button>
+          <span id="excel-filename" class="hint"></span>
+        </div>
+        <div class="tab-panel" data-panel="ai">
+          <p class="hint">輸入主題，讓 AI 自動生成相近的詞對。</p>
+          <div class="field">
+            <label for="ai-topic">主題描述</label>
+            <input id="ai-topic" type="text" placeholder="例如：唐代詩人、水果、運動項目" />
+          </div>
+          <div class="field">
+            <label for="ai-count">生成數量（組）</label>
+            <input id="ai-count" type="number" min="1" max="20" value="5" style="width:80px" />
+          </div>
+          <button id="btn-ai-generate" class="btn btn-primary">生成詞對</button>
+          <div id="ai-preview" class="ai-preview" hidden>
+            <h4>預覽詞對（勾選要使用的）</h4>
+            <ul id="ai-word-list"></ul>
+            <button id="btn-ai-apply" class="btn btn-primary">套用勾選的詞對</button>
+          </div>
+        </div>
+
+        <button id="btn-save-settings" class="btn btn-primary" style="margin-top:16px;width:100%">儲存設定</button>
+      </div>
+    </div>
+
+    <div class="room-footer">
+      <button id="btn-ready" class="btn btn-secondary btn-lg">準備</button>
+      <button id="btn-start" class="btn btn-primary btn-lg" hidden>開始遊戲</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 遊戲主畫面 ====== -->
+<div id="screen-game" class="screen">
+  <div class="game-container">
+    <!-- 頂部狀態欄 -->
+    <div class="game-topbar">
+      <div class="game-info">
+        <span id="game-round" class="round-badge">第 1 輪</span>
+        <span id="game-phase-label" class="phase-label">發言階段</span>
+      </div>
+      <div id="game-timer" class="timer">60</div>
+    </div>
+
+    <!-- 你的詞語 -->
+    <div id="my-word-card" class="word-card">
+      <p class="word-card-label">你的詞語</p>
+      <p id="my-word" class="word-card-word">???</p>
+      <p id="my-role" class="word-card-role"></p>
+    </div>
+
+    <!-- 存活玩家 -->
+    <div class="alive-bar">
+      <span class="alive-label">存活：</span>
+      <div id="alive-players" class="alive-avatars"></div>
+    </div>
+
+    <!-- 發言/聊天區 -->
+    <div id="chat-area" class="chat-area">
+      <div id="chat-messages" class="chat-messages"></div>
+    </div>
+
+    <!-- 當前發言者提示 -->
+    <div id="speaker-bar" class="speaker-bar">
+      <span id="speaker-label">等待發言...</span>
+    </div>
+
+    <!-- 輸入框 -->
+    <div id="speak-input-area" class="speak-input-area">
+      <input id="speak-input" type="text" maxlength="200" placeholder="輸入你的描述..." autocomplete="off" />
+      <button id="btn-send-speak" class="btn btn-primary">發送</button>
+    </div>
+
+    <!-- 投票區 -->
+    <div id="vote-area" class="vote-area" hidden>
+      <h3>投票淘汰</h3>
+      <p class="hint">選擇你認為是臥底的玩家</p>
+      <div id="vote-candidates" class="vote-grid"></div>
+      <button id="btn-confirm-vote" class="btn btn-danger btn-lg" disabled>確認投票</button>
+    </div>
+
+    <!-- 投票結果 -->
+    <div id="vote-result-area" class="vote-result-area" hidden>
+      <div id="vote-result-content"></div>
+    </div>
+
+    <!-- 老師監管面板 -->
+    <div id="teacher-panel" class="teacher-panel" hidden>
+      <button id="btn-toggle-teacher" class="btn-teacher-toggle">🕵️ 監管面板</button>
+      <div id="teacher-panel-body" class="teacher-panel-body" hidden>
+        <h4>上帝視角</h4>
+        <div id="god-view-roles" class="god-roles"></div>
+        <h4>流程控制</h4>
+        <div class="teacher-actions">
+          <button id="btn-pause" class="btn btn-ghost btn-sm">⏸ 暫停</button>
+          <button id="btn-resume" class="btn btn-ghost btn-sm" hidden>▶ 繼續</button>
+          <button id="btn-skip-speaker" class="btn btn-ghost btn-sm">⏭ 跳過發言</button>
+          <button id="btn-end-game" class="btn btn-danger btn-sm">⏹ 結束遊戲</button>
+        </div>
+        <h4>玩家管理</h4>
+        <div id="teacher-player-mgmt" class="teacher-player-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 結算畫面 ====== -->
+<div id="screen-result" class="screen">
+  <div class="result-container">
+    <div id="result-banner" class="result-banner">
+      <h2 id="result-title">遊戲結束</h2>
+      <p id="result-subtitle"></p>
+    </div>
+    <div class="result-words">
+      <div class="result-word-box civilian">
+        <span class="label">平民詞</span>
+        <span id="result-civilian-word" class="word"></span>
+      </div>
+      <div class="result-word-box spy">
+        <span class="label">臥底詞</span>
+        <span id="result-spy-word" class="word"></span>
+      </div>
+    </div>
+    <div id="result-roles" class="result-roles"></div>
+    <div class="result-chat-review">
+      <h3>發言回顧</h3>
+      <div id="result-chat-log" class="result-chat-log"></div>
+    </div>
+    <div class="result-actions">
+      <button id="btn-new-game" class="btn btn-primary btn-lg">再來一局</button>
+      <button id="btn-back-lobby" class="btn btn-secondary btn-lg">返回大廳</button>
+      <button id="btn-export" class="btn btn-ghost">📥 匯出紀錄</button>
+    </div>
+  </div>
+</div>
+
+<!-- 全域 Toast -->
+<div id="toast" class="toast" hidden></div>
+
+<!-- 連線狀態指示 -->
+<div id="connection-status" class="connection-status" hidden>
+  <span class="dot"></span> <span id="connection-text">連線中...</span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

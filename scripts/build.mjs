@@ -60,6 +60,8 @@ const STATIC_APPS = [
   '春江花月夜',
   'poetpal',
   '詞語配配樂',
+  'luoyang-trip',
+  '誰是臥底',
 ];
 
 for (const name of STATIC_APPS) {

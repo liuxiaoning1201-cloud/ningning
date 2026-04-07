@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>洛陽鄭州訪學之旅</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide 圖標庫 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Serif TC', serif;
+            background-color: #fdfaf1;
+            color: #3d2b1f;
+        }
+
+        .modal-active {
+            overflow: hidden;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fdfaf1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8b1a1a;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="selection:bg-amber-200">
+
+    <!-- 標題區域 -->
+    <header class="relative h-60 flex items-center justify-center overflow-hidden border-b-4 border-amber-600 shadow-lg">
+        <div class="absolute inset-0 bg-cover bg-center bg-[url('https://images.unsplash.com/photo-1524397057410-1e775ed476f3?auto=format&fit=crop&q=80&w=1200')] brightness-[0.35] sepia-[20%]"></div>
+        <div class="relative z-10 text-center text-white px-4">
+            <div class="mb-2 inline-block border border-amber-400 px-6 py-1 text-xs tracking-[0.4em] uppercase">
+                書院歷史文化考察
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold tracking-widest mb-3 drop-shadow-md">
+                洛陽鄭州訪學之旅
+            </h1>
+            <p class="text-lg opacity-90 tracking-widest font-light italic border-t border-white/30 pt-2">
+                2026年4月6日 — 4月11日
+            </p>
+        </div>
+    </header>
+
+    <!-- 主內容導航 -->
+    <main class="max-w-4xl mx-auto px-4 py-12">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+            <!-- 按鈕：飛機班次 -->
+            <button onclick="openModal('flight')" class="relative overflow-hidden flex flex-col items-center justify-center p-10 bg-white border-2 border-[#8b1a1a] rounded-lg shadow-md hover:translate-y-[-4px] hover:shadow-xl transition-all duration-300 group">
+                <i data-lucide="plane" class="w-8 h-8 mb-4 text-[#8b1a1a] group-hover:scale-110 transition-transform"></i>
+                <span class="text-xl font-bold tracking-[0.3em]">飛機班次</span>
+                <div class="mt-3 w-10 h-0.5 bg-amber-400 group-hover:w-16 transition-all"></div>
+            </button>
+
+            <!-- 按鈕：日程安排 -->
+            <button onclick="openModal('schedule')" class="relative overflow-hidden flex flex-col items-center justify-center p-10 bg-white border-2 border-[#8b1a1a] rounded-lg shadow-md hover:translate-y-[-4px] hover:shadow-xl transition-all duration-300 group">
+                <i data-lucide="calendar" class="w-8 h-8 mb-4 text-[#8b1a1a] group-hover:scale-110 transition-transform"></i>
+                <span class="text-xl font-bold tracking-[0.3em]">日程安排</span>
+                <div class="mt-3 w-10 h-0.5 bg-amber-400 group-hover:w-16 transition-all"></div>
+            </button>
+
+            <!-- 按鈕：注意事項 -->
+            <button onclick="openModal('notes')" class="relative overflow-hidden flex flex-col items-center justify-center p-10 bg-white border-2 border-[#8b1a1a] rounded-lg shadow-md hover:translate-y-[-4px] hover:shadow-xl transition-all duration-300 group">
+                <i data-lucide="info" class="w-8 h-8 mb-4 text-[#8b1a1a] group-hover:scale-110 transition-transform"></i>
+                <span class="text-xl font-bold tracking-[0.3em]">注意事項</span>
+                <div class="mt-3 w-10 h-0.5 bg-amber-400 group-hover:w-16 transition-all"></div>
+            </button>
+        </div>
+
+        <!-- 酒店資訊 -->
+        <div class="mb-12">
+            <h2 class="text-[#8b1a1a] font-bold text-2xl mb-6 flex items-center justify-center tracking-widest">
+                <i data-lucide="hotel" class="mr-2 w-6 h-6"></i> 住宿安排
+            </h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- 酒店 1 -->
+                <div class="bg-white rounded-lg border border-amber-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div class="p-5">
+                        <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold uppercase tracking-wider mb-2 inline-block">
+                            4月6日(一) 至 4月10日(五)
+                        </span>
+                        <h3 class="text-lg font-bold text-[#8b1a1a] mb-2">洛陽華美達酒店</h3>
+                        <div class="flex items-start text-gray-600 text-sm">
+                            <i data-lucide="map-pin" class="w-4 h-4 mr-1 mt-0.5 flex-shrink-0 text-amber-600"></i>
+                            <span>河南省洛陽市西工區金谷園路中段</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- 酒店 2 -->
+                <div class="bg-white rounded-lg border border-amber-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div class="p-5">
+                        <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold uppercase tracking-wider mb-2 inline-block">
+                            4月10日(五) 至 4月11日(六)
+                        </span>
+                        <h3 class="text-lg font-bold text-[#8b1a1a] mb-2">鄭州富力萬達文華酒店</h3>
+                        <div class="flex items-start text-gray-600 text-sm">
+                            <i data-lucide="map-pin" class="w-4 h-4 mr-1 mt-0.5 flex-shrink-0 text-amber-600"></i>
+                            <span>鄭州市金水區農科路16號</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 詳情彈窗 (Modal) -->
+    <div id="modalOverlay" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div class="bg-[#fdfaf1] w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl border-t-[12px] border-[#8b1a1a]">
+            <!-- Modal Header -->
+            <div class="sticky top-0 bg-[#fdfaf1] p-5 flex justify-between items-center border-b border-amber-200 z-10">
+                <div class="flex items-center space-x-3 text-[#8b1a1a]">
+                    <span id="modalIcon"></span>
+                    <h3 id="modalTitle" class="text-2xl font-bold tracking-widest"></h3>
+                </div>
+                <button onclick="closeModal()" class="p-2 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div id="modalContent" class="p-6 md:p-8"></div>
+        </div>
+    </div>
+
+    <footer class="text-center py-12 text-gray-400 text-xs bg-white border-t border-amber-100">
+        <p class="tracking-[0.4em] mb-3 text-gray-600 font-bold uppercase">河南洛陽鄭州 · 訪學手冊</p>
+        <p>© 2026 豫見華夏文化交流小組</p>
+    </footer>
+
+    <script>
+        // 初始化圖標
+        lucide.createIcons();
+
+        const tripData = {
+            flight: {
+                title: "飛機班次",
+                icon: 'plane',
+                content: `
+                    <div class="space-y-6">
+                        <div class="bg-white p-6 rounded-lg border border-amber-100 shadow-sm relative">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="bg-[#8b1a1a] text-white px-4 py-1 rounded text-xs font-bold tracking-widest">去程</span>
+                                <span class="text-sm font-bold text-gray-400">4月06日 (一)</span>
+                            </div>
+                            <div class="text-xl font-bold text-center mb-6 text-[#3d2b1f] border-b border-dashed border-gray-200 pb-4">香港 (HKG) ➔ 鄭州 (CGO)</div>
+                            <div class="flex justify-around items-center">
+                                <div class="text-center"><p class="text-[10px] text-gray-400 uppercase mb-1">航班</p><p class="text-lg font-bold text-[#8b1a1a]">CX952</p></div>
+                                <div class="text-center"><p class="text-[10px] text-gray-400 uppercase mb-1">起飛 / 抵達</p><p class="text-lg font-bold">12:45 / 15:20</p></div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg border border-amber-100 shadow-sm relative">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="bg-[#8b1a1a] text-white px-4 py-1 rounded text-xs font-bold tracking-widest">回程</span>
+                                <span class="text-sm font-bold text-gray-400">4月11日 (六)</span>
+                            </div>
+                            <div class="text-xl font-bold text-center mb-6 text-[#3d2b1f] border-b border-dashed border-gray-200 pb-4">鄭州 (CGO) ➔ 香港 (HKG)</div>
+                            <div class="flex justify-around items-center">
+                                <div class="text-center"><p class="text-[10px] text-gray-400 uppercase mb-1">航班</p><p class="text-lg font-bold text-[#8b1a1a]">CX957</p></div>
+                                <div class="text-center"><p class="text-[10px] text-gray-400 uppercase mb-1">起飛 / 抵達</p><p class="text-lg font-bold">16:30 / 19:25</p></div>
+                            </div>
+                        </div>
+                    </div>`
+            },
+            schedule: {
+                title: "日程安排",
+                icon: 'calendar',
+                content: `
+                    <div class="space-y-8">
+                        ${[
+                            { day: 'Day 1', date: '4/06 (一)', hotel: '洛陽華美達', acts: ['香港 ➔ 鄭州 (CX952)', '抵達洛陽並入住酒店', '晚餐後遊覽老城十字街夜市'] },
+                            { day: 'Day 2', date: '4/07 (二)', hotel: '洛陽華美達', acts: ['前往王屋山', '經停黃河三峽欣賞山水', '探索王屋山自然美景'] },
+                            { day: 'Day 3', date: '4/08 (三)', hotel: '洛陽華美達', acts: ['上午：參觀龍門石窟', '下午：遊覽隋唐洛陽城遺址公園', '（應天門、明堂、天堂）'] },
+                            { day: 'Day 4', date: '4/09 (四)', hotel: '洛陽華美達', acts: ['上午：隋唐城遺址植物園賞牡丹', '參觀洛陽博物館', '下午：古墓博物館體驗劇本殺', '晚上：觀看《河圖洛書》表演'] },
+                            { day: 'Day 5', date: '4/10 (五)', hotel: '鄭州富力萬達', acts: ['前往二里頭遺址（夏都）', '參觀白馬寺及偃師商城遺址', '下午返回鄭州並入住酒店'] },
+                            { day: 'Day 6', date: '4/11 (六)', hotel: '', acts: ['參觀河南博物院', '下午搭乘 CX957 返回香港'] }
+                        ].map(d => `
+                            <div class="relative pl-8 border-l-2 border-amber-300 pb-4">
+                                <div class="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-[#8b1a1a] border-2 border-white"></div>
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-xl font-bold text-[#8b1a1a]">${d.day} <span class="text-gray-400 text-sm font-normal">|</span> ${d.date}</h4>
+                                    ${d.hotel ? `<span class="text-blue-700 bg-blue-50 px-2 py-0.5 rounded text-[10px] font-bold">${d.hotel}</span>` : ''}
+                                </div>
+                                <div class="bg-white p-4 rounded-lg border border-amber-50 shadow-sm space-y-2">
+                                    ${d.acts.map(a => `<div class="flex items-start text-sm text-gray-700"><div class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 mr-3 flex-shrink-0"></div><span>${a}</span></div>`).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>`
+            },
+            notes: {
+                title: "注意事項",
+                icon: 'info',
+                content: `
+                    <div class="space-y-4">
+                        <div class="p-4 bg-white rounded-lg border-l-4 border-amber-400 shadow-sm">
+                            <p class="text-[#8b1a1a] font-bold text-sm mb-1">住宿資訊</p>
+                            <p class="text-gray-700 text-sm">洛陽：華美達酒店 / 鄭州：富力萬達文華酒店</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border-l-4 border-amber-400 shadow-sm">
+                            <p class="text-[#8b1a1a] font-bold text-sm mb-1">衣物裝備</p>
+                            <p class="text-gray-700 text-sm">輕便防水外套、小傘、舒適鞋子、水瓶</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border-l-4 border-amber-400 shadow-sm">
+                            <p class="text-[#8b1a1a] font-bold text-sm mb-1">電子與支付</p>
+                            <p class="text-gray-700 text-sm">大陸插頭轉接器、支付寶/微信認證、移動電源</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border-l-4 border-amber-400 shadow-sm">
+                            <p class="text-[#8b1a1a] font-bold text-sm mb-1">個人準備</p>
+                            <p class="text-gray-700 text-sm">常用藥物、漢服（拍照用）</p>
+                        </div>
+                    </div>`
+            }
+        };
+
+        function openModal(tab) {
+            const data = tripData[tab];
+            document.getElementById('modalTitle').innerText = data.title;
+            document.getElementById('modalIcon').innerHTML = `<i data-lucide="${data.icon}"></i>`;
+            document.getElementById('modalContent').innerHTML = data.content;
+            
+            document.getElementById('modalOverlay').classList.remove('hidden');
+            document.body.classList.add('modal-active');
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+            document.body.classList.remove('modal-active');
+        }
+
+        // 點擊背景關閉
+        document.getElementById('modalOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'modalOverlay') closeModal();
+        });
+    </script>
+</body>
+</html>
