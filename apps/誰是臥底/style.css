@@ -78,6 +78,18 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
   box-shadow:0 8px 32px rgba(44,36,24,.2);animation:toastIn .35s var(--ease)}
 @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%)}}
 
+/* ═══════ 發言提示浮動通知 ═══════ */
+.speaker-notify{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:180;padding:18px 36px;border-radius:var(--radius-lg);
+  background:rgba(44,36,24,.92);color:var(--paper);
+  font-family:var(--font-display);font-size:1.25rem;font-weight:700;
+  letter-spacing:.08em;text-align:center;
+  box-shadow:0 12px 48px rgba(0,0,0,.3);
+  animation:notifyIn .35s var(--ease);pointer-events:none}
+.speaker-notify.fade-out{animation:notifyOut .4s var(--ease) forwards}
+@keyframes notifyIn{from{opacity:0;transform:translate(-50%,-50%) scale(.85)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes notifyOut{to{opacity:0;transform:translate(-50%,-50%) scale(.9)}}
+
 /* ═══════ 連線狀態 ═══════ */
 .connection-status{position:fixed;top:12px;right:16px;display:flex;align-items:center;gap:6px;
   padding:6px 14px;background:var(--card);border-radius:20px;box-shadow:var(--card-shadow);
@@ -239,7 +251,7 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
    遊戲主畫面
    ═══════════════════════════════════════════ */
 #screen-game{flex-direction:column;padding:0;background:var(--paper)}
-.game-container{display:flex;flex-direction:column;min-height:100dvh;max-width:540px;width:100%;margin:0 auto;position:relative}
+.game-container{display:flex;flex-direction:column;height:100dvh;max-width:540px;width:100%;margin:0 auto;position:relative;overflow:hidden}
 
 .game-topbar{display:flex;align-items:center;justify-content:space-between;
   padding:10px 20px;background:var(--card);border-bottom:1px solid var(--paper-dark)}
@@ -275,7 +287,8 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
 .alive-avatars .avatar.eliminated{opacity:.3;text-decoration:line-through;border-color:var(--crimson-light)}
 .alive-avatars .avatar.speaking{border-color:var(--amber);background:rgba(196,132,29,.08);color:var(--amber-dark);font-weight:600}
 
-.chat-area{flex:1;overflow-y:auto;padding:10px 20px;min-height:180px}
+.chat-area{flex:1;overflow-y:auto;padding:10px 20px;min-height:120px;max-height:40vh;
+  -webkit-overflow-scrolling:touch;scroll-behavior:smooth}
 .chat-messages{display:flex;flex-direction:column;gap:8px}
 .chat-msg{padding:10px 14px;border-radius:var(--radius);background:var(--card);
   font-size:.88rem;line-height:1.6;border:var(--card-border)}
@@ -296,13 +309,16 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
 .speak-input-area input:disabled{background:var(--paper-deep);color:var(--ink-faint)}
 .speak-input-area .btn{white-space:nowrap;flex-shrink:0}
 
-.vote-area{padding:20px;text-align:center}
-.vote-area h3{margin-bottom:6px;color:var(--crimson);font-family:var(--font-display);font-size:1.15rem}
-.vote-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:16px 0}
+.vote-area{padding:20px;text-align:center;display:flex;flex-direction:column;max-height:100%;overflow:hidden}
+.vote-area h3{margin-bottom:6px;color:var(--crimson);font-family:var(--font-display);font-size:1.15rem;flex-shrink:0}
+.vote-area .hint{flex-shrink:0}
+.vote-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:16px 0;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
 .vote-card{padding:16px 10px;border:2px solid var(--paper-dark);border-radius:var(--radius);cursor:pointer;
   text-align:center;transition:all .2s var(--ease);background:var(--card);font-weight:600;font-size:.9rem}
 .vote-card:hover{border-color:var(--ink-faint);background:var(--paper)}
 .vote-card.selected{border-color:var(--crimson);background:var(--crimson-bg);color:var(--crimson)}
+.vote-area .btn-lg{flex-shrink:0;margin-top:10px}
 
 .vote-result-area{padding:24px 20px;text-align:center}
 .vote-result-area h3{margin-bottom:12px;font-family:var(--font-display)}
@@ -390,7 +406,9 @@ input,select,textarea,button{font-family:inherit;font-size:inherit}
   .settings-grid{grid-template-columns:1fr}
   .result-words{grid-template-columns:1fr}
   .teacher-panel{max-width:240px}
-  .vote-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
+  .vote-grid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr));max-height:45vh}
+  .vote-area{padding:14px}
+  .chat-area{max-height:35vh}
   .lobby-card{padding:24px 20px}
   .ai-row{flex-direction:column}
   .speak-input-area{flex-wrap:wrap}

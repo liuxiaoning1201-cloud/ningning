@@ -63,6 +63,20 @@ function toast(msg, ms = 2500) {
   el._t = setTimeout(() => el.hidden = true, ms);
 }
 
+// ─── 發言提示浮動通知 ───
+function showSpeakerNotify(text) {
+  const el = $('#speaker-notify');
+  $('#speaker-notify-text').textContent = text;
+  el.hidden = false;
+  el.classList.remove('fade-out');
+  void el.offsetWidth;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => {
+    el.classList.add('fade-out');
+    setTimeout(() => { el.hidden = true; el.classList.remove('fade-out'); }, 400);
+  }, 3000);
+}
+
 // ─── 連線狀態 ───
 function showConnectionStatus(text) { $('#connection-status').hidden = false; $('#connection-text').textContent = text; }
 function hideConnectionStatus() { $('#connection-status').hidden = true; }
@@ -139,13 +153,18 @@ function _doConnect(name, roomId) {
     _heartbeatTimer = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
       else clearInterval(_heartbeatTimer);
-    }, 15000);
+    }, 8000);
   });
 
   ws.addEventListener('message', (e) => {
     try {
       const msg = JSON.parse(e.data);
-      if (msg.type === 'pong' || msg.type === 'server-ping') return;
+      if (msg.type === 'pong' || msg.type === 'server-ping') {
+        if (msg.type === 'server-ping' && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping' }));
+        }
+        return;
+      }
       if (msg.type === 'chat' && msg.timestamp) {
         const key = `${msg.senderId}_${msg.timestamp}`;
         if (_lastMsgIds.has(key)) return;
@@ -159,8 +178,8 @@ function _doConnect(name, roomId) {
   ws.addEventListener('close', () => {
     if (ws._manualClose) return;
     showConnectionStatus('已斷線，重連中...');
-    if (state.playerId && state.phase !== 'waiting') {
-      const delay = Math.min(1000 * Math.pow(2, _reconnectAttempts), 10000);
+    if (state.playerId) {
+      const delay = Math.min(1000 * Math.pow(1.5, _reconnectAttempts), 8000);
       _reconnectAttempts++;
       _reconnectTimer = setTimeout(() => { if (state.ws === ws || !state.ws) _doConnect(name, roomId); }, delay);
     } else { showConnectionStatus('已斷線'); }
@@ -284,6 +303,11 @@ function onGameStart(msg) {
     $('#teacher-panel').hidden = false;
     $('#btn-toggle-teacher').hidden = false;
   }
+
+  const firstSpeaker = msg.alivePlayers?.find(p => p.id === msg.currentSpeakerId);
+  if (firstSpeaker) {
+    showSpeakerNotify(msg.currentSpeakerId === state.playerId ? '輪到你發言了！' : `輪到 ${firstSpeaker.name} 發言`);
+  }
 }
 
 function onNextSpeaker(msg) {
@@ -291,6 +315,8 @@ function onNextSpeaker(msg) {
   updateSpeakerBar();
   updateSpeakInput();
   renderAlivePlayers();
+  const name = msg.currentSpeakerName || state.alivePlayers?.find(p => p.id === msg.currentSpeakerId)?.name;
+  if (name) showSpeakerNotify(msg.currentSpeakerId === state.playerId ? '輪到你發言了！' : `輪到 ${name} 發言`);
 }
 
 function onChat(msg) { appendChat(msg); }
@@ -354,6 +380,11 @@ function onNewRound(msg) {
   renderAlivePlayers();
   updateSpeakerBar();
   updateSpeakInput();
+
+  const firstSpeaker = msg.alivePlayers?.find(p => p.id === msg.currentSpeakerId);
+  if (firstSpeaker) {
+    showSpeakerNotify(msg.currentSpeakerId === state.playerId ? '輪到你發言了！' : `輪到 ${firstSpeaker.name} 發言`);
+  }
 }
 
 // ━━━━━━━━━ 結算 ━━━━━━━━━

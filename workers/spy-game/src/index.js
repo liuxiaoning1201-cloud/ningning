@@ -231,14 +231,13 @@ export class GameRoom {
     ws.addEventListener('close', () => this.onClose(ws));
     ws.addEventListener('error', () => this.onClose(ws));
 
-    // 服務端心跳：每 20 秒 ping 一次保持連線
     const pingInterval = setInterval(() => {
       if (this.sessions.has(ws)) {
         try { ws.send(JSON.stringify({ type: 'server-ping' })); } catch { clearInterval(pingInterval); }
       } else {
         clearInterval(pingInterval);
       }
-    }, 20000);
+    }, 10000);
   }
 
   async onMessage(ws, msg) {
@@ -501,16 +500,6 @@ export class GameRoom {
     if (this.room.players[pid]?.muted) {
       return this.send(ws, { type: 'error', message: '你已被禁言' });
     }
-
-    const chatMsg = {
-      senderId: 'system',
-      senderName: '系統',
-      text: `${this.room.players[pid].name} 已結束發言`,
-      round: this.room.round,
-      timestamp: Date.now(),
-    };
-    this.room.chatLog.push(chatMsg);
-    this.broadcast({ type: 'chat', ...chatMsg });
     this.nextSpeaker();
   }
 
@@ -921,7 +910,7 @@ export class GameRoom {
         const winner = this.checkGameEnd();
         if (winner) this.endGame(winner);
       }
-    }, 15000));
+    }, 30000));
   }
 
   // ─── 上帝視角（房主/旁觀者專用） ───
