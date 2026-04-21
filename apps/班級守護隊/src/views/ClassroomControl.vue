@@ -1,16 +1,61 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useClassStore } from '../stores/classStore'
-import { ANIMAL_CONFIG, DEFAULT_SCORE_BUTTONS, ENCOURAGEMENTS_BY_CATEGORY, type AnimalType, type ScoreButton as ScoreButtonType, type ScoreEvent, type ScoreCategory } from '../types'
+import {
+  ANIMAL_CONFIG, DEFAULT_SCORE_BUTTONS, ENCOURAGEMENTS_BY_CATEGORY,
+  CATEGORY_LABELS, CATEGORY_EMOJIS, CATEGORY_COLORS,
+  type AnimalType, type ScoreButton as ScoreButtonType, type ScoreEvent, type ScoreCategory, type Student,
+} from '../types'
 import StudentChip from '../components/StudentChip.vue'
 import ScoreButton from '../components/ScoreButton.vue'
+import QuickScorePopup from '../components/QuickScorePopup.vue'
 
 const store = useClassStore()
+const router = useRouter()
 
 const selectedGroupId = ref<string | null>(null)
 const selectedStudentId = ref<string | null>(null)
 const showNoteInput = ref(false)
 const noteText = ref('')
+
+// 類別篩選
+const activeCategory = ref<ScoreCategory | 'all'>('all')
+
+// 浮窗
+interface PopupState {
+  mode: 'student' | 'group'
+  student?: Student
+  groupId?: string
+  groupTitle?: string
+  animal: AnimalType
+  anchorRect: { x: number; y: number; width: number; height: number }
+  buttons: ScoreButtonType[]
+}
+const popup = ref<PopupState | null>(null)
+
+// 課堂 session
+const showStartLessonDialog = ref(false)
+const lessonSubjectInput = ref('')
+const now = ref(Date.now())
+let clockTimer: ReturnType<typeof setInterval>
+
+onMounted(() => {
+  clockTimer = setInterval(() => { now.value = Date.now() }, 1000)
+})
+onUnmounted(() => {
+  clearInterval(clockTimer)
+})
+
+const activeLesson = computed(() => store.activeLesson)
+
+const lessonElapsed = computed(() => {
+  if (!activeLesson.value) return ''
+  const secs = Math.floor((now.value - activeLesson.value.startedAt) / 1000)
+  const mm = Math.floor(secs / 60).toString().padStart(2, '0')
+  const ss = (secs % 60).toString().padStart(2, '0')
+  return `${mm}:${ss}`
+})
 
 interface Toast {
   id: number
@@ -18,7 +63,6 @@ interface Toast {
   emoji: string
   points: number
   color: string
-  /** 對應類別的鼓勵語，顯示約 5 秒提示學生 */
   encouragement?: string
   durationMs: number
 }
@@ -61,6 +105,18 @@ const displayStudents = computed(() => {
   return groupStudents.value
 })
 
+// 類別篩選過的主按鈕區按鈕
+const filteredButtons = computed(() => {
+  if (activeCategory.value === 'all') return DEFAULT_SCORE_BUTTONS
+  return DEFAULT_SCORE_BUTTONS.filter(b => b.category === activeCategory.value)
+})
+
+const availableCategories = computed<ScoreCategory[]>(() => {
+  const cats = new Set<ScoreCategory>()
+  DEFAULT_SCORE_BUTTONS.forEach(b => cats.add(b.category))
+  return (Object.keys(CATEGORY_LABELS) as ScoreCategory[]).filter(c => cats.has(c))
+})
+
 function selectGroup(groupId: string) {
   selectedGroupId.value = groupId
   selectedStudentId.value = null
@@ -68,8 +124,86 @@ function selectGroup(groupId: string) {
   noteText.value = ''
 }
 
-function toggleStudent(studentId: string) {
-  selectedStudentId.value = selectedStudentId.value === studentId ? null : studentId
+function toggleStudent(studentId: string, event?: MouseEvent) {
+  // 若再次點擊已選中的學生，則取消；否則打開浮窗
+  if (selectedStudentId.value === studentId) {
+    selectedStudentId.value = null
+    popup.value = null
+    return
+  }
+  selectedStudentId.value = studentId
+
+  // 開啟浮窗，定位到學生按鈕旁
+  const student = store.getStudentById(studentId)
+  if (!student) return
+  const targetEl = event?.currentTarget as HTMLElement | undefined
+  const rect = targetEl?.getBoundingClientRect()
+  const anchorRect = rect
+    ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+    : { x: window.innerWidth / 2, y: window.innerHeight / 2, width: 0, height: 0 }
+
+  const group = store.getGroupById(student.groupId)
+  const animal: AnimalType = group?.animal ?? 'owl'
+
+  // 浮窗中不顯示小組類別的按鈕，因為是對學生個人加分
+  const buttons = DEFAULT_SCORE_BUTTONS.filter(b => b.targetType === 'student')
+
+  popup.value = {
+    mode: 'student',
+    student,
+    animal,
+    anchorRect,
+    buttons,
+  }
+}
+
+function openGroupPopup(groupId: string, event: MouseEvent) {
+  event.stopPropagation()
+  const group = store.getGroupById(groupId)
+  if (!group) return
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+
+  popup.value = {
+    mode: 'group',
+    groupId,
+    groupTitle: group.name,
+    animal: group.animal,
+    anchorRect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+    buttons: DEFAULT_SCORE_BUTTONS.filter(b => b.targetType === 'group'),
+  }
+}
+
+function closePopup() {
+  popup.value = null
+}
+
+function handlePopupSelect(btn: ScoreButtonType) {
+  const state = popup.value
+  if (!state) return
+
+  if (state.mode === 'student' && state.student) {
+    store.addStudentScoreEvent(state.student.id, btn)
+    showToast(
+      `${state.student.name} ${btn.label}`,
+      btn.emoji,
+      btn.points,
+      ANIMAL_CONFIG[state.animal].color,
+      { encouragement: getRandomEncouragement(btn.category), durationMs: 5000 }
+    )
+    selectedStudentId.value = null
+  } else if (state.mode === 'group' && state.groupId) {
+    store.addGroupScoreEvent(state.groupId, btn)
+    const group = store.getGroupById(state.groupId)
+    showToast(
+      `${group?.name ?? '小組'} ${btn.label}`,
+      btn.emoji,
+      btn.points,
+      ANIMAL_CONFIG[state.animal].color,
+      { encouragement: getRandomEncouragement(btn.category), durationMs: 5000 }
+    )
+  }
+
+  popup.value = null
 }
 
 function isScoreButtonDisabled(button: ScoreButtonType): boolean {
@@ -107,7 +241,7 @@ function handleScore(button: ScoreButtonType) {
 
 function handleUndo() {
   store.undoLastEvent()
-  showToast('已撤銷上一筆', '↩️', 0, '#78716c') // 不加鼓勵語，維持約 2 秒
+  showToast('已撤銷上一筆', '↩️', 0, '#78716c')
 }
 
 function showToast(
@@ -153,15 +287,103 @@ function getStudentAnimal(studentId: string): AnimalType {
   const group = store.getGroupById(student.groupId)
   return group?.animal ?? 'owl'
 }
+
+// 課堂生命週期
+function openStartLesson() {
+  lessonSubjectInput.value = ''
+  showStartLessonDialog.value = true
+}
+
+function confirmStartLesson() {
+  const subject = lessonSubjectInput.value.trim() || '課堂'
+  store.startLesson(subject)
+  showStartLessonDialog.value = false
+}
+
+function handleEndLesson() {
+  const lesson = store.endActiveLesson()
+  if (lesson) {
+    router.push({ name: 'lesson-end', params: { lessonId: lesson.id } })
+  }
+}
+
+function handleCancelLesson() {
+  if (window.confirm('取消本堂課？本堂課的計分將被清除，此操作無法復原。')) {
+    store.cancelActiveLesson()
+  }
+}
+
+// 若有 pending 加分，顯示提示
+const pendingBonusHint = computed(() => {
+  const pending = store.classData.pendingBonusPoints ?? {}
+  const items = Object.entries(pending).filter(([, v]) => v > 0)
+  if (items.length === 0) return null
+  return items.map(([gid, points]) => {
+    const g = store.getGroupById(gid)
+    return { name: g?.name ?? '小組', animal: g?.animal ?? 'owl', points }
+  })
+})
 </script>
 
 <template>
   <div class="h-full flex flex-col bg-cream overflow-hidden">
 
+    <!-- Lesson Status Bar -->
+    <div
+      v-if="activeLesson"
+      class="shrink-0 px-4 py-2 flex items-center gap-3 text-sm bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow"
+    >
+      <span class="inline-flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-white animate-pulse" />
+        <span class="font-bold">課堂中</span>
+      </span>
+      <span class="font-medium">{{ activeLesson.subject }}</span>
+      <span class="font-mono text-xs bg-white/20 px-2 py-0.5 rounded">⏱ {{ lessonElapsed }}</span>
+      <div class="flex-1" />
+      <button
+        @click="handleCancelLesson"
+        class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-lg transition-colors cursor-pointer"
+      >
+        取消
+      </button>
+      <button
+        @click="handleEndLesson"
+        class="text-sm font-bold bg-white text-emerald-600 hover:bg-emerald-50 px-4 py-1.5 rounded-lg shadow-sm cursor-pointer transition-colors"
+      >
+        🎁 下課結算
+      </button>
+    </div>
+    <div
+      v-else
+      class="shrink-0 px-4 py-2 flex items-center gap-3 text-sm bg-stone-100 text-stone-500 border-b border-stone-200"
+    >
+      <span class="inline-flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-stone-400" />
+        <span>未開始課堂</span>
+      </span>
+      <span v-if="pendingBonusHint" class="text-xs text-amber-600">
+        🎟️ 下節課起始加分：
+        <span v-for="item in pendingBonusHint" :key="item.name" class="ml-1">
+          <img
+            :src="ANIMAL_CONFIG[item.animal].avatar"
+            :alt="`${item.name} 頭像`"
+            class="inline-block w-5 h-5 object-cover rounded-full align-text-bottom mx-1"
+          />
+          {{ item.name }} +{{ item.points }}
+        </span>
+      </span>
+      <div class="flex-1" />
+      <button
+        @click="openStartLesson"
+        class="text-sm font-bold bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded-lg shadow-sm cursor-pointer transition-colors"
+      >
+        ▶ 開始上課
+      </button>
+    </div>
+
     <!-- Section 1: Group Tabs -->
     <div class="shrink-0 bg-white border-b border-stone-200 shadow-sm px-4 py-3">
       <div class="flex items-center gap-2 overflow-x-auto">
-        <!-- All groups tab -->
         <button
           @click="selectGroup('__all__')"
           class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150
@@ -176,43 +398,62 @@ function getStudentAnimal(studentId: string): AnimalType {
 
         <div class="w-px h-8 bg-stone-200 shrink-0" />
 
-        <!-- Group tabs -->
-        <button
+        <div
           v-for="group in store.groups"
           :key="group.id"
-          @click="selectGroup(group.id)"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150
-                 min-h-[48px] shrink-0 border-2 cursor-pointer active:scale-95"
+          class="flex items-stretch shrink-0 rounded-xl border-2 overflow-hidden transition-all duration-150"
           :class="selectedGroupId === group.id && !isAllGroupMode
             ? 'shadow-md scale-[1.02]'
-            : 'bg-white hover:shadow-sm'"
+            : ''"
           :style="selectedGroupId === group.id && !isAllGroupMode
             ? {
                 backgroundColor: ANIMAL_CONFIG[group.animal].lightColor,
                 borderColor: ANIMAL_CONFIG[group.animal].color,
-                color: ANIMAL_CONFIG[group.animal].darkColor,
               }
-            : {
-                borderColor: '#e7e5e4',
-                color: '#78716c',
-              }"
+            : { borderColor: '#e7e5e4', backgroundColor: 'white' }"
         >
-          <span class="text-lg">{{ ANIMAL_CONFIG[group.animal].emoji }}</span>
-          <span>{{ group.name }}</span>
-          <span
-            class="ml-1 text-xs font-bold px-2 py-0.5 rounded-full"
+          <button
+            @click="selectGroup(group.id)"
+            class="flex items-center gap-2 px-4 py-2.5 font-semibold text-sm transition-all duration-150 min-h-[48px] cursor-pointer active:scale-95"
+            :style="selectedGroupId === group.id && !isAllGroupMode
+              ? { color: ANIMAL_CONFIG[group.animal].darkColor }
+              : { color: '#78716c' }"
+          >
+            <img
+              :src="ANIMAL_CONFIG[group.animal].avatar"
+              :alt="`${group.name} 頭像`"
+              class="w-8 h-8 rounded-full object-cover border-2"
+              :style="{ borderColor: ANIMAL_CONFIG[group.animal].color }"
+            />
+            <span>{{ group.name }}</span>
+            <span
+              class="ml-1 text-xs font-bold px-2 py-0.5 rounded-full"
+              :style="{
+                backgroundColor: selectedGroupId === group.id && !isAllGroupMode
+                  ? ANIMAL_CONFIG[group.animal].color + '20'
+                  : '#f5f5f4',
+                color: selectedGroupId === group.id && !isAllGroupMode
+                  ? ANIMAL_CONFIG[group.animal].darkColor
+                  : '#a8a29e',
+              }"
+            >
+              {{ store.getGroupTodayScore(group.id) }} 分
+            </span>
+          </button>
+          <!-- Quick group score button -->
+          <button
+            @click="openGroupPopup(group.id, $event)"
+            class="px-2 flex items-center justify-center text-lg font-bold border-l-2 cursor-pointer hover:opacity-80 transition-opacity"
+            :title="`${group.name} 快速計分`"
             :style="{
-              backgroundColor: selectedGroupId === group.id && !isAllGroupMode
-                ? ANIMAL_CONFIG[group.animal].color + '20'
-                : '#f5f5f4',
-              color: selectedGroupId === group.id && !isAllGroupMode
-                ? ANIMAL_CONFIG[group.animal].darkColor
-                : '#a8a29e',
+              borderLeftColor: '#e7e5e4',
+              backgroundColor: ANIMAL_CONFIG[group.animal].color + '20',
+              color: ANIMAL_CONFIG[group.animal].darkColor,
             }"
           >
-            {{ store.getGroupTodayScore(group.id) }} 分
-          </span>
-        </button>
+            ＋
+          </button>
+        </div>
       </div>
     </div>
 
@@ -238,24 +479,55 @@ function getStudentAnimal(studentId: string): AnimalType {
               :student="student"
               :selected="selectedStudentId === student.id"
               :group-animal="isAllGroupMode ? getStudentAnimal(student.id) : selectedAnimal"
-              @click="toggleStudent(student.id)"
+              @click="toggleStudent(student.id, $event)"
             />
           </div>
 
           <div v-if="displayStudents.length === 0" class="text-center py-10 text-stone-400 text-sm">
             此小組暫無學生
           </div>
+
+          <p class="text-[11px] text-stone-400 mt-4 leading-relaxed">
+            💡 點擊學生會在旁邊開啟快捷計分面板，免切換頁面！
+          </p>
         </div>
 
         <!-- Score Buttons -->
         <div class="flex-1 overflow-y-auto p-4">
-          <h2 class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3">
-            計分按鈕
-          </h2>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-bold text-stone-400 uppercase tracking-wider">
+              計分按鈕
+            </h2>
+          </div>
+
+          <!-- Category Filter Tabs -->
+          <div class="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+            <button
+              @click="activeCategory = 'all'"
+              class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer border-2"
+              :class="activeCategory === 'all'
+                ? 'bg-stone-700 text-white border-stone-700 shadow-sm'
+                : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50'"
+            >
+              全部
+            </button>
+            <button
+              v-for="cat in availableCategories"
+              :key="cat"
+              @click="activeCategory = cat"
+              class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer border-2 flex items-center gap-1"
+              :style="activeCategory === cat
+                ? { backgroundColor: CATEGORY_COLORS[cat].bar, color: 'white', borderColor: CATEGORY_COLORS[cat].bar }
+                : { backgroundColor: CATEGORY_COLORS[cat].bg, color: CATEGORY_COLORS[cat].text, borderColor: CATEGORY_COLORS[cat].border }"
+            >
+              <span>{{ CATEGORY_EMOJIS[cat] }}</span>
+              <span>{{ CATEGORY_LABELS[cat] }}</span>
+            </button>
+          </div>
 
           <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <ScoreButton
-              v-for="btn in DEFAULT_SCORE_BUTTONS"
+              v-for="btn in filteredButtons"
               :key="btn.id"
               :button="btn"
               :disabled="isScoreButtonDisabled(btn)"
@@ -291,11 +563,7 @@ function getStudentAnimal(studentId: string): AnimalType {
           <div class="mt-5 p-3 rounded-xl bg-stone-50 border border-stone-100">
             <p class="text-xs text-stone-400 leading-relaxed">
               <span class="font-semibold text-stone-500">操作提示：</span>
-              個人計分 → 先點學生再點按鈕 ｜ 小組計分 → 選擇小組後直接點
-              <span class="inline-flex items-center gap-0.5 text-purple-600 font-medium bg-purple-50 px-1 rounded">
-                <span class="text-[10px]">組</span>
-              </span>
-              按鈕
+              點擊學生會自動彈出快捷面板 ｜ 點擊小組標籤旁的「＋」可直接小組計分 ｜ 上方可按類別篩選按鈕
             </p>
           </div>
         </div>
@@ -365,6 +633,56 @@ function getStudentAnimal(studentId: string): AnimalType {
       </div>
     </div>
 
+    <!-- Quick Score Popup -->
+    <QuickScorePopup
+      v-if="popup"
+      :student="popup.student ?? null"
+      :animal="popup.animal"
+      :buttons="popup.buttons"
+      :anchor-rect="popup.anchorRect"
+      :title="popup.groupTitle"
+      @select="handlePopupSelect"
+      @close="closePopup"
+    />
+
+    <!-- Start Lesson Dialog -->
+    <Teleport to="body">
+      <div
+        v-if="showStartLessonDialog"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+        @click.self="showStartLessonDialog = false"
+      >
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+          <h3 class="text-lg font-semibold text-stone-700 mb-3 flex items-center gap-2">
+            <span>📚</span> 開始上課
+          </h3>
+          <p class="text-xs text-stone-500 mb-3">輸入科目名稱，系統會為本堂課記錄所有計分與小組表現。</p>
+          <input
+            v-model="lessonSubjectInput"
+            type="text"
+            placeholder="例如：國語、數學、英語"
+            class="w-full px-4 py-2.5 border-2 border-stone-200 rounded-xl text-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+            @keyup.enter="confirmStartLesson"
+            autofocus
+          />
+          <div class="flex justify-end gap-2 mt-5">
+            <button
+              @click="showStartLessonDialog = false"
+              class="px-4 py-2 text-sm text-stone-500 hover:bg-stone-50 rounded-xl transition-colors cursor-pointer"
+            >
+              取消
+            </button>
+            <button
+              @click="confirmStartLesson"
+              class="px-5 py-2 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors cursor-pointer"
+            >
+              開始
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Toast：計分時顯示對應類別鼓勵語約 5 秒，提示學生 -->
     <Teleport to="body">
       <TransitionGroup name="toast" tag="div" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 max-w-[90vw]">
@@ -422,6 +740,22 @@ function getStudentAnimal(studentId: string): AnimalType {
   transform: translateY(-10px) scale(0.95);
 }
 .toast-move {
+  transition: transform 0.3s ease;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-up-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+.slide-up-move {
   transition: transform 0.3s ease;
 }
 </style>

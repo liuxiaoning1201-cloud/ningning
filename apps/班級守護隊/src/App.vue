@@ -14,13 +14,14 @@ const navItems = [
   { path: '/', label: '總覽', emoji: '🏠' },
   { path: '/classroom', label: '課堂記分', emoji: '✏️' },
   { path: '/display', label: '學生展示', emoji: '📺' },
+  { path: '/lessons', label: '課堂回顧', emoji: '📚' },
   { path: '/history', label: '歷史紀錄', emoji: '📊' },
   { path: '/settings', label: '設定', emoji: '⚙️' },
 ]
 </script>
 
 <template>
-  <div class="min-h-screen flex" v-if="route.name === 'display'">
+  <div class="min-h-screen flex" v-if="route.name === 'display' || route.name === 'lesson-end'">
     <router-view />
   </div>
   <div class="min-h-screen flex" v-else>

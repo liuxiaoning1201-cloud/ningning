@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 defineEmits<{
-  click: []
+  click: [event: MouseEvent]
 }>()
 
 const config = computed(() => ANIMAL_CONFIG[props.groupAnimal])
@@ -17,7 +17,7 @@ const config = computed(() => ANIMAL_CONFIG[props.groupAnimal])
 
 <template>
   <button
-    @click="$emit('click')"
+    @click="$emit('click', $event)"
     class="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 font-medium text-sm
            transition-all duration-150 active:scale-95 select-none min-h-[48px] cursor-pointer"
     :class="selected
@@ -38,6 +38,13 @@ const config = computed(() => ANIMAL_CONFIG[props.groupAnimal])
       {{ student.seatNumber }}
     </span>
     <span class="truncate">{{ student.name }}</span>
+    <span
+      v-if="(student.stamps ?? 0) > 0"
+      class="ml-auto shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 rounded-full"
+      :title="`已獲得 ${student.stamps} 個印章`"
+    >
+      🎖 {{ student.stamps }}
+    </span>
     <span
       v-if="selected"
       class="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white text-[10px]"

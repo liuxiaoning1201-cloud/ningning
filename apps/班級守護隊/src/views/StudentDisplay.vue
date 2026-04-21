@@ -101,9 +101,12 @@ function getTodayStart(): number {
         class="flex-1 rounded-3xl p-6 flex flex-col items-center shadow-lg border-2 transition-all duration-500"
         :style="getAnimalStyle(group.animal).card"
       >
-        <span class="text-8xl mb-3 drop-shadow-md animate-bounce" style="animation-duration: 3s;">
-          {{ ANIMAL_CONFIG[group.animal].emoji }}
-        </span>
+        <img
+          :src="ANIMAL_CONFIG[group.animal].avatar"
+          :alt="`${group.name} 頭像`"
+          class="w-32 h-32 rounded-full object-cover border-4 mb-3 drop-shadow-md animate-bounce"
+          :style="{ animationDuration: '3s', borderColor: ANIMAL_CONFIG[group.animal].color }"
+        />
 
         <h2
           class="text-3xl font-bold mb-4"

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useClassStore } from '../stores/classStore'
 import { ANIMAL_CONFIG } from '../types'
 import type { Student } from '../types'
+import RewardPoolEditor from '../components/RewardPoolEditor.vue'
 
 const store = useClassStore()
 
@@ -183,7 +184,12 @@ const sortedStudents = computed(() =>
           }"
         >
           <div class="text-center mb-3">
-            <span class="text-4xl">{{ ANIMAL_CONFIG[group.animal].emoji }}</span>
+            <img
+              :src="ANIMAL_CONFIG[group.animal].avatar"
+              :alt="`${group.name} 頭像`"
+              class="w-16 h-16 rounded-full object-cover border-2 mx-auto"
+              :style="{ borderColor: ANIMAL_CONFIG[group.animal].color }"
+            />
           </div>
           <label class="block text-xs font-medium text-stone-500 mb-1">組名</label>
           <input
@@ -247,7 +253,7 @@ const sortedStudents = computed(() =>
               class="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white"
             >
               <option v-for="g in store.groups" :key="g.id" :value="g.id">
-                {{ ANIMAL_CONFIG[g.animal].emoji }} {{ g.name }}
+                {{ g.name }}
               </option>
             </select>
           </div>
@@ -289,7 +295,7 @@ const sortedStudents = computed(() =>
               class="px-2 py-1 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 bg-white"
             >
               <option v-for="g in store.groups" :key="g.id" :value="g.id">
-                {{ ANIMAL_CONFIG[g.animal].emoji }} {{ g.name }}
+                {{ g.name }}
               </option>
             </select>
           </div>
@@ -317,6 +323,7 @@ const sortedStudents = computed(() =>
               <th class="text-left px-4 py-3 font-medium">座號</th>
               <th class="text-left px-4 py-3 font-medium">姓名</th>
               <th class="text-left px-4 py-3 font-medium">小組</th>
+              <th class="text-center px-4 py-3 font-medium">🎖 印章</th>
               <th class="text-right px-4 py-3 font-medium">操作</th>
             </tr>
           </thead>
@@ -338,9 +345,17 @@ const sortedStudents = computed(() =>
                     color: ANIMAL_CONFIG[store.getGroupById(student.groupId)!.animal].darkColor,
                   }"
                 >
-                  {{ ANIMAL_CONFIG[store.getGroupById(student.groupId)!.animal].emoji }}
+                  <img
+                    :src="ANIMAL_CONFIG[store.getGroupById(student.groupId)!.animal].avatar"
+                    :alt="`${store.getGroupById(student.groupId)!.name} 頭像`"
+                    class="w-4 h-4 rounded-full object-cover"
+                  />
                   {{ store.getGroupById(student.groupId)!.name }}
                 </span>
+              </td>
+              <td class="px-4 py-2.5 text-center">
+                <span v-if="(student.stamps ?? 0) > 0" class="text-sm font-bold text-amber-600">🎖 {{ student.stamps }}</span>
+                <span v-else class="text-xs text-stone-300">—</span>
               </td>
               <td class="px-4 py-2.5 text-right">
                 <button
@@ -358,12 +373,15 @@ const sortedStudents = computed(() =>
               </td>
             </tr>
             <tr v-if="sortedStudents.length === 0">
-              <td colspan="4" class="text-center py-8 text-stone-400">尚無學生資料</td>
+              <td colspan="5" class="text-center py-8 text-stone-400">尚無學生資料</td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
+
+    <!-- 獎勵卡池 -->
+    <RewardPoolEditor />
 
     <!-- 資料管理 -->
     <section class="bg-white rounded-2xl p-6 shadow-sm border border-stone-100">
@@ -457,7 +475,7 @@ const sortedStudents = computed(() =>
                 class="w-full px-4 py-2 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-300"
               >
                 <option v-for="g in store.groups" :key="g.id" :value="g.id">
-                  {{ ANIMAL_CONFIG[g.animal].emoji }} {{ g.name }}
+                  {{ g.name }}
                 </option>
               </select>
             </div>

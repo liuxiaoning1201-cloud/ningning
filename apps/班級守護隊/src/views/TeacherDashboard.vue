@@ -65,9 +65,9 @@ function eventTargetName(event: ScoreEvent): string {
   return student ? `${student.name}（${student.seatNumber}號）` : '未知學生'
 }
 
-function eventGroupEmoji(event: ScoreEvent): string {
+function eventGroupAvatar(event: ScoreEvent): string {
   const group = store.getGroupById(event.groupId)
-  return group ? ANIMAL_CONFIG[group.animal].emoji : ''
+  return group ? ANIMAL_CONFIG[group.animal].avatar : ''
 }
 
 function pointsDisplay(points: number): string {
@@ -110,9 +110,12 @@ function pointsDisplay(points: number): string {
         </div>
         <div class="bg-white/80 rounded-2xl p-4 text-center shadow-sm border border-amber-100">
           <template v-if="mostActiveGroup">
-            <div class="text-2xl font-bold">
-              {{ ANIMAL_CONFIG[mostActiveGroup.animal].emoji }}
-            </div>
+            <img
+              :src="ANIMAL_CONFIG[mostActiveGroup.animal].avatar"
+              :alt="`${mostActiveGroup.name} 頭像`"
+              class="w-12 h-12 mx-auto rounded-full object-cover border-2"
+              :style="{ borderColor: ANIMAL_CONFIG[mostActiveGroup.animal].color }"
+            />
             <div class="text-sm text-amber-600 mt-1">
               最活躍：{{ mostActiveGroup.name }}
             </div>
@@ -144,7 +147,11 @@ function pointsDisplay(points: number): string {
           :key="event.id"
           class="bg-white/80 rounded-xl px-4 py-3 shadow-sm border border-amber-100 flex items-center gap-3"
         >
-          <span class="text-xl flex-shrink-0">{{ eventGroupEmoji(event) }}</span>
+          <img
+            :src="eventGroupAvatar(event)"
+            :alt="`${eventTargetName(event)} 頭像`"
+            class="w-8 h-8 rounded-full object-cover border flex-shrink-0"
+          />
           <div class="flex-1 min-w-0">
             <span class="font-medium text-amber-900">{{ eventTargetName(event) }}</span>
             <span class="mx-1 text-amber-400">·</span>
@@ -168,18 +175,24 @@ function pointsDisplay(points: number): string {
     <!-- Quick Actions -->
     <section class="mb-8">
       <h2 class="text-xl font-bold text-amber-900 mb-4">🚀 快速前往</h2>
-      <div class="flex flex-col sm:flex-row gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <router-link
           to="/classroom"
-          class="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 px-6 rounded-2xl text-center text-lg shadow-md transition-colors"
+          class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 px-6 rounded-2xl text-center shadow-md transition-colors"
         >
           🎯 進入課堂記分
         </router-link>
         <router-link
-          to="/display"
-          class="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 px-6 rounded-2xl text-center text-lg shadow-md transition-colors"
+          to="/lessons"
+          class="bg-violet-500 hover:bg-violet-600 text-white font-bold py-4 px-6 rounded-2xl text-center shadow-md transition-colors"
         >
-          📺 查看學生展示
+          📚 課堂回顧
+        </router-link>
+        <router-link
+          to="/display"
+          class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-4 px-6 rounded-2xl text-center shadow-md transition-colors"
+        >
+          📺 學生展示
         </router-link>
       </div>
     </section>

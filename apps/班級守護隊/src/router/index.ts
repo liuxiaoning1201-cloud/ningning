@@ -24,6 +24,16 @@ const router = createRouter({
       component: () => import('../views/HistoryView.vue'),
     },
     {
+      path: '/lessons',
+      name: 'lessons',
+      component: () => import('../views/LessonReview.vue'),
+    },
+    {
+      path: '/lesson-end/:lessonId',
+      name: 'lesson-end',
+      component: () => import('../views/LessonEnd.vue'),
+    },
+    {
       path: '/settings',
       name: 'settings',
       component: () => import('../views/SettingsView.vue'),

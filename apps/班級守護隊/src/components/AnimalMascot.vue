@@ -13,11 +13,11 @@ const props = withDefaults(defineProps<{
 
 const config = computed(() => ANIMAL_CONFIG[props.animal])
 
-const sizeMap: Record<string, { container: string; emoji: string }> = {
-  sm: { container: 'w-12 h-12', emoji: 'text-2xl' },
-  md: { container: 'w-[72px] h-[72px]', emoji: 'text-4xl' },
-  lg: { container: 'w-24 h-24', emoji: 'text-5xl' },
-  xl: { container: 'w-32 h-32', emoji: 'text-6xl' },
+const sizeMap: Record<string, { container: string; image: string }> = {
+  sm: { container: 'w-12 h-12', image: 'w-10 h-10' },
+  md: { container: 'w-[72px] h-[72px]', image: 'w-14 h-14' },
+  lg: { container: 'w-24 h-24', image: 'w-20 h-20' },
+  xl: { container: 'w-32 h-32', image: 'w-28 h-28' },
 }
 
 const sizeClasses = computed(() => sizeMap[props.size])
@@ -35,9 +35,13 @@ const sizeClasses = computed(() => sizeMap[props.size])
       border: `3px solid ${config.color}`,
     }"
   >
-    <span :class="sizeClasses.emoji" class="leading-none drop-shadow-sm">
-      {{ config.emoji }}
-    </span>
+    <img
+      :src="config.avatar"
+      :alt="`${config.name} 小組頭像`"
+      :class="sizeClasses.image"
+      class="object-contain drop-shadow-sm select-none"
+      draggable="false"
+    />
   </div>
 </template>
 

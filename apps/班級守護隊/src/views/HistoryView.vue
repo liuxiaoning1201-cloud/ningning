@@ -101,7 +101,7 @@ function isToday(ts: number): boolean {
 function getEventTarget(event: ScoreEvent): string {
   if (event.targetType === 'group') {
     const g = store.getGroupById(event.targetId)
-    return g ? `${ANIMAL_CONFIG[g.animal].emoji} ${g.name}` : '未知小組'
+    return g ? g.name : '未知小組'
   }
   const s = store.getStudentById(event.targetId)
   return s ? s.name : '未知學生'
@@ -215,7 +215,7 @@ const growthHighlights = computed(() => {
         >
           <option value="all">全部小組</option>
           <option v-for="g in store.groups" :key="g.id" :value="g.id">
-            {{ ANIMAL_CONFIG[g.animal].emoji }} {{ g.name }}
+            {{ g.name }}
           </option>
         </select>
       </div>
@@ -250,7 +250,12 @@ const growthHighlights = computed(() => {
           borderColor: ANIMAL_CONFIG[item.group.animal].color,
         }"
       >
-        <span class="text-3xl">{{ ANIMAL_CONFIG[item.group.animal].emoji }}</span>
+        <img
+          :src="ANIMAL_CONFIG[item.group.animal].avatar"
+          :alt="`${item.group.name} 頭像`"
+          class="w-12 h-12 rounded-full object-cover border-2 mx-auto"
+          :style="{ borderColor: ANIMAL_CONFIG[item.group.animal].color }"
+        />
         <p
           class="text-sm font-medium mt-1"
           :style="{ color: ANIMAL_CONFIG[item.group.animal].darkColor }"
@@ -361,7 +366,12 @@ const growthHighlights = computed(() => {
           :style="{ borderColor: ANIMAL_CONFIG[item.group.animal].color }"
         >
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-2xl">{{ ANIMAL_CONFIG[item.group.animal].emoji }}</span>
+            <img
+              :src="ANIMAL_CONFIG[item.group.animal].avatar"
+              :alt="`${item.group.name} 頭像`"
+              class="w-8 h-8 rounded-full object-cover border"
+              :style="{ borderColor: ANIMAL_CONFIG[item.group.animal].color }"
+            />
             <span
               class="text-sm font-semibold"
               :style="{ color: ANIMAL_CONFIG[item.group.animal].darkColor }"
