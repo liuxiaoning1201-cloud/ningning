@@ -13,6 +13,7 @@ import { createPinchSmoother } from '@/composables/usePinch';
 import { speakWithBackend } from '@/composables/useSpeech';
 import { useWordPackStore } from '@/stores/wordPack';
 import type { WordEntry } from '@/types/word';
+import { drawFruit, fruitForWord, accentFor, type FruitKind } from '@/composables/fruits';
 
 const route = useRoute();
 const router = useRouter();
@@ -23,6 +24,7 @@ const videoRef = ref<HTMLVideoElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const showHow = ref(true);
 const status = ref<'loading' | 'ready' | 'need_camera' | 'error'>('loading');
+const handsReady = ref(false);
 const errMsg = ref('');
 
 const playing = ref(false);
@@ -39,8 +41,6 @@ const online = ref(false);
 const onlineBoard = ref<Record<string, { name: string; score: number; connected?: boolean }>>({});
 let ws: WebSocket | null = null;
 
-const EMOJIS = ['🍎', '🍊', '🍋', '🍉', '🍇', '🍓', '🍒', '🥝', '🍑', '🥭'];
-
 type Fruit = {
   id: number;
   x: number;
@@ -48,7 +48,8 @@ type Fruit = {
   vy: number;
   r: number;
   w: WordEntry;
-  emoji: string;
+  kind: FruitKind;
+  bobPhase: number;
   t: number;
 };
 
@@ -90,17 +91,46 @@ function rndWord(): WordEntry {
   return list[Math.floor(Math.random() * list.length)]!;
 }
 
+/** 由分數調整的「等速」下落速度（像素/秒），加分後輕微提速但仍為勻速 */
+function fallSpeed() {
+  const base = easyMode.value ? 110 : 145;
+  return base + Math.min(score.value * 0.25, 90);
+}
+
+/** 找一個與既有水果不重疊的 x 位置；找不到就放棄這次生成 */
+function pickSpawnX(r: number): number | null {
+  const margin = r + 18;
+  const minGap = r * 2 + 24;
+  for (let i = 0; i < 12; i++) {
+    const x = margin + Math.random() * Math.max(1, cw - margin * 2);
+    let ok = true;
+    for (const f of fruits.value) {
+      if (f.y < r * 2.5) {
+        if (Math.abs(f.x - x) < minGap) {
+          ok = false;
+          break;
+        }
+      }
+    }
+    if (ok) return x;
+  }
+  return null;
+}
+
 function spawn(now: number) {
   const w = rndWord();
-  const r = easyMode.value ? 76 : 64;
+  const r = easyMode.value ? 70 : 60;
+  const x = pickSpawnX(r);
+  if (x == null) return;
   fruits.value.push({
     id: ++fruitId,
-    x: r + Math.random() * (cw - r * 2),
+    x,
     y: -r - 10,
-    vy: 1.55 + Math.random() * 1.2 + Math.min(score.value / 220, 1.4),
+    vy: fallSpeed(),
     r,
     w,
-    emoji: EMOJIS[(fruitId + tick) % EMOJIS.length],
+    kind: fruitForWord(w.word || w.hanzi || ''),
+    bobPhase: Math.random() * Math.PI * 2,
     t: now,
   });
 }
@@ -125,7 +155,12 @@ function burst(x: number, y: number, color: string) {
 
 async function bootCamera() {
   stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'user', width: { ideal: 960 }, height: { ideal: 720 } },
+    video: {
+      facingMode: 'user',
+      width: { ideal: 480 },
+      height: { ideal: 360 },
+      frameRate: { ideal: 24, max: 30 },
+    },
     audio: false,
   });
   const v = videoRef.value;
@@ -141,14 +176,14 @@ async function bootHands() {
   });
   h.setOptions({
     maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.62,
-    minTrackingConfidence: 0.45,
+    modelComplexity: 0,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.4,
   });
   h.onResults((res) => {
     lastResults = res;
+    if (!handsReady.value) handsReady.value = true;
   });
-  await h.initialize();
   hands = h;
 }
 
@@ -197,8 +232,10 @@ onMounted(async () => {
 
   try {
     await bootCamera();
-    await bootHands();
     status.value = 'ready';
+    bootHands().catch(() => {
+      errMsg.value = '手勢模型載入失敗，請重新整理或檢查網路。';
+    });
   } catch {
     status.value = 'need_camera';
     errMsg.value = '無法開啟鏡頭，請檢查瀏覽器權限與 HTTPS。';
@@ -216,8 +253,11 @@ onUnmounted(() => {
   ws?.close();
 });
 
+let handsBusy = false;
+let lastHandsAt = 0;
+
 function loop() {
-  const step = async (now: number) => {
+  const step = (now: number) => {
     raf = requestAnimationFrame(step);
     tick = now;
     const dt = Math.min(0.052, (now - lastFrameT) / 1000);
@@ -228,12 +268,16 @@ function loop() {
     const ctx = c?.getContext('2d');
     if (!ctx || !c) return;
 
-    if (hands && v && v.readyState >= 2) {
-      try {
-        await hands.send({ image: v });
-      } catch {
-        /* throttle */
-      }
+    /* MediaPipe 推送：節流到 ~30fps，且不阻塞渲染 */
+    if (hands && v && v.readyState >= 2 && !handsBusy && now - lastHandsAt > 33) {
+      handsBusy = true;
+      lastHandsAt = now;
+      hands
+        .send({ image: v })
+        .catch(() => {})
+        .finally(() => {
+          handsBusy = false;
+        });
     }
 
     ctx.clearRect(0, 0, cw, ch);
@@ -263,11 +307,11 @@ function loop() {
       return;
     }
 
-    /* 水果 */
-    const gravity = 0.045;
+    /* 水果（勻速下落，無重力） */
+    const speed = fallSpeed();
     fruits.value = fruits.value.filter((f) => {
-      f.vy += gravity;
-      f.y += f.vy;
+      f.vy = speed;
+      f.y += f.vy * dt;
 
       /* 命中 */
       let hit = false;
@@ -286,9 +330,10 @@ function loop() {
         bestCombo.value = Math.max(bestCombo.value, combo.value);
         const pts = 10 + Math.min(combo.value * 2, 40);
         score.value += pts;
-        burst(f.x, f.y, combo.value > 6 ? '#fffb8d' : '#ffffff');
+        const ac = accentFor(f.kind);
+        burst(f.x, f.y, combo.value > 6 ? '#fffb8d' : ac.soft);
         emitScore(pts);
-        void speakWithBackend(f.w.word, f.w.langRead).then((r) => {
+        void speakWithBackend(f.w.word || f.w.hanzi || '', f.w.langRead).then((r) => {
           if (!r.ok && r.error) lastTtsError.value = r.error;
           else lastTtsError.value = '';
         });
@@ -300,36 +345,43 @@ function loop() {
         return false;
       }
 
-      /* 繪製 */
-      ctx.save();
-      ctx.translate(f.x, f.y);
-      ctx.rotate((now - f.t) / 2200);
-      const grad = ctx.createRadialGradient(-10, -10, 8, 0, 0, f.r);
-      grad.addColorStop(0, 'rgba(255,255,255,0.95)');
-      grad.addColorStop(0.45, 'rgba(255,210,120,0.9)');
-      grad.addColorStop(1, 'rgba(255,120,180,0.65)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, 0, f.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.font = `${f.r * 0.9}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(f.emoji, 0, -4);
-      ctx.font = `bold ${Math.max(14, f.r * 0.22)}px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif`;
-      ctx.fillStyle = 'rgba(55,25,75,0.92)';
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      ctx.lineWidth = 4;
+      /* 水果繪製 */
+      const bob = Math.sin((now / 600) + f.bobPhase) * 0.08;
+      drawFruit(ctx, f.kind, f.x, f.y, f.r, bob);
+
+      /* 文字標籤（純中文＋拼音） */
       const label = f.w.hanzi || f.w.word;
-      ctx.strokeText(label, 0, f.r * 0.58);
-      ctx.fillText(label, 0, f.r * 0.58);
-      if (f.w.pinyin) {
-        ctx.font = `${Math.max(11, f.r * 0.14)}px "PingFang TC",sans-serif`;
-        ctx.fillStyle = 'rgba(70,35,95,0.85)';
-        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-        ctx.lineWidth = 2;
-        ctx.strokeText(f.w.pinyin, 0, f.r * 0.92);
-        ctx.fillText(f.w.pinyin, 0, f.r * 0.92);
+      const pinyin = f.w.pinyin || '';
+      ctx.save();
+      ctx.translate(f.x, f.y + f.r + 6);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const labelFont = `900 ${Math.max(18, Math.round(f.r * 0.42))}px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif`;
+      ctx.font = labelFont;
+      const labelW = ctx.measureText(label).width;
+      const padX = 10;
+      const padY = 5;
+      const labelH = Math.max(20, Math.round(f.r * 0.42)) + padY * 2;
+      ctx.fillStyle = 'rgba(28,12,42,0.78)';
+      const bx = -labelW / 2 - padX;
+      const by = 0;
+      const bw = labelW + padX * 2;
+      const bh = labelH;
+      const rr = 10;
+      ctx.beginPath();
+      ctx.moveTo(bx + rr, by);
+      ctx.arcTo(bx + bw, by, bx + bw, by + bh, rr);
+      ctx.arcTo(bx + bw, by + bh, bx, by + bh, rr);
+      ctx.arcTo(bx, by + bh, bx, by, rr);
+      ctx.arcTo(bx, by, bx + bw, by, rr);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillText(label, 0, padY);
+      if (pinyin) {
+        ctx.font = `600 ${Math.max(11, Math.round(f.r * 0.18))}px "PingFang TC",sans-serif`;
+        ctx.fillStyle = 'rgba(255,236,180,0.95)';
+        ctx.fillText(pinyin, 0, bh + 4);
       }
       ctx.restore();
 
@@ -345,9 +397,12 @@ function loop() {
       ctx.stroke();
     }
 
-    /* 生成節奏 */
-    const interval = Math.max(720, 1500 - Math.min(score.value, 420));
-    if (now - lastSpawn > interval && fruits.value.length < (easyMode.value ? 6 : 8)) {
+    /* 生成節奏：固定間隔避免成串掉落擠在一起 */
+    const interval = easyMode.value
+      ? Math.max(900, 1400 - Math.min(score.value, 350))
+      : Math.max(700, 1200 - Math.min(score.value, 400));
+    const cap = easyMode.value ? 5 : 7;
+    if (now - lastSpawn > interval && fruits.value.length < cap) {
       spawn(now);
       lastSpawn = now;
     }
@@ -392,16 +447,35 @@ const sortedBoard = computed(() =>
 </script>
 
 <template>
-  <div class="relative h-full min-h-[100dvh] w-full overflow-hidden bg-gradient-to-b from-[#6a3d8c] via-[#4a2a6b] to-[#1f1233] text-white">
-    <video
-      ref="videoRef"
-      class="absolute inset-0 h-full w-full object-cover"
-      style="transform: scaleX(-1)"
-      muted
-      playsinline
-    />
-
+  <div
+    class="relative h-full min-h-[100dvh] w-full overflow-hidden text-white"
+    style="
+      background-image:
+        radial-gradient(circle at 20% 18%, #ff7ad9 0, transparent 55%),
+        radial-gradient(circle at 80% 80%, #6ad7ff 0, transparent 50%),
+        linear-gradient(160deg, #4a2a6b 0%, #2b1748 60%, #160c2a 100%);
+    "
+  >
     <canvas ref="canvasRef" class="absolute inset-0 h-full w-full" />
+
+    <!-- 鏡頭 PIP（右下角小框） -->
+    <div
+      class="pointer-events-none absolute bottom-4 right-4 z-25 w-44 overflow-hidden rounded-2xl border-2 border-white/35 bg-black/55 shadow-2xl backdrop-blur md:w-56"
+    >
+      <video
+        ref="videoRef"
+        class="h-full w-full object-cover"
+        style="transform: scaleX(-1); aspect-ratio: 4 / 3"
+        muted
+        playsinline
+      />
+      <div
+        class="pointer-events-none absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-black tracking-wider"
+        :class="handsReady ? 'bg-emerald-400/90 text-emerald-950' : 'bg-amber-300/90 text-amber-900'"
+      >
+        {{ handsReady ? '手勢就緒' : '載入手勢…' }}
+      </div>
+    </div>
 
     <!-- HUD -->
     <div
@@ -451,13 +525,12 @@ const sortedBoard = computed(() =>
       </div>
     </div>
 
-    <!-- 載入／鏡頭錯誤 -->
+    <!-- 鏡頭錯誤 -->
     <div
-      v-if="status !== 'ready'"
+      v-if="status === 'need_camera' || status === 'error'"
       class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/55 px-8 text-center backdrop-blur-md"
     >
-      <p v-if="status === 'loading'" class="text-xl font-bold">載入手勢模型…</p>
-      <p v-else class="max-w-md text-lg leading-relaxed">{{ errMsg }}</p>
+      <p class="max-w-md text-lg leading-relaxed">{{ errMsg }}</p>
     </div>
 
     <!-- 玩法說明 -->

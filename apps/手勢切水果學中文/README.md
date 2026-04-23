@@ -8,7 +8,8 @@
 
 ```bash
 # 終端 1 — Worker（預設 http://127.0.0.1:8787）
-cd workers/fruit-cn-game && npm install && npx wrangler dev
+# 若倉庫根目錄另有 Pages 用的 wrangler.jsonc，請加上 --config 指向本 Worker：
+cd workers/fruit-cn-game && npm install && npx wrangler dev --config ./wrangler.toml
 
 # 終端 2 — Vite（會把 /api、/ws 代理到 8787）
 cd apps/手勢切水果學中文 && npm install && npm run dev

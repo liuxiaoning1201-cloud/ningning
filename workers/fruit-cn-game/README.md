@@ -34,7 +34,8 @@ wrangler secret put IFLYTEK_API_SECRET
 
 ```bash
 npm install
-npx wrangler deploy
+# 與 Pages 專案同倉庫時請指定設定檔，避免讀到上層 wrangler.jsonc：
+npx wrangler deploy --config ./wrangler.toml
 ```
 
 部署後將 Worker 路由綁到與前端相同的 origin（或 Pages Functions 反代），以便瀏覽器同源呼叫 `/api/*` 與 `/ws`。
