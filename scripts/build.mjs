@@ -98,7 +98,10 @@ buildVueApp('句子排序小火車', {
 });
 
 buildVueApp('手勢切水果學中文', {
-  env: { VITE_BASE_PATH: '/手勢切水果學中文/' },
+  env: {
+    VITE_BASE_PATH: '/手勢切水果學中文/',
+    VITE_API_BASE: 'https://fruit-cn-game.liuxiaoning1201.workers.dev',
+  },
 });
 
 console.log('Done. Output:', OUT);

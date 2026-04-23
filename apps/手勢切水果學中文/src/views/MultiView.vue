@@ -3,6 +3,7 @@ import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { useWordPackStore } from '@/stores/wordPack';
+import { apiUrl, wsUrl } from '@/lib/api';
 
 const router = useRouter();
 const wordStore = useWordPackStore();
@@ -27,7 +28,7 @@ async function createRoom() {
   err.value = '';
   creating.value = true;
   try {
-    const res = await fetch('/api/create-room', {
+    const res = await fetch(apiUrl('/api/create-room'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ wordPack: entries.value }),
@@ -55,9 +56,7 @@ function joinTypedRoom() {
 
 function connectWs(code: string) {
   ws?.close();
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${proto}//${location.host}/ws?room=${encodeURIComponent(code)}`;
-  ws = new WebSocket(url);
+  ws = new WebSocket(wsUrl(`/ws?room=${encodeURIComponent(code)}`));
   ws.addEventListener('open', () => {
     let pid = sessionStorage.getItem('fruit-player-id');
     if (!pid) {

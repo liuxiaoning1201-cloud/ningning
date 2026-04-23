@@ -7,7 +7,8 @@ export default createRouter({
   routes: [
     { path: '/', name: 'home', component: () => import('@/views/HomeView.vue') },
     { path: '/play', name: 'play', component: () => import('@/views/PlayView.vue') },
-    { path: '/teacher', name: 'teacher', component: () => import('@/views/TeacherView.vue') },
+    { path: '/teacher', redirect: { path: '/settings', query: { tab: 'words' } } },
     { path: '/multi', name: 'multi', component: () => import('@/views/MultiView.vue') },
+    { path: '/settings', name: 'settings', component: () => import('@/views/SettingsView.vue') },
   ],
 });

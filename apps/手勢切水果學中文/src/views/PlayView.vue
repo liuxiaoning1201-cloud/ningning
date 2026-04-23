@@ -12,12 +12,16 @@ import { useRoute, useRouter } from 'vue-router';
 import { createPinchSmoother } from '@/composables/usePinch';
 import { speakWithBackend } from '@/composables/useSpeech';
 import { useWordPackStore } from '@/stores/wordPack';
+import { useLevelStore } from '@/stores/levels';
 import type { WordEntry } from '@/types/word';
 import { drawFruit, fruitForWord, accentFor, type FruitKind } from '@/composables/fruits';
+import { defaultLevel, type Level } from '@/types/level';
+import { wsUrl } from '@/lib/api';
 
 const route = useRoute();
 const router = useRouter();
 const wordStore = useWordPackStore();
+const levelStore = useLevelStore();
 const { entries: wordList } = storeToRefs(wordStore);
 
 const videoRef = ref<HTMLVideoElement | null>(null);
@@ -27,8 +31,11 @@ const status = ref<'loading' | 'ready' | 'need_camera' | 'error'>('loading');
 const handsReady = ref(false);
 const errMsg = ref('');
 
+/** 當前關卡（從 query 或全域選擇） */
+const currentLevel = ref<Level>(defaultLevel({ name: '快速練習', topics: [] }));
+
 const playing = ref(false);
-const timeLeft = ref(75);
+const timeLeft = ref(60);
 const score = ref(0);
 const combo = ref(0);
 const bestCombo = ref(0);
@@ -36,6 +43,11 @@ const gameOver = ref(false);
 const easyMode = ref(true);
 const screenFx = ref(true);
 const lastTtsError = ref('');
+const targetHit = ref(0);
+const targetMiss = ref(0);
+const targetTotal = ref(0);
+const wrongHit = ref(0);
+const missedWords = ref<WordEntry[]>([]);
 
 const online = ref(false);
 const onlineBoard = ref<Record<string, { name: string; score: number; connected?: boolean }>>({});
@@ -51,6 +63,7 @@ type Fruit = {
   kind: FruitKind;
   bobPhase: number;
   t: number;
+  isTarget: boolean;
 };
 
 const fruits = ref<Fruit[]>([]);
@@ -69,8 +82,42 @@ let stream: MediaStream | null = null;
 
 const pinch = createPinchSmoother();
 
+/** 捏到干擾詞（不符合關卡目標）時播放 */
+const wrongSfxUrl = `${import.meta.env.BASE_URL}sounds/universfield-error-04-199275.mp3`;
+let wrongSfx: HTMLAudioElement | null = null;
+function playWrongSfx() {
+  try {
+    if (!wrongSfx) {
+      wrongSfx = new Audio(wrongSfxUrl);
+      wrongSfx.preload = 'auto';
+    }
+    wrongSfx.currentTime = 0;
+    void wrongSfx.play().catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
 let cw = 800;
 let ch = 600;
+
+/** 抽題池 */
+const targetPool = computed<WordEntry[]>(() => wordStore.byTags(currentLevel.value.topics));
+const distractorPool = computed<WordEntry[]>(() =>
+  currentLevel.value.distractorRatio > 0 ? wordStore.notByTags(currentLevel.value.topics) : []
+);
+
+const topicLabel = computed(() =>
+  currentLevel.value.topics.length ? currentLevel.value.topics.map((t) => `#${t}`).join(' ') : '全部詞'
+);
+
+const endGoalText = computed(() => {
+  const l = currentLevel.value;
+  if (l.mode === 'timed') return `⏱ ${Math.ceil(timeLeft.value)} 秒`;
+  if (l.mode === 'count') return `🎯 目標 ${targetHit.value}/${l.targetCount}`;
+  if (l.mode === 'survival') return `❤ 可漏 ${(l.missAllowance ?? 0) - targetMiss.value}`;
+  return '🏖 自由練習';
+});
 
 function resize() {
   cw = window.innerWidth;
@@ -86,18 +133,25 @@ function resize() {
   if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-function rndWord(): WordEntry {
-  const list = wordList.value;
-  return list[Math.floor(Math.random() * list.length)]!;
+function pickWord(isTarget: boolean): WordEntry | null {
+  const pool = isTarget ? targetPool.value : distractorPool.value;
+  if (!pool.length) return null;
+  if (!currentLevel.value.allowRepeat && pool.length > 1) {
+    for (let i = 0; i < 6; i++) {
+      const w = pool[Math.floor(Math.random() * pool.length)]!;
+      const usedRecently = fruits.value.slice(-4).some((f) => f.w.word === w.word);
+      if (!usedRecently) return w;
+    }
+  }
+  return pool[Math.floor(Math.random() * pool.length)]!;
 }
 
-/** 由分數調整的「等速」下落速度（像素/秒），加分後輕微提速但仍為勻速 */
 function fallSpeed() {
   const base = easyMode.value ? 110 : 145;
-  return base + Math.min(score.value * 0.25, 90);
+  const boost = Math.min(score.value * 0.2, 70);
+  return (base + boost) * currentLevel.value.speedScale;
 }
 
-/** 找一個與既有水果不重疊的 x 位置；找不到就放棄這次生成 */
 function pickSpawnX(r: number): number | null {
   const margin = r + 18;
   const minGap = r * 2 + 24;
@@ -105,11 +159,9 @@ function pickSpawnX(r: number): number | null {
     const x = margin + Math.random() * Math.max(1, cw - margin * 2);
     let ok = true;
     for (const f of fruits.value) {
-      if (f.y < r * 2.5) {
-        if (Math.abs(f.x - x) < minGap) {
-          ok = false;
-          break;
-        }
+      if (f.y < r * 2.5 && Math.abs(f.x - x) < minGap) {
+        ok = false;
+        break;
       }
     }
     if (ok) return x;
@@ -118,7 +170,15 @@ function pickSpawnX(r: number): number | null {
 }
 
 function spawn(now: number) {
-  const w = rndWord();
+  const wantDistractor =
+    distractorPool.value.length > 0 && Math.random() < currentLevel.value.distractorRatio;
+  const isTarget = !wantDistractor;
+  let w = pickWord(isTarget);
+  if (!w) {
+    w = pickWord(!isTarget);
+    if (!w) return;
+  }
+  const realTarget = targetPool.value.includes(w);
   const r = easyMode.value ? 70 : 60;
   const x = pickSpawnX(r);
   if (x == null) return;
@@ -132,12 +192,13 @@ function spawn(now: number) {
     kind: fruitForWord(w.word || w.hanzi || ''),
     bobPhase: Math.random() * Math.PI * 2,
     t: now,
+    isTarget: realTarget,
   });
 }
 
 function burst(x: number, y: number, color: string) {
   if (!screenFx.value) return;
-  const n = 28;
+  const n = 24;
   for (let i = 0; i < n; i++) {
     const ang = Math.random() * Math.PI * 2;
     const sp = 3 + Math.random() * 10;
@@ -188,9 +249,7 @@ async function bootHands() {
 }
 
 function connectOnline(room: string) {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${proto}//${location.host}/ws?room=${encodeURIComponent(room)}`;
-  ws = new WebSocket(url);
+  ws = new WebSocket(wsUrl(`/ws?room=${encodeURIComponent(room)}`));
   online.value = true;
   ws.addEventListener('open', () => {
     let pid = sessionStorage.getItem('fruit-player-id');
@@ -220,11 +279,42 @@ function emitScore(delta: number) {
   ws.send(JSON.stringify({ type: 'score', delta }));
 }
 
+function speakForEntry(w: WordEntry) {
+  const lang =
+    currentLevel.value.voice === 'per_entry' ? w.langRead : currentLevel.value.voice;
+  void speakWithBackend(w.word || w.hanzi || '', lang).then((r) => {
+    if (!r.ok && r.error) lastTtsError.value = r.error;
+    else lastTtsError.value = '';
+  });
+}
+
+function persistMisses() {
+  if (!missedWords.value.length) return;
+  try {
+    const KEY = 'fruit-cn-wrong-book-v1';
+    const raw = localStorage.getItem(KEY);
+    const existing: WordEntry[] = raw ? JSON.parse(raw) : [];
+    const dedup = new Map<string, WordEntry>();
+    for (const e of [...existing, ...missedWords.value]) {
+      dedup.set(e.word, e);
+    }
+    localStorage.setItem(KEY, JSON.stringify([...dedup.values()].slice(-120)));
+  } catch {
+    /* ignore */
+  }
+}
+
 onMounted(async () => {
+  const qLevelId = typeof route.query.level === 'string' ? route.query.level : '';
+  const picked = qLevelId ? levelStore.getById(qLevelId) : levelStore.selected;
+  if (picked) currentLevel.value = { ...picked };
+
   if (!wordList.value.length) {
     router.replace('/teacher');
     return;
   }
+  if (currentLevel.value.mode === 'timed') timeLeft.value = currentLevel.value.duration ?? 60;
+
   resize();
   window.addEventListener('resize', resize);
   const room = typeof route.query.room === 'string' ? route.query.room : '';
@@ -268,7 +358,6 @@ function loop() {
     const ctx = c?.getContext('2d');
     if (!ctx || !c) return;
 
-    /* MediaPipe 推送：節流到 ~30fps，且不阻塞渲染 */
     if (hands && v && v.readyState >= 2 && !handsBusy && now - lastHandsAt > 33) {
       handsBusy = true;
       lastHandsAt = now;
@@ -285,7 +374,6 @@ function loop() {
     const lm = lastResults?.multiHandLandmarks?.[0];
     const sample = pinch.update(lm, cw, ch);
 
-    /* 粒子 */
     particles.value = particles.value.filter((p) => {
       p.x += p.vx;
       p.y += p.vy;
@@ -307,13 +395,11 @@ function loop() {
       return;
     }
 
-    /* 水果（勻速下落，無重力） */
     const speed = fallSpeed();
     fruits.value = fruits.value.filter((f) => {
       f.vy = speed;
       f.y += f.vy * dt;
 
-      /* 命中 */
       let hit = false;
       if (sample?.pinch && now - lastPop > 280) {
         const dx = sample.cx - f.x;
@@ -326,69 +412,108 @@ function loop() {
 
       if (hit) {
         lastPop = now;
-        combo.value += 1;
-        bestCombo.value = Math.max(bestCombo.value, combo.value);
-        const pts = 10 + Math.min(combo.value * 2, 40);
-        score.value += pts;
         const ac = accentFor(f.kind);
-        burst(f.x, f.y, combo.value > 6 ? '#fffb8d' : ac.soft);
-        emitScore(pts);
-        void speakWithBackend(f.w.word || f.w.hanzi || '', f.w.langRead).then((r) => {
-          if (!r.ok && r.error) lastTtsError.value = r.error;
-          else lastTtsError.value = '';
-        });
+        if (f.isTarget) {
+          combo.value += 1;
+          bestCombo.value = Math.max(bestCombo.value, combo.value);
+          const pts = 10 + Math.min(combo.value * 2, 40);
+          score.value += pts;
+          targetHit.value += 1;
+          targetTotal.value += 1;
+          burst(f.x, f.y, combo.value > 6 ? '#fffb8d' : ac.soft);
+          emitScore(pts);
+          speakForEntry(f.w);
+        } else {
+          combo.value = 0;
+          wrongHit.value += 1;
+          const penalty = currentLevel.value.wrongPenalty ? 8 : 0;
+          score.value = Math.max(0, score.value - penalty);
+          burst(f.x, f.y, '#ff5577');
+          playWrongSfx();
+        }
+        maybeFinish();
         return false;
       }
 
       if (f.y - f.r > ch + 40) {
-        combo.value = 0;
+        if (f.isTarget) {
+          combo.value = 0;
+          targetMiss.value += 1;
+          targetTotal.value += 1;
+          missedWords.value.push(f.w);
+          if (currentLevel.value.missPenalty) {
+            score.value = Math.max(0, score.value - 5);
+          }
+          maybeFinish();
+        }
         return false;
       }
 
-      /* 水果繪製 */
-      const bob = Math.sin((now / 600) + f.bobPhase) * 0.08;
-      drawFruit(ctx, f.kind, f.x, f.y, f.r, bob);
-
-      /* 文字標籤（純中文＋拼音） */
-      const label = f.w.hanzi || f.w.word;
-      const pinyin = f.w.pinyin || '';
-      ctx.save();
-      ctx.translate(f.x, f.y + f.r + 6);
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      const labelFont = `900 ${Math.max(18, Math.round(f.r * 0.42))}px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif`;
-      ctx.font = labelFont;
-      const labelW = ctx.measureText(label).width;
-      const padX = 10;
-      const padY = 5;
-      const labelH = Math.max(20, Math.round(f.r * 0.42)) + padY * 2;
-      ctx.fillStyle = 'rgba(28,12,42,0.78)';
-      const bx = -labelW / 2 - padX;
-      const by = 0;
-      const bw = labelW + padX * 2;
-      const bh = labelH;
-      const rr = 10;
-      ctx.beginPath();
-      ctx.moveTo(bx + rr, by);
-      ctx.arcTo(bx + bw, by, bx + bw, by + bh, rr);
-      ctx.arcTo(bx + bw, by + bh, bx, by + bh, rr);
-      ctx.arcTo(bx, by + bh, bx, by, rr);
-      ctx.arcTo(bx, by, bx + bw, by, rr);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.fillText(label, 0, padY);
-      if (pinyin) {
-        ctx.font = `600 ${Math.max(11, Math.round(f.r * 0.18))}px "PingFang TC",sans-serif`;
-        ctx.fillStyle = 'rgba(255,236,180,0.95)';
-        ctx.fillText(pinyin, 0, bh + 4);
+      const bob = Math.sin(now / 600 + f.bobPhase) * 0.08;
+      if (f.isTarget) {
+        const pulse = 0.5 + 0.5 * Math.sin(now / 220 + f.bobPhase);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.r + 8 + pulse * 4, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 215, 64, ${0.55 + 0.25 * pulse})`;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(255, 215, 64, 0.8)';
+        ctx.shadowBlur = 12 + pulse * 8;
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        drawFruit(ctx, f.kind, f.x, f.y, f.r, bob);
+        ctx.restore();
       }
-      ctx.restore();
+      if (f.isTarget) drawFruit(ctx, f.kind, f.x, f.y, f.r, bob);
+
+      /* 文字標籤 */
+      const display = currentLevel.value.display;
+      const hanzi = f.w.hanzi || f.w.word;
+      const pinyin = f.w.pinyin || '';
+      const primary = display === 'pinyin_only' ? pinyin : hanzi;
+      const secondary = display === 'hanzi_pinyin' ? pinyin : '';
+
+      if (primary) {
+        ctx.save();
+        ctx.translate(f.x, f.y + f.r + 6);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        const labelFont = `900 ${Math.max(18, Math.round(f.r * 0.42))}px "PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif`;
+        ctx.font = labelFont;
+        const labelW = ctx.measureText(primary).width;
+        const padX = 10;
+        const padY = 5;
+        const labelH = Math.max(20, Math.round(f.r * 0.42)) + padY * 2;
+        ctx.fillStyle = f.isTarget ? 'rgba(28,12,42,0.82)' : 'rgba(55,55,90,0.58)';
+        const bx = -labelW / 2 - padX;
+        const by = 0;
+        const bw = labelW + padX * 2;
+        const bh = labelH;
+        const rr = 10;
+        ctx.beginPath();
+        ctx.moveTo(bx + rr, by);
+        ctx.arcTo(bx + bw, by, bx + bw, by + bh, rr);
+        ctx.arcTo(bx + bw, by + bh, bx, by + bh, rr);
+        ctx.arcTo(bx, by + bh, bx, by, rr);
+        ctx.arcTo(bx, by, bx + bw, by, rr);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = f.isTarget ? '#fff' : 'rgba(255,255,255,0.7)';
+        ctx.fillText(primary, 0, padY);
+        if (secondary) {
+          ctx.font = `600 ${Math.max(11, Math.round(f.r * 0.18))}px "PingFang TC",sans-serif`;
+          ctx.fillStyle = f.isTarget ? 'rgba(255,236,180,0.95)' : 'rgba(220,210,230,0.7)';
+          ctx.fillText(secondary, 0, bh + 4);
+        }
+        ctx.restore();
+      }
 
       return true;
     });
 
-    /* 捏合瞄准提示 */
     if (sample && playing.value) {
       ctx.strokeStyle = sample.pinch ? 'rgba(255,80,180,0.85)' : 'rgba(255,255,255,0.35)';
       ctx.lineWidth = sample.pinch ? 5 : 3;
@@ -397,8 +522,10 @@ function loop() {
       ctx.stroke();
     }
 
-    /* 生成節奏：固定間隔避免成串掉落擠在一起 */
-    const interval = easyMode.value
+    /* 生成節奏 */
+    const interval = currentLevel.value.spawnEveryMs
+      ? currentLevel.value.spawnEveryMs
+      : easyMode.value
       ? Math.max(900, 1400 - Math.min(score.value, 350))
       : Math.max(700, 1200 - Math.min(score.value, 400));
     const cap = easyMode.value ? 5 : 7;
@@ -407,17 +534,30 @@ function loop() {
       lastSpawn = now;
     }
 
-    /* 倒计时 */
-    if (playing.value) {
+    if (playing.value && currentLevel.value.mode === 'timed') {
       timeLeft.value = Math.max(0, timeLeft.value - dt);
       if (timeLeft.value <= 0) {
-        playing.value = false;
-        gameOver.value = true;
+        finishGame();
       }
     }
   };
   lastFrameT = performance.now();
   raf = requestAnimationFrame(step);
+}
+
+function maybeFinish() {
+  const l = currentLevel.value;
+  if (l.mode === 'count' && targetHit.value >= (l.targetCount ?? Infinity)) {
+    finishGame();
+  } else if (l.mode === 'survival' && targetMiss.value >= (l.missAllowance ?? Infinity)) {
+    finishGame();
+  }
+}
+
+function finishGame() {
+  playing.value = false;
+  gameOver.value = true;
+  persistMisses();
 }
 
 function startGame() {
@@ -427,23 +567,44 @@ function startGame() {
   score.value = 0;
   combo.value = 0;
   bestCombo.value = 0;
+  targetHit.value = 0;
+  targetMiss.value = 0;
+  targetTotal.value = 0;
+  wrongHit.value = 0;
+  missedWords.value = [];
   fruits.value = [];
   particles.value = [];
   pinch.reset();
   lastSpawn = performance.now();
-  timeLeft.value = 75;
+  if (currentLevel.value.mode === 'timed') {
+    timeLeft.value = currentLevel.value.duration ?? 60;
+  }
 }
 
 function goHome() {
   router.push('/');
 }
 
+const stars = computed(() => {
+  const t = currentLevel.value.starTargets;
+  if (!t) return 0;
+  if (score.value >= t[2]) return 3;
+  if (score.value >= t[1]) return 2;
+  if (score.value >= t[0]) return 1;
+  return 0;
+});
+
+const accuracy = computed(() => {
+  const total = targetHit.value + targetMiss.value + wrongHit.value;
+  if (!total) return 100;
+  return Math.round((targetHit.value / total) * 100);
+});
+
 const sortedBoard = computed(() =>
   Object.values(onlineBoard.value)
     .map((p) => ({ ...p }))
     .sort((a, b) => b.score - a.score)
 );
-
 </script>
 
 <template>
@@ -458,7 +619,7 @@ const sortedBoard = computed(() =>
   >
     <canvas ref="canvasRef" class="absolute inset-0 h-full w-full" />
 
-    <!-- 鏡頭 PIP（右下角小框） -->
+    <!-- 鏡頭 PIP -->
     <div
       class="pointer-events-none absolute bottom-4 right-4 z-25 w-44 overflow-hidden rounded-2xl border-2 border-white/35 bg-black/55 shadow-2xl backdrop-blur md:w-56"
     >
@@ -489,6 +650,25 @@ const sortedBoard = computed(() =>
         >
           ← 回首頁
         </button>
+        <div class="max-w-[72vw] rounded-2xl bg-black/40 px-4 py-2 text-xs font-bold backdrop-blur">
+          <div class="text-[11px] uppercase tracking-widest text-yellow-200">本關</div>
+          <div class="text-sm font-black">{{ currentLevel.name }}</div>
+          <div class="mt-1 flex flex-wrap gap-1 text-[10px] font-semibold text-white/80">
+            <span>{{ topicLabel }}</span>
+            <span v-if="currentLevel.distractorRatio > 0" class="rounded-full bg-rose-400/60 px-2 py-0.5 text-[10px] text-white">
+              干擾 {{ Math.round(currentLevel.distractorRatio * 100) }}%
+            </span>
+            <span class="rounded-full bg-white/20 px-2 py-0.5 text-[10px]">
+              {{
+                currentLevel.voice === 'cantonese'
+                  ? '粵語'
+                  : currentLevel.voice === 'mandarin'
+                  ? '普通話'
+                  : '依詞條'
+              }}
+            </span>
+          </div>
+        </div>
         <label class="flex cursor-pointer items-center gap-2 rounded-2xl bg-black/35 px-3 py-2 text-xs font-semibold backdrop-blur">
           <input v-model="easyMode" type="checkbox" class="accent-pink-500" />
           簡易（大目標）
@@ -508,7 +688,7 @@ const sortedBoard = computed(() =>
           <div class="mt-2 text-sm font-bold text-yellow-100">連擊 ×{{ combo }}</div>
         </div>
         <div class="rounded-2xl bg-black/45 px-5 py-3 text-lg font-black tabular-nums backdrop-blur">
-          ⏱ {{ Math.ceil(timeLeft) }} 秒
+          {{ endGoalText }}
         </div>
       </div>
     </div>
@@ -539,11 +719,15 @@ const sortedBoard = computed(() =>
       class="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 px-6 backdrop-blur-sm"
     >
       <div class="max-w-lg rounded-[2rem] bg-white p-8 text-[#4a235f] shadow-2xl ring-8 ring-[#ffd6f5]/40">
-        <h2 class="mb-6 text-center text-3xl font-black">怎麼玩？</h2>
-        <ol class="mb-8 space-y-4 text-lg font-semibold leading-relaxed">
-          <li class="flex gap-4"><span class="text-3xl">1️⃣</span> 允許鏡頭，把手放在畫面裡</li>
-          <li class="flex gap-4"><span class="text-3xl">2️⃣</span> 水果會掉下來，上面有詞語</li>
-          <li class="flex gap-4"><span class="text-3xl">3️⃣</span> 用<strong>拇指＋食指捏合</strong>對準水果</li>
+        <h2 class="mb-2 text-center text-2xl font-black">{{ currentLevel.name }}</h2>
+        <div class="mb-5 flex flex-wrap justify-center gap-2 text-sm font-semibold">
+          <span v-for="t in currentLevel.topics.length ? currentLevel.topics : ['全部詞']" :key="t" class="rounded-full bg-[#fde8ff] px-3 py-1 text-[#a1299b]">#{{ t }}</span>
+          <span v-if="currentLevel.distractorRatio > 0" class="rounded-full bg-[#ffd8dc] px-3 py-1 text-[#c72c5b]">干擾 {{ Math.round(currentLevel.distractorRatio * 100) }}%</span>
+        </div>
+        <ol class="mb-6 space-y-3 text-base font-semibold leading-relaxed">
+          <li class="flex gap-3"><span class="text-2xl">🌟</span> 金光閃爍的是<strong>目標水果</strong>，要捏它！</li>
+          <li v-if="currentLevel.distractorRatio > 0" class="flex gap-3"><span class="text-2xl">⚠️</span> 暗色水果是<strong>干擾詞</strong>，捏錯會扣分</li>
+          <li class="flex gap-3"><span class="text-2xl">✋</span> 用<strong>拇指＋食指捏合</strong>對準水果</li>
         </ol>
         <button
           type="button"
@@ -560,15 +744,29 @@ const sortedBoard = computed(() =>
       v-if="gameOver"
       class="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60 px-6 backdrop-blur-md"
     >
-      <div class="max-w-md rounded-[2rem] bg-gradient-to-br from-[#ffe6fb] to-[#d5f6ff] p-10 text-center text-[#4a235f] shadow-2xl">
-        <p class="mb-2 text-2xl font-black">時間到！</p>
-        <p class="mb-6 text-5xl font-black text-transparent bg-gradient-to-r from-[#ff3cac] to-[#784ba0] bg-clip-text">
+      <div class="max-w-md rounded-[2rem] bg-gradient-to-br from-[#ffe6fb] to-[#d5f6ff] p-8 text-center text-[#4a235f] shadow-2xl">
+        <p class="mb-1 text-xl font-black">{{ currentLevel.mode === 'survival' && targetMiss >= (currentLevel.missAllowance ?? 0) ? '挑戰失敗' : '完成！' }}</p>
+        <div v-if="stars" class="mb-2 text-3xl tracking-widest">
+          <span>{{ '★'.repeat(stars) }}<span class="text-[#d0c8dc]">{{ '☆'.repeat(3 - stars) }}</span></span>
+        </div>
+        <p class="mb-4 text-5xl font-black text-transparent bg-gradient-to-r from-[#ff3cac] to-[#784ba0] bg-clip-text">
           {{ score }} 分
         </p>
-        <p class="mb-8 text-lg font-bold">最佳連擊 {{ bestCombo }}</p>
+        <dl class="mx-auto mb-6 grid max-w-xs grid-cols-2 gap-y-1 text-sm font-bold">
+          <dt class="text-[#8a6fb0]">捏中目標</dt>
+          <dd>{{ targetHit }}</dd>
+          <dt class="text-[#8a6fb0]">漏掉目標</dt>
+          <dd>{{ targetMiss }}</dd>
+          <dt class="text-[#8a6fb0]">捏錯干擾</dt>
+          <dd>{{ wrongHit }}</dd>
+          <dt class="text-[#8a6fb0]">正確率</dt>
+          <dd>{{ accuracy }}%</dd>
+          <dt class="text-[#8a6fb0]">最佳連擊</dt>
+          <dd>{{ bestCombo }}</dd>
+        </dl>
         <button
           type="button"
-          class="mb-4 w-full rounded-3xl bg-[#ff6bcb] py-4 text-xl font-black text-white shadow-lg"
+          class="mb-3 w-full rounded-3xl bg-[#ff6bcb] py-4 text-lg font-black text-white shadow-lg"
           @click="
             gameOver = false;
             startGame();
@@ -576,7 +774,7 @@ const sortedBoard = computed(() =>
         >
           再來一局
         </button>
-        <button type="button" class="w-full rounded-3xl bg-white py-4 text-lg font-bold text-[#843fa1]" @click="goHome">
+        <button type="button" class="w-full rounded-3xl bg-white py-3 text-base font-bold text-[#843fa1]" @click="goHome">
           回首頁
         </button>
       </div>

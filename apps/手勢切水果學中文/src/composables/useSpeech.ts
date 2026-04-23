@@ -1,3 +1,4 @@
+import { apiUrl } from '@/lib/api';
 import type { LangRead } from '@/types/word';
 
 /** 同一局內快取音訊 blob URL，降低重複請求 */
@@ -29,7 +30,7 @@ export async function speakWithBackend(
   }
 
   try {
-    const res = await fetch('/api/tts', {
+    const res = await fetch(apiUrl('/api/tts'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: trimmed, lang }),
