@@ -1,5 +1,9 @@
 /**
- * 填字生成器 v3：緊湊佈局、動態網格、所有詞句都放入、真正縱橫交叉
+ * 填字生成器 v4：
+ *   - tier 真正影響佈局策略（不只是挖空比例）
+ *   - 評分以「交叉數 / 孤立詞數」為主，放詞數量為輔
+ *   - 高難度禁用 forcePlace，放不下的詞主動排除並回報
+ *   - 回傳真實統計，UI 可信任不再「數據不準」
  */
 
 import { generateId } from "@/stores/puzzleSets";
@@ -8,6 +12,7 @@ import type {
   CrosswordPuzzle,
   CrosswordCell,
   CrosswordWord,
+  CrosswordStats,
   DifficultyTier,
 } from "@/lib/types";
 
@@ -17,14 +22,25 @@ export interface GeneratorInput {
   wordCount?: number;
 }
 
-/** 每句最少需要的空格比例（保證每句都有空格讓學生填） */
-const TIER_BLANK_RATIO: Record<DifficultyTier, number> = {
-  1: 0.3,
-  2: 0.45,
-  3: 0.6,
-  4: 0.72,
-  5: 0.85,
-};
+/** 生成器輸出（比舊版 `CrosswordPuzzle | null` 多帶統計與被放棄的詞） */
+export interface GeneratorOutput {
+  puzzle: CrosswordPuzzle;
+  stats: CrosswordStats;
+  /** 放不進去而被排除的詞文字（僅高難度模式會發生；低難度會 forcePlace） */
+  droppedTexts: string[];
+  /** 給使用者看的警示訊息（例：詞集連通性弱、已排除某些詞） */
+  warnings: string[];
+}
+
+/** 連通性分析結果：判斷詞集能不能縱橫交錯 */
+export interface ConnectivityReport {
+  /** 每個連通分量（按大小倒序） */
+  components: WordBankItem[][];
+  /** 最大連通分量所佔比例（0–1），越大越容易排得密 */
+  largestComponentRatio: number;
+  /** 完全沒和其他詞共字的「雞肋詞」 */
+  isolatedItems: WordBankItem[];
+}
 
 const TIER_TITLE: Record<DifficultyTier, string> = {
   1: "★ 入門",
@@ -34,12 +50,64 @@ const TIER_TITLE: Record<DifficultyTier, string> = {
   5: "★★★★★ 大師",
 };
 
+interface TierConfig {
+  /** 嘗試次數倍率（詞越多、tier 越高，嘗試越多） */
+  attemptsMultiplier: number;
+  /** 最多允許多少比例的孤立詞（達標才採用該佈局，超過則退化或丟棄詞再試）。0 = 絕不容許孤立詞 */
+  maxIsolatedRatio: number;
+  /** 每個詞最低交叉數要求（大師模式可設 2） */
+  minCrossingsPerWord: number;
+  /** 交叉加權（評分權重） */
+  crossingWeight: number;
+  /** 孤立詞懲罰權重 */
+  isolationPenalty: number;
+}
+
+/**
+ * 所有 tier 都允許「多叢集放置」（seed + cross）以最大化交叉率。
+ * 難度差異主要體現在：
+ *   - `maxIsolatedRatio`：高難度禁止孤立詞，找不到可完全交叉的佈局就會移除孤立詞
+ *   - `minCrossingsPerWord`：大師模式要求每個詞 ≥ 2 交叉
+ *   - `blanksForWord`：挖空比例隨 tier 遞增
+ */
+const TIER_CONFIG: Record<DifficultyTier, TierConfig> = {
+  1: { attemptsMultiplier: 1,   maxIsolatedRatio: 1.0, minCrossingsPerWord: 0, crossingWeight: 200, isolationPenalty: 50   },
+  2: { attemptsMultiplier: 1.5, maxIsolatedRatio: 0.5, minCrossingsPerWord: 0, crossingWeight: 300, isolationPenalty: 150  },
+  3: { attemptsMultiplier: 2.5, maxIsolatedRatio: 0.2, minCrossingsPerWord: 1, crossingWeight: 450, isolationPenalty: 350  },
+  4: { attemptsMultiplier: 5,   maxIsolatedRatio: 0,   minCrossingsPerWord: 1, crossingWeight: 600, isolationPenalty: 800  },
+  5: { attemptsMultiplier: 10,  maxIsolatedRatio: 0,   minCrossingsPerWord: 2, crossingWeight: 800, isolationPenalty: 1200 },
+};
+
+/**
+ * 每個詞要挖多少格為空。保證隨 tier 嚴格單調遞增（在長度允許範圍內）。
+ * tier 1: ~30%，tier 5: 100%。
+ */
+function blanksForWord(len: number, tier: DifficultyTier): number {
+  if (len <= 0) return 0;
+  const ratios: Record<DifficultyTier, number> = {
+    1: 0.30,
+    2: 0.50,
+    3: 0.70,
+    4: 0.85,
+    5: 1.0,
+  };
+  const raw: number[] = [1, 2, 3, 4, 5].map((t) =>
+    Math.max(1, Math.min(len, Math.round(len * ratios[t as DifficultyTier])))
+  );
+  for (let i = 1; i < 5; i++) {
+    if (raw[i] <= raw[i - 1] && raw[i - 1] < len) raw[i] = Math.min(len, raw[i - 1] + 1);
+  }
+  return raw[tier - 1];
+}
+
 interface PlacedWord {
   word: string;
   dir: "h" | "v";
   r: number;
   c: number;
   item: WordBankItem | undefined;
+  /** 是否為 forcePlace 強制塞入（不算真實交叉） */
+  forced?: boolean;
 }
 
 class VirtualGrid {
@@ -70,7 +138,6 @@ class VirtualGrid {
         if (existing !== word[k]) return false;
         hasOverlap = true;
       } else {
-        // 非交叉位置：檢查兩側是否有不相關的字元
         if (dir === "h") {
           if (this.get(cr - 1, cc) !== null || this.get(cr + 1, cc) !== null) return false;
         } else {
@@ -78,7 +145,6 @@ class VirtualGrid {
         }
       }
     }
-    // 詞尾前後不能有字元
     if (dir === "h") {
       if (this.get(r, c - 1) !== null) return false;
       if (this.get(r, c + word.length) !== null) return false;
@@ -120,12 +186,154 @@ class VirtualGrid {
     if (minR === Infinity) return { minR: 0, maxR: 0, minC: 0, maxC: 0 };
     return { minR, maxR, minC, maxC };
   }
+
+  countCells(): number {
+    return this.cells.size;
+  }
 }
 
-export function generateCrosswordPuzzle(
-  input: GeneratorInput
-): CrosswordPuzzle | null {
+/** 詞集的共字連通分析：用於預警 + 高難度時挑選要丟棄的詞 */
+export function analyzeConnectivity(items: WordBankItem[]): ConnectivityReport {
+  const valid = items.filter((it) => it.text.trim().length > 0);
+  const n = valid.length;
+  if (n === 0) {
+    return { components: [], largestComponentRatio: 0, isolatedItems: [] };
+  }
+
+  const adj: number[][] = Array.from({ length: n }, () => []);
+  for (let i = 0; i < n; i++) {
+    const ci = new Set(valid[i].text.trim().split(""));
+    for (let j = i + 1; j < n; j++) {
+      const cj = valid[j].text.trim().split("");
+      if (cj.some((ch) => ci.has(ch))) {
+        adj[i].push(j);
+        adj[j].push(i);
+      }
+    }
+  }
+
+  const visited = new Array<boolean>(n).fill(false);
+  const components: WordBankItem[][] = [];
+  for (let i = 0; i < n; i++) {
+    if (visited[i]) continue;
+    const stack = [i];
+    const comp: WordBankItem[] = [];
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      if (visited[cur]) continue;
+      visited[cur] = true;
+      comp.push(valid[cur]);
+      for (const nb of adj[cur]) if (!visited[nb]) stack.push(nb);
+    }
+    components.push(comp);
+  }
+  components.sort((a, b) => b.length - a.length);
+
+  const isolatedItems: WordBankItem[] = [];
+  for (let i = 0; i < n; i++) {
+    if (adj[i].length === 0) isolatedItems.push(valid[i]);
+  }
+
+  return {
+    components,
+    largestComponentRatio: components.length > 0 ? components[0].length / n : 0,
+    isolatedItems,
+  };
+}
+
+/** 從已有的 puzzle 物件重新計算統計（舊資料沒有 stats 時可用） */
+export function computeCrosswordStats(puzzle: CrosswordPuzzle): CrosswordStats {
+  const rows = puzzle.grid.length;
+  const cols = puzzle.grid[0]?.length ?? 0;
+  const cellOwners = new Map<string, Set<"h" | "v">>();
+
+  for (const w of puzzle.words) {
+    const d: "h" | "v" = w.direction === "horizontal" ? "h" : "v";
+    for (let k = 0; k < w.text.length; k++) {
+      const r = d === "h" ? w.startRow : w.startRow + k;
+      const c = d === "h" ? w.startCol + k : w.startCol;
+      const key = `${r},${c}`;
+      if (!cellOwners.has(key)) cellOwners.set(key, new Set());
+      cellOwners.get(key)!.add(d);
+    }
+  }
+
+  let totalCells = 0;
+  let crossingCells = 0;
+  for (const [, dirs] of cellOwners) {
+    totalCells++;
+    if (dirs.size === 2) crossingCells++;
+  }
+
+  const perWordCrossings = puzzle.words.map((w) => {
+    const d: "h" | "v" = w.direction === "horizontal" ? "h" : "v";
+    let cnt = 0;
+    for (let k = 0; k < w.text.length; k++) {
+      const r = d === "h" ? w.startRow : w.startRow + k;
+      const c = d === "h" ? w.startCol + k : w.startCol;
+      const owners = cellOwners.get(`${r},${c}`);
+      if (owners && owners.size === 2) cnt++;
+    }
+    return cnt;
+  });
+
+  const totalWords = puzzle.words.length;
+  const crossedWords = perWordCrossings.filter((n) => n > 0).length;
+  const isolatedWords = totalWords - crossedWords;
+
+  return {
+    totalWords,
+    crossedWords,
+    isolatedWords,
+    crossingCells,
+    totalCells,
+    crossRate: totalCells > 0 ? crossingCells / totalCells : 0,
+    avgCrossPerWord: totalWords > 0 ? (2 * crossingCells) / totalWords : 0,
+    density: rows * cols > 0 ? totalCells / (rows * cols) : 0,
+  };
+}
+
+/** 評估某個已排好的佈局（算 perWordCrossings / totalCrossings / isolatedCount） */
+function evaluateLayout(placed: PlacedWord[]): {
+  totalCrossings: number;
+  crossedWords: number;
+  isolatedWords: number;
+  minPerWord: number;
+} {
+  const cellOwners = new Map<string, Set<"h" | "v">>();
+  for (const pw of placed) {
+    for (let k = 0; k < pw.word.length; k++) {
+      const r = pw.dir === "h" ? pw.r : pw.r + k;
+      const c = pw.dir === "h" ? pw.c + k : pw.c;
+      const key = `${r},${c}`;
+      if (!cellOwners.has(key)) cellOwners.set(key, new Set());
+      cellOwners.get(key)!.add(pw.dir);
+    }
+  }
+  let totalCrossings = 0;
+  for (const [, dirs] of cellOwners) if (dirs.size === 2) totalCrossings++;
+
+  const perWord = placed.map((pw) => {
+    let cnt = 0;
+    for (let k = 0; k < pw.word.length; k++) {
+      const r = pw.dir === "h" ? pw.r : pw.r + k;
+      const c = pw.dir === "h" ? pw.c + k : pw.c;
+      const owners = cellOwners.get(`${r},${c}`);
+      if (owners && owners.size === 2) cnt++;
+    }
+    return cnt;
+  });
+  const crossedWords = perWord.filter((n) => n > 0).length;
+  const isolatedWords = placed.length - crossedWords;
+  const minPerWord = perWord.length > 0 ? Math.min(...perWord) : 0;
+
+  return { totalCrossings, crossedWords, isolatedWords, minPerWord };
+}
+
+export function generateCrosswordPuzzle(input: GeneratorInput): GeneratorOutput | null {
   const { items, tier } = input;
+  const cfg = TIER_CONFIG[tier];
+
   let allItems = items.filter((it) => it.text.trim().length > 0);
   if (allItems.length === 0) return null;
 
@@ -134,54 +342,231 @@ export function generateCrosswordPuzzle(
     allItems = shuffled.slice(0, input.wordCount);
   }
 
-  // 增加嘗試次數，在保證正確的前提下選出縱橫交錯最多的佈局
-  const maxAttempts = allItems.length <= 5 ? 100 : allItems.length <= 10 ? 70 : 50;
-  let bestResult: { placed: PlacedWord[]; grid: VirtualGrid; score: number } | null = null;
+  const warnings: string[] = [];
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const order =
-      attempt === 0
-        ? [...allItems].sort((a, b) => b.text.trim().length - a.text.trim().length)
-        : [...allItems].sort(() => Math.random() - 0.5);
+  // 嘗試從最大詞集開始排版；若不符合 tier 約束且禁用 forcePlace，
+  // 逐步丟棄「共字最少 / 最難連接」的詞再試，直到達標或詞太少為止。
+  // `runAttempts` 內部已經會在允許 forcePlace 時把多出的詞塞入，評估最終佈局。
+  let candidates = rankByConnectivity(allItems);
+  const droppedItems: WordBankItem[] = [];
 
-    const startDir: "h" | "v" = attempt % 2 === 0 ? "h" : "v";
-    const result = tryPlace(order, startDir);
+  let best: AttemptResult | null = null;
+  let effectiveCfg = cfg;
 
-    const bounds = result.grid.getBounds();
-    const area =
-      (bounds.maxR - bounds.minR + 1) * (bounds.maxC - bounds.minC + 1);
-    const w = bounds.maxC - bounds.minC + 1;
-    const h = bounds.maxR - bounds.minR + 1;
-    const aspectPenalty = Math.abs(w - h) * 5;
-    // 縱橫交錯權重提高，優先選交叉次數最多的結果
-    const crossingBonus = result.totalCrossings * 150;
-    const score = result.placed.length * 200 + crossingBonus - area - aspectPenalty;
+  while (candidates.length >= 2) {
+    const attempts = Math.max(
+      30,
+      Math.round((candidates.length <= 5 ? 100 : candidates.length <= 10 ? 70 : 50) * cfg.attemptsMultiplier)
+    );
+    const result = runAttempts(candidates, tier, cfg, attempts);
+    if (result) { best = result; break; }
 
-    if (!bestResult || score > bestResult.score) {
-      bestResult = { ...result, score };
+    // 該詞集下找不到符合 tier 約束的佈局：丟掉「最難連接」的那個再試
+    const toDrop = candidates[candidates.length - 1];
+    droppedItems.push(toDrop);
+    candidates = candidates.slice(0, -1);
+  }
+
+  // 嚴格條件完全無解：分級降級
+  if (!best && cfg.minCrossingsPerWord > 1) {
+    // 大師模式 (★★★★★) 找不到「每詞 ≥ 2 交叉」的佈局 → 降到 tier 4 的 config 重試
+    const relaxed: TierConfig = { ...cfg, minCrossingsPerWord: 1 };
+    effectiveCfg = relaxed;
+    candidates = rankByConnectivity(allItems);
+    const droppedRelaxed: WordBankItem[] = [];
+    while (candidates.length >= 2) {
+      const attempts = Math.max(30, Math.round(70 * cfg.attemptsMultiplier));
+      const result = runAttempts(candidates, tier, relaxed, attempts);
+      if (result) { best = result; break; }
+      droppedRelaxed.push(candidates[candidates.length - 1]);
+      candidates = candidates.slice(0, -1);
+    }
+    if (best) {
+      warnings.push("詞集共字連通性不足以支持「每個詞至少 2 個交叉」的大師標準，已降級為挑戰級（每個詞至少 1 個交叉）。");
+      // 重置 droppedItems：因為降級後嘗試的丟棄過程才是有效的
+      droppedItems.length = 0;
+      droppedItems.push(...droppedRelaxed);
     }
   }
 
-  if (!bestResult || bestResult.placed.length === 0) return null;
-
-  // 補放未能交叉的詞句（橫向排列，盡量緊湊）
-  const placedIds = new Set(bestResult.placed.map((p) => p.item?.id));
-  const unplaced = allItems.filter((it) => !placedIds.has(it.id));
-  if (unplaced.length > 0) {
-    addUnplacedWords(bestResult.grid, bestResult.placed, unplaced);
+  // 低難度/最後保底：允許放寬約束（仍會嘗試多叢集交叉，但接受孤立詞）
+  if (!best && cfg.maxIsolatedRatio > 0) {
+    const attempts = Math.max(50, Math.round(50 * cfg.attemptsMultiplier));
+    best = runAttempts(allItems, tier, cfg, attempts, /*lenient*/ true);
   }
 
-  return buildPuzzle(bestResult.placed, bestResult.grid, tier);
+  if (!best) return null;
+
+  const { puzzle, stats } = buildPuzzle(best.placed, best.grid, tier);
+
+  if (droppedItems.length > 0) {
+    warnings.push(
+      `已排除 ${droppedItems.length} 個無法與其他詞縱橫交錯的詞：${droppedItems.map((d) => d.text).join("、")}`
+    );
+  }
+
+  // 避免未使用變數警告（保留 effectiveCfg 以供後續擴充）
+  void effectiveCfg;
+
+  return {
+    puzzle,
+    stats,
+    droppedTexts: droppedItems.map((d) => d.text),
+    warnings,
+  };
+}
+
+/** 按「與其他詞的共字數」由高到低排序 —— 高連接度的詞優先保留 */
+function rankByConnectivity(items: WordBankItem[]): WordBankItem[] {
+  const n = items.length;
+  const scores: number[] = Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    const ci = new Set(items[i].text.trim().split(""));
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const cj = items[j].text.trim().split("");
+      for (const ch of cj) {
+        if (ci.has(ch)) {
+          scores[i]++;
+          break;
+        }
+      }
+    }
+  }
+  const indexed = items.map((it, i) => ({ it, s: scores[i], len: it.text.trim().length, rnd: Math.random() }));
+  indexed.sort((a, b) => (b.s !== a.s ? b.s - a.s : b.len !== a.len ? b.len - a.len : a.rnd - b.rnd));
+  return indexed.map((x) => x.it);
+}
+
+interface AttemptResult {
+  placed: PlacedWord[];
+  grid: VirtualGrid;
+  score: number;
+  totalCrossings: number;
+  crossedWords: number;
+  isolatedWords: number;
+  minPerWord: number;
+}
+
+function runAttempts(
+  itemSet: WordBankItem[],
+  _tier: DifficultyTier,
+  cfg: TierConfig,
+  maxAttempts: number,
+  lenient = false
+): AttemptResult | null {
+  let best: AttemptResult | null = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // 嘗試不同的起點與排序策略
+    let order: WordBankItem[];
+    if (attempt === 0) {
+      order = [...itemSet].sort((a, b) => b.text.trim().length - a.text.trim().length);
+    } else if (attempt % 3 === 1) {
+      order = [...itemSet].sort(() => Math.random() - 0.5);
+    } else {
+      // 隨機換首詞，其餘按長度
+      const rest = [...itemSet];
+      const head = rest.splice(Math.floor(Math.random() * rest.length), 1)[0];
+      rest.sort((a, b) => b.text.trim().length - a.text.trim().length);
+      order = [head, ...rest];
+    }
+    const startDir: "h" | "v" = attempt % 2 === 0 ? "h" : "v";
+
+    const { placed, grid } = tryPlace(order, startDir);
+    if (placed.length === 0) continue;
+
+    // 總是嘗試把剩下的詞以「多叢集」方式接上——能交叉就交叉，
+    // 確實交叉不到的會成為孤立詞，由下面的 isolatedRatio 檢查決定是否採納。
+    const placedIdSet = new Set(placed.map((p) => p.item?.id));
+    const unplaced = itemSet.filter((x) => x.id && !placedIdSet.has(x.id));
+    if (unplaced.length > 0) {
+      tryAddCrossingsThenForce(grid, placed, unplaced);
+    }
+
+    const eval0 = evaluateLayout(placed);
+
+    // 非 lenient 模式下的 tier 約束驗證（以最終佈局為準）
+    if (!lenient) {
+      const isolatedRatio = placed.length > 0 ? eval0.isolatedWords / placed.length : 0;
+      if (isolatedRatio > cfg.maxIsolatedRatio) continue;
+
+      // minCrossingsPerWord：只檢查非孤立詞（孤立詞已由 isolatedRatio 處理）
+      if (cfg.minCrossingsPerWord > 1) {
+        const cellOwners = buildCellOwners(placed);
+        let perWordOk = true;
+        for (const pw of placed) {
+          const c = countCrossings(pw, cellOwners);
+          if (c > 0 && c < cfg.minCrossingsPerWord) {
+            perWordOk = false;
+            break;
+          }
+        }
+        if (!perWordOk) continue;
+      }
+    }
+
+    const bounds = grid.getBounds();
+    const w = bounds.maxC - bounds.minC + 1;
+    const h = bounds.maxR - bounds.minR + 1;
+    const area = w * h;
+    const aspectPenalty = Math.abs(w - h) * 3;
+
+    const score =
+      eval0.totalCrossings * cfg.crossingWeight +
+      eval0.crossedWords * 60 -
+      eval0.isolatedWords * cfg.isolationPenalty -
+      area -
+      aspectPenalty +
+      placed.length * 40; // 輕度獎勵放更多詞（但遠小於交叉權重）
+
+    if (!best || score > best.score) {
+      best = {
+        placed,
+        grid,
+        score,
+        totalCrossings: eval0.totalCrossings,
+        crossedWords: eval0.crossedWords,
+        isolatedWords: eval0.isolatedWords,
+        minPerWord: eval0.minPerWord,
+      };
+    }
+  }
+
+  return best;
+}
+
+function buildCellOwners(placed: PlacedWord[]): Map<string, Set<"h" | "v">> {
+  const owners = new Map<string, Set<"h" | "v">>();
+  for (const pw of placed) {
+    for (let k = 0; k < pw.word.length; k++) {
+      const r = pw.dir === "h" ? pw.r : pw.r + k;
+      const c = pw.dir === "h" ? pw.c + k : pw.c;
+      const key = `${r},${c}`;
+      if (!owners.has(key)) owners.set(key, new Set());
+      owners.get(key)!.add(pw.dir);
+    }
+  }
+  return owners;
+}
+
+function countCrossings(pw: PlacedWord, owners: Map<string, Set<"h" | "v">>): number {
+  let cnt = 0;
+  for (let k = 0; k < pw.word.length; k++) {
+    const r = pw.dir === "h" ? pw.r : pw.r + k;
+    const c = pw.dir === "h" ? pw.c + k : pw.c;
+    const os = owners.get(`${r},${c}`);
+    if (os && os.size === 2) cnt++;
+  }
+  return cnt;
 }
 
 function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
   placed: PlacedWord[];
   grid: VirtualGrid;
-  totalCrossings: number;
 } {
   const grid = new VirtualGrid();
   const placed: PlacedWord[] = [];
-  let totalCrossings = 0;
 
   const charIndex = new Map<string, { pw: PlacedWord; pi: number }[]>();
   function addToIndex(pw: PlacedWord) {
@@ -192,16 +577,19 @@ function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
     }
   }
 
+  if (itemsInOrder.length === 0) return { placed, grid };
+
   const first = itemsInOrder[0];
   const firstWord = first.text.trim();
-  const firstPw = { word: firstWord, dir: startDir, r: 0, c: 0, item: first };
+  if (firstWord.length === 0) return { placed, grid };
+
+  const firstPw: PlacedWord = { word: firstWord, dir: startDir, r: 0, c: 0, item: first };
   grid.place(firstWord, 0, 0, startDir);
   placed.push(firstPw);
   addToIndex(firstPw);
 
-  // 多輪嘗試：未放置的詞每輪再試，增加輪數以爭取更多縱橫交叉
-  const remaining = itemsInOrder.slice(1).map((it) => it);
-  for (let round = 0; round < 5; round++) {
+  let remaining = itemsInOrder.slice(1);
+  for (let round = 0; round < 6; round++) {
     const stillRemaining: WordBankItem[] = [];
     for (const item of remaining) {
       const word = item.text.trim();
@@ -223,10 +611,7 @@ function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
         if (!entries) continue;
 
         for (const { pw, pi } of entries) {
-          // 嘗試兩個方向
-          const dirs: ("h" | "v")[] = pw.dir === "h" ? ["v"] : ["h"];
-          // 也嘗試同方向（如果透過其他已放置詞交叉）
-          dirs.push(pw.dir);
+          const dirs: ("h" | "v")[] = pw.dir === "h" ? ["v", "h"] : ["h", "v"];
 
           for (const newDir of dirs) {
             let newR: number, newC: number;
@@ -256,13 +641,15 @@ function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
             const w = newMaxC - newMinC + 1;
             const h = newMaxR - newMinR + 1;
             const area = w * h;
-            // 寬高比越接近 1 越好
             const aspectPenalty = Math.abs(w - h);
 
-            const isBetter = !bestCandidate
-              || crossings > bestCandidate.crossings
-              || (crossings === bestCandidate.crossings && area < bestCandidate.area)
-              || (crossings === bestCandidate.crossings && area === bestCandidate.area && aspectPenalty < bestCandidate.aspectPenalty);
+            const isBetter =
+              !bestCandidate ||
+              crossings > bestCandidate.crossings ||
+              (crossings === bestCandidate.crossings && area < bestCandidate.area) ||
+              (crossings === bestCandidate.crossings &&
+                area === bestCandidate.area &&
+                aspectPenalty < bestCandidate.aspectPenalty);
 
             if (isBetter) {
               bestCandidate = { r: newR, c: newC, dir: newDir, crossings, area, aspectPenalty };
@@ -273,7 +660,7 @@ function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
 
       if (bestCandidate) {
         grid.place(word, bestCandidate.r, bestCandidate.c, bestCandidate.dir);
-        const pw = {
+        const pw: PlacedWord = {
           word,
           dir: bestCandidate.dir,
           r: bestCandidate.r,
@@ -282,46 +669,51 @@ function tryPlace(itemsInOrder: WordBankItem[], startDir: "h" | "v" = "h"): {
         };
         placed.push(pw);
         addToIndex(pw);
-        totalCrossings += bestCandidate.crossings;
-      } else if (round < 4) {
+      } else if (round < 5) {
         stillRemaining.push(item);
       }
     }
-    remaining.length = 0;
-    remaining.push(...stillRemaining);
+    remaining = stillRemaining;
     if (remaining.length === 0) break;
   }
 
-  return { placed, grid, totalCrossings };
+  return { placed, grid };
 }
 
-/** 未能交叉的詞句：再嘗試一輪交叉放置，實在放不下才橫排底部 */
-function addUnplacedWords(
+/** 低難度（允許 forcePlace）：
+ *  1. 對每個未放詞嘗試與「已放置」交叉
+ *  2. 沒有交叉的詞 → 試著從中選一個當新叢集種子，然後重複 1
+ *  3. 直到沒有新詞能交叉時才把剩下的硬塞底部
+ *
+ *  相比舊版，本版會把「兩個叢集之間沒共字、但各自內部能交叉」的詞集
+ *  佈局成多個小十字，顯著提升交叉率。
+ */
+function tryAddCrossingsThenForce(
   grid: VirtualGrid,
   placed: PlacedWord[],
   unplaced: WordBankItem[]
 ) {
   const charIndex = new Map<string, { pw: PlacedWord; pi: number }[]>();
-  for (const pw of placed) {
+  function addToIndex(pw: PlacedWord) {
     for (let pi = 0; pi < pw.word.length; pi++) {
       const ch = pw.word[pi];
       if (!charIndex.has(ch)) charIndex.set(ch, []);
       charIndex.get(ch)!.push({ pw, pi });
     }
   }
+  for (const pw of placed) addToIndex(pw);
 
-  const stillUnplaced: WordBankItem[] = [];
-
-  for (const item of unplaced) {
+  function findCrossing(item: WordBankItem): {
+    r: number; c: number; dir: "h" | "v"; crossings: number;
+  } | null {
     const word = item.text.trim();
-    if (word.length === 0) continue;
-
+    if (word.length === 0) return null;
     let best: { r: number; c: number; dir: "h" | "v"; crossings: number } | null = null;
     for (let wi = 0; wi < word.length; wi++) {
       const entries = charIndex.get(word[wi]);
       if (!entries) continue;
       for (const { pw, pi } of entries) {
-        for (const newDir of (["h", "v"] as const)) {
+        for (const newDir of ["h", "v"] as const) {
           let newR: number, newC: number;
           if (newDir === "v") {
             newR = pw.dir === "h" ? pw.r - wi : pw.r + pi - wi;
@@ -343,39 +735,90 @@ function addUnplacedWords(
         }
       }
     }
-
-    if (best) {
-      grid.place(word, best.r, best.c, best.dir);
-      const pw = { word, dir: best.dir, r: best.r, c: best.c, item };
-      placed.push(pw);
-      for (let pi = 0; pi < word.length; pi++) {
-        const ch = word[pi];
-        if (!charIndex.has(ch)) charIndex.set(ch, []);
-        charIndex.get(ch)!.push({ pw, pi });
-      }
-    } else {
-      stillUnplaced.push(item);
-    }
+    return best;
   }
 
-  if (stillUnplaced.length === 0) return;
+  let remaining = [...unplaced];
 
-  const bounds = grid.getBounds();
-  const gridWidth = bounds.maxC - bounds.minC + 1;
-  const targetWidth = Math.max(gridWidth, 15);
-  let curR = bounds.maxR + 2;
-  let curC = bounds.minC;
-
-  for (const item of stillUnplaced) {
-    const word = item.text.trim();
-    if (word.length === 0) continue;
-    if (curC - bounds.minC + word.length > targetWidth) {
-      curR += 2;
-      curC = bounds.minC;
+  while (remaining.length > 0) {
+    // Phase 1: 反覆掃描，只要有任何詞能與現有 grid 交叉就放入
+    let madeProgress = true;
+    while (madeProgress) {
+      madeProgress = false;
+      const next: WordBankItem[] = [];
+      for (const item of remaining) {
+        const best = findCrossing(item);
+        if (best) {
+          grid.place(item.text.trim(), best.r, best.c, best.dir);
+          const pw: PlacedWord = {
+            word: item.text.trim(),
+            dir: best.dir,
+            r: best.r,
+            c: best.c,
+            item,
+          };
+          placed.push(pw);
+          addToIndex(pw);
+          madeProgress = true;
+        } else {
+          next.push(item);
+        }
+      }
+      remaining = next;
     }
-    grid.forcePlace(word, curR, curC, "h");
-    placed.push({ word, dir: "h", r: curR, c: curC, item });
-    curC += word.length + 1;
+
+    if (remaining.length === 0) break;
+
+    // Phase 2: 用剩下的詞開一個新叢集
+    //   先選「在 remaining 中共字最多」的詞當種子，放到空白區域
+    const seedIdx = pickBestSeed(remaining);
+    const seed = remaining[seedIdx];
+    remaining.splice(seedIdx, 1);
+
+    const bounds = grid.getBounds();
+    const seedWord = seed.text.trim();
+    const seedR = bounds.maxR === -Infinity ? 0 : bounds.maxR + 3;
+    const seedC = bounds.minC === Infinity ? 0 : bounds.minC;
+    grid.forcePlace(seedWord, seedR, seedC, "h");
+    const seedPw: PlacedWord = {
+      word: seedWord,
+      dir: "h",
+      r: seedR,
+      c: seedC,
+      item: seed,
+      // 叢集種子本身尚無交叉；若後續有詞來交叉就不再算 forced
+      forced: true,
+    };
+    placed.push(seedPw);
+    addToIndex(seedPw);
+  }
+
+  // Phase 2 的種子若已被後續詞交叉，應把 forced 標記撤銷
+  recomputeForcedFlags(placed);
+}
+
+function pickBestSeed(items: WordBankItem[]): number {
+  if (items.length === 0) return -1;
+  let bestIdx = 0;
+  let bestScore = -1;
+  for (let i = 0; i < items.length; i++) {
+    const ci = new Set(items[i].text.trim().split(""));
+    let score = 0;
+    for (let j = 0; j < items.length; j++) {
+      if (i === j) continue;
+      const cj = items[j].text.trim().split("");
+      for (const ch of cj) if (ci.has(ch)) { score++; break; }
+    }
+    if (score > bestScore) { bestScore = score; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+function recomputeForcedFlags(placed: PlacedWord[]) {
+  const owners = buildCellOwners(placed);
+  for (const pw of placed) {
+    if (!pw.forced) continue;
+    if (countCrossings(pw, owners) > 0) pw.forced = false;
   }
 }
 
@@ -383,7 +826,7 @@ function buildPuzzle(
   placedWords: PlacedWord[],
   _grid: VirtualGrid,
   tier: DifficultyTier
-): CrosswordPuzzle {
+): { puzzle: CrosswordPuzzle; stats: CrosswordStats } {
   const bounds = _grid.getBounds();
   const offsetR = -bounds.minR;
   const offsetC = -bounds.minC;
@@ -462,10 +905,8 @@ function buildPuzzle(
     }
   }
 
-  // 按詞句決定哪些格子是 blank：保證每句至少有 blankRatio 比例的空格
-  const blankRatio = TIER_BLANK_RATIO[tier];
+  // 按詞決定空格位置：每詞空格數依 `blanksForWord(len, tier)` 計算（嚴格單調）
   const blankKeys = new Set<string>();
-
   for (const pw of sortedPlaced) {
     const positions: string[] = [];
     for (let k = 0; k < pw.word.length; k++) {
@@ -473,9 +914,7 @@ function buildPuzzle(
       const c = pw.dir === "h" ? pw.c + k : pw.c;
       positions.push(`${r},${c}`);
     }
-    // 每句至少 blankCount 個空格，且至少 1 個
-    const blankCount = Math.max(1, Math.round(positions.length * blankRatio));
-    // 隨機選 blankCount 個位置
+    const blankCount = blanksForWord(pw.word.length, tier);
     const shuffled = [...positions].sort(() => Math.random() - 0.5);
     for (let j = 0; j < blankCount && j < shuffled.length; j++) {
       blankKeys.add(shuffled[j]);
@@ -499,7 +938,7 @@ function buildPuzzle(
     puzzleGrid.push(row);
   }
 
-  return {
+  const puzzle: CrosswordPuzzle = {
     id: generateId(),
     grid: puzzleGrid,
     words: crosswordWords,
@@ -508,4 +947,7 @@ function buildPuzzle(
     difficulty: tier,
     levelTitle: TIER_TITLE[tier],
   };
+  const stats = computeCrosswordStats(puzzle);
+  puzzle.stats = stats;
+  return { puzzle, stats };
 }

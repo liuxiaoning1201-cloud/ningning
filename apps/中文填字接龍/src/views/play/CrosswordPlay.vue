@@ -11,6 +11,12 @@
     <template v-else>
       <h1 class="page-title">{{ set.title }}</h1>
       <p class="muted">難度 {{ puzzle.difficulty }} 星 · {{ puzzle.levelTitle }}　共 {{ puzzle.words.length }} 題</p>
+      <p v-if="puzzleStats" class="puzzle-stats">
+        <span>縱橫交錯 <b class="stat-cross">{{ puzzleStats.crossedWords }}</b></span>
+        <span>孤立填空 <b :class="{ 'stat-bad': puzzleStats.isolatedWords > 0 }">{{ puzzleStats.isolatedWords }}</b></span>
+        <span>交叉格 <b>{{ puzzleStats.crossingCells }}</b></span>
+        <span>交叉率 <b>{{ Math.round(puzzleStats.crossRate * 100) }}%</b></span>
+      </p>
 
       <!-- 方形畫布：格子自動適應填滿 -->
       <div class="grid-canvas">
@@ -112,6 +118,7 @@ import { computed, watch, ref, nextTick, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { usePuzzleSetsStore } from "@/stores/puzzleSets";
 import { useGameSessionStore } from "@/stores/gameSession";
+import { computeCrosswordStats } from "@/lib/crosswordGenerator";
 import type { CrosswordCell } from "@/lib/types";
 
 const route = useRoute();
@@ -154,6 +161,13 @@ const set = computed(() =>
   puzzleSets.sets.find((s) => s.id === setId.value && s.type === "crossword")
 );
 const puzzle = computed(() => set.value?.crossword ?? null);
+
+/** 佈局統計：新資料有 stats 欄位；舊資料按需重算 */
+const puzzleStats = computed(() => {
+  const p = puzzle.value;
+  if (!p) return null;
+  return p.stats ?? computeCrosswordStats(p);
+});
 
 const gridRows = computed(() => puzzle.value?.grid.length ?? 0);
 const gridCols = computed(() => puzzle.value?.grid[0]?.length ?? 0);
@@ -462,6 +476,24 @@ onUnmounted(() => { inputRefs.value.clear(); stopTimer(); });
   font-size: 0.95rem;
   margin-bottom: 0.5rem;
 }
+
+.puzzle-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: -0.25rem;
+  margin-bottom: 0.75rem;
+  padding: 0.35rem 0.75rem;
+  background: #fffbf2;
+  border: 1px solid #f0e6d6;
+  border-radius: var(--radius);
+  width: fit-content;
+}
+.puzzle-stats b { color: var(--text); font-weight: 700; }
+.puzzle-stats .stat-cross { color: #059669; }
+.puzzle-stats .stat-bad { color: #b91c1c; }
 
 .timer {
   margin-left: auto;

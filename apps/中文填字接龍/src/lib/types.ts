@@ -32,6 +32,26 @@ export interface CrosswordWord {
   source: string;
 }
 
+/** 填字題品質統計：用於 UI 顯示「縱橫交錯有多少」「孤立詞有多少」等真實數據 */
+export interface CrosswordStats {
+  /** 總詞數（含所有放入題組的詞） */
+  totalWords: number;
+  /** 至少有一個交叉字的詞數 */
+  crossedWords: number;
+  /** 零交叉的孤立詞數（= totalWords - crossedWords） */
+  isolatedWords: number;
+  /** 交叉格數（同時被橫向詞與豎向詞覆蓋的格子） */
+  crossingCells: number;
+  /** 所有非 block 的格子數 */
+  totalCells: number;
+  /** 交叉率 = crossingCells / totalCells（0–1） */
+  crossRate: number;
+  /** 平均每詞交叉數 = 2 × crossingCells / totalWords */
+  avgCrossPerWord: number;
+  /** 填入密度 = totalCells / (rows × cols)（0–1） */
+  density: number;
+}
+
 /** 填字題型（對齊論語填字接龍卡格式） */
 export interface CrosswordPuzzle {
   id: string;
@@ -41,6 +61,8 @@ export interface CrosswordPuzzle {
   verticalClues: { id: string; label: string; clue: string; source: string }[];
   difficulty: number; // 1–5
   levelTitle: string;
+  /** 佈局品質統計（舊資料可能沒有，UI 會按需重算） */
+  stats?: CrosswordStats;
 }
 
 /** 題組來源：練習模式隨機出題 | 設定頁手動出題 */

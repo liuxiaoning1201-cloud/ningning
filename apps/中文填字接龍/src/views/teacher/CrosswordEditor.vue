@@ -249,8 +249,11 @@ function generate() {
     wordCount: wordCount.value || undefined,
   });
   if (result) {
-    puzzle.value = result;
-    editGrid.value = JSON.parse(JSON.stringify(result.grid));
+    puzzle.value = result.puzzle;
+    editGrid.value = JSON.parse(JSON.stringify(result.puzzle.grid));
+    if (result.warnings.length > 0) {
+      alert(result.warnings.join("\n\n"));
+    }
   } else {
     alert("無法產生填字題，請確認詞句庫有足夠詞條。");
   }

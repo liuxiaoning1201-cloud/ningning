@@ -54,6 +54,26 @@
           </label>
         </div>
       </div>
+
+      <!-- 連通性預覽：告訴使用者這組詞能不能縱橫交錯 -->
+      <div v-if="connectivityPreview" class="conn-preview" :class="{
+        'conn-good': connectivityPreview.largestRatio >= 0.8 && connectivityPreview.isolatedCount === 0,
+        'conn-warn': connectivityPreview.largestRatio < 0.8 || connectivityPreview.isolatedCount > 0,
+        'conn-bad': connectivityPreview.largestRatio < 0.5,
+      }">
+        <strong>🔗 詞集連通性</strong>
+        <span>
+          {{ connectivityPreview.totalWords }} 詞 ·
+          {{ connectivityPreview.componentCount }} 個叢集 ·
+          最大叢集 {{ connectivityPreview.largestSize }} 詞（{{ Math.round(connectivityPreview.largestRatio * 100) }}%）
+          <span v-if="connectivityPreview.isolatedCount > 0">
+            · 孤立詞 {{ connectivityPreview.isolatedCount }}
+          </span>
+        </span>
+        <span v-if="connectivityPreview.largestRatio < 0.6" class="conn-hint">
+          ⚠ 此詞集天生難以縱橫交錯，建議換詞或降低難度
+        </span>
+      </div>
     </div>
 
     <!-- History modal -->
@@ -61,13 +81,21 @@
       <h2 style="font-size: 1rem; margin-bottom: 0.5rem">📋 出題記錄</h2>
       <div v-if="crosswordSets.length === 0" class="empty-state">尚無記錄。</div>
       <ul v-else class="history-list">
-        <li v-for="set in crosswordSets" :key="set.id" class="history-item">
-          <span><strong>{{ set.title }}</strong></span>
+        <li v-for="row in crosswordHistoryRows" :key="row.set.id" class="history-item">
+          <span class="history-info">
+            <strong>{{ row.set.title }}</strong>
+            <span v-if="row.stats" class="history-stats">
+              共 {{ row.stats.totalWords }} 題 ·
+              縱橫交錯 <b class="stat-cross">{{ row.stats.crossedWords }}</b> ·
+              孤立 <b :class="{ 'stat-bad': row.stats.isolatedWords > 0 }">{{ row.stats.isolatedWords }}</b> ·
+              交叉率 {{ Math.round(row.stats.crossRate * 100) }}%
+            </span>
+          </span>
           <span class="actions">
-            <RouterLink :to="`/play/crossword/${set.id}`" class="btn btn-primary btn-sm">練習</RouterLink>
-            <RouterLink :to="`/settings/puzzles/crossword/${set.id}`" class="btn btn-secondary btn-sm">✏️ 編輯</RouterLink>
-            <button v-if="set.crossword" type="button" class="btn btn-secondary btn-sm" title="列印" @click="printPuzzle(set)">🖨️ 列印</button>
-            <button type="button" class="btn btn-danger btn-sm" title="刪除" @click="deleteSet(set)">🗑️</button>
+            <RouterLink :to="`/play/crossword/${row.set.id}`" class="btn btn-primary btn-sm">練習</RouterLink>
+            <RouterLink :to="`/settings/puzzles/crossword/${row.set.id}`" class="btn btn-secondary btn-sm">✏️ 編輯</RouterLink>
+            <button v-if="row.set.crossword" type="button" class="btn btn-secondary btn-sm" title="列印" @click="printPuzzle(row.set)">🖨️ 列印</button>
+            <button type="button" class="btn btn-danger btn-sm" title="刪除" @click="deleteSet(row.set)">🗑️</button>
           </span>
         </li>
       </ul>
@@ -82,8 +110,12 @@ import { useRouter } from "vue-router";
 import { usePuzzleSetsStore, generateId } from "@/stores/puzzleSets";
 import { useGameSessionStore } from "@/stores/gameSession";
 import { useWordBanksStore } from "@/stores/wordBanks";
-import { generateCrosswordPuzzle } from "@/lib/crosswordGenerator";
-import type { DifficultyTier, PuzzleSet } from "@/lib/types";
+import {
+  generateCrosswordPuzzle,
+  analyzeConnectivity,
+  computeCrosswordStats,
+} from "@/lib/crosswordGenerator";
+import type { DifficultyTier, PuzzleSet, WordBankItem } from "@/lib/types";
 import { BUILTIN_CHENGYU_BANK_ID } from "@/data/defaultChengyuBank";
 
 const router = useRouter();
@@ -114,6 +146,23 @@ const selectedBank = computed(() =>
   wordBanks.banks.find((b) => b.id === autoBankId.value) ?? null
 );
 
+/** 當前勾選/全部詞集的連通性預覽 */
+const connectivityPreview = computed(() => {
+  if (!selectedBank.value) return null;
+  const items = selectedItemIds.value.size > 0
+    ? selectedBank.value.items.filter((it) => selectedItemIds.value.has(it.id))
+    : selectedBank.value.items;
+  if (items.length < 2) return null;
+  const report = analyzeConnectivity(items);
+  return {
+    totalWords: items.length,
+    componentCount: report.components.length,
+    largestSize: report.components[0]?.length ?? 0,
+    largestRatio: report.largestComponentRatio,
+    isolatedCount: report.isolatedItems.length,
+  };
+});
+
 function toggleItem(id: string) {
   const s = new Set(selectedItemIds.value);
   if (s.has(id)) s.delete(id); else s.add(id);
@@ -125,9 +174,42 @@ const crosswordSets = computed(() =>
   puzzleSets.sets.filter((s) => s.type === "crossword" && s.source !== "manual")
 );
 
+/** 歷史列表預計算統計，避免 template 內多次呼叫 */
+const crosswordHistoryRows = computed(() =>
+  crosswordSets.value.map((s) => ({
+    set: s,
+    stats: s.crossword ? (s.crossword.stats ?? computeCrosswordStats(s.crossword)) : null,
+  }))
+);
+
 function onHintsChange(e: Event) {
   const v = (e.target as HTMLInputElement).checked;
   gameSession.setSettings({ showHints: v });
+}
+
+/** 連通性預檢：詞集分裂時讓使用者意識到「天生無法縱橫交錯」 */
+function precheckConnectivity(items: WordBankItem[]): { proceed: boolean } {
+  if (items.length < 2) return { proceed: true };
+  const report = analyzeConnectivity(items);
+  const tierCfgHard = autoTier.value >= 4;
+  // 最大連通分量佔比很低、或有孤立詞時才提示
+  if (report.components.length > 1 && report.largestComponentRatio < 0.6) {
+    const percent = Math.round(report.largestComponentRatio * 100);
+    const compSummary = report.components
+      .slice(0, 3)
+      .map((c) => `${c.length} 個詞（例：${c.slice(0, 2).map((i) => i.text).join("、")}${c.length > 2 ? "…" : ""}）`)
+      .join("\n  ");
+    const msg = `⚠ 詞集分成 ${report.components.length} 個不相連叢集，最大叢集只佔 ${percent}%：\n  ${compSummary}\n\n${tierCfgHard
+      ? "高難度模式只會採用能縱橫交錯的子集，其他詞會被排除。"
+      : "出題時將無法全部縱橫交錯，部分詞會變成孤立填空。"}\n\n是否繼續？`;
+    return { proceed: confirm(msg) };
+  }
+  if (report.isolatedItems.length > 0 && tierCfgHard) {
+    const isoList = report.isolatedItems.map((i) => i.text).join("、");
+    const msg = `⚠ 以下 ${report.isolatedItems.length} 個詞與其他詞完全無共字：\n  ${isoList}\n\n高難度模式會自動排除它們。是否繼續？`;
+    return { proceed: confirm(msg) };
+  }
+  return { proceed: true };
 }
 
 function autoGenerate() {
@@ -153,22 +235,32 @@ function autoGenerate() {
       : "請至少選擇一個詞句");
     return;
   }
-  const puzzle = generateCrosswordPuzzle({
+
+  const subset =
+    autoWordCount.value && autoWordCount.value > 0 && autoWordCount.value < itemsToUse.length
+      ? itemsToUse
+      : itemsToUse;
+  if (!precheckConnectivity(subset).proceed) return;
+
+  const result = generateCrosswordPuzzle({
     items: itemsToUse,
     tier: autoTier.value,
     wordCount: autoWordCount.value || undefined,
   });
-  if (!puzzle) {
+  if (!result) {
     alert("無法產生填字題，請確認詞句庫有足夠詞條。");
     return;
   }
+  if (result.warnings.length > 0) {
+    alert(result.warnings.join("\n\n"));
+  }
   const set = {
     id: generateId(),
-    title: `隨機出題 · ${puzzle.levelTitle}`,
+    title: `隨機出題 · ${result.puzzle.levelTitle}`,
     type: "crossword" as const,
     createdAt: new Date().toISOString(),
     source: "practice" as const,
-    crossword: puzzle,
+    crossword: result.puzzle,
   };
   puzzleSets.addSet(set);
   router.push(`/play/crossword/${set.id}`);
@@ -190,26 +282,33 @@ function generateFromSelected() {
     alert("請至少勾選一個詞句");
     return;
   }
-  const puzzle = generateCrosswordPuzzle({
+
+  if (!precheckConnectivity(itemsToUse).proceed) return;
+
+  const result = generateCrosswordPuzzle({
     items: itemsToUse,
     tier: autoTier.value,
     wordCount: undefined,
   });
-  if (!puzzle) {
+  if (!result) {
     alert("無法產生填字題，請確認所選詞句有可交叉的字。");
     return;
   }
+  if (result.warnings.length > 0) {
+    alert(result.warnings.join("\n\n"));
+  }
   const set = {
     id: generateId(),
-    title: `所選出題 · ${puzzle.levelTitle}`,
+    title: `所選出題 · ${result.puzzle.levelTitle}`,
     type: "crossword" as const,
     createdAt: new Date().toISOString(),
     source: "practice" as const,
-    crossword: puzzle,
+    crossword: result.puzzle,
   };
   puzzleSets.addSet(set);
   router.push(`/play/crossword/${set.id}`);
 }
+
 
 function deleteSet(set: PuzzleSet) {
   if (!confirm(`確定要刪除「${set.title}」？此操作無法復原。`)) return;
@@ -354,4 +453,26 @@ h1{font-size:18px;text-align:center;margin-bottom:3px;color:#333}
   border-color: var(--primary);
   background: #FFF0F3;
 }
+
+.conn-preview {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.85rem;
+  align-items: center;
+  border: 1px solid var(--border);
+  background: #f8f5ef;
+}
+.conn-preview.conn-good { background: #ecfdf5; border-color: #6ee7b7; color: #065f46; }
+.conn-preview.conn-warn { background: #fef9c3; border-color: #fde047; color: #854d0e; }
+.conn-preview.conn-bad  { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+.conn-hint { font-weight: 600; }
+
+.history-info { display: flex; flex-direction: column; gap: 0.15rem; }
+.history-stats { font-size: 0.78rem; color: var(--text-muted); }
+.history-stats .stat-cross { color: #059669; }
+.history-stats .stat-bad { color: #b91c1c; }
 </style>
