@@ -39,12 +39,35 @@ const showStartLessonDialog = ref(false)
 const lessonSubjectInput = ref('')
 const now = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval>
+let authWidgetRetryTimer: ReturnType<typeof setTimeout> | null = null
+
+function moveAuthWidgetDown() {
+  const widget = document.getElementById('zy-auth-widget')
+  if (!widget) return false
+  widget.style.top = '72px'
+  return true
+}
+
+function resetAuthWidgetPosition() {
+  const widget = document.getElementById('zy-auth-widget')
+  if (!widget) return
+  widget.style.top = ''
+}
 
 onMounted(() => {
   clockTimer = setInterval(() => { now.value = Date.now() }, 1000)
+  // Google 登入元件固定在右上角；課堂頁上方有「開始上課」列，需下移避免重疊
+  if (!moveAuthWidgetDown()) {
+    authWidgetRetryTimer = setTimeout(() => {
+      moveAuthWidgetDown()
+      authWidgetRetryTimer = null
+    }, 600)
+  }
 })
 onUnmounted(() => {
   clearInterval(clockTimer)
+  if (authWidgetRetryTimer) clearTimeout(authWidgetRetryTimer)
+  resetAuthWidgetPosition()
 })
 
 const activeLesson = computed(() => store.activeLesson)

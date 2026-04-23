@@ -1,0 +1,7 @@
+# 複製為 .dev.vars 後填入訊飛控制台的值
+IFLYTEK_APP_ID=
+IFLYTEK_API_KEY=
+IFLYTEK_API_SECRET=
+# 可選：普通話／粵語 vcn（依控制臺實際音庫）
+# IFLYTEK_VCN_MANDARIN=xiaoyan
+# IFLYTEK_VCN_CANTONESE=
