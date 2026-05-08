@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-HK">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>粵語學習 · 側邊欄</title>
+    <style>
+      :root {
+        --paper: #f7f3eb;
+        --ink: #1a1a2e;
+        --accent: #d4524d;
+        --jade: #4a8e6f;
+        --muted: #6b7280;
+        --soft: #f4cf9f;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: 'PingFang HK', 'PingFang TC', 'Noto Sans HK', sans-serif;
+        font-size: 13px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      h1 {
+        font-size: 17px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .subtitle { font-size: 11px; color: var(--muted); }
+      .card {
+        background: white;
+        border-radius: 10px;
+        padding: 12px;
+        border: 1px solid rgba(0,0,0,0.06);
+      }
+      .vocab-item {
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+      }
+      .vocab-item:last-child { border-bottom: none; }
+      .v-written { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+      .v-cantonese {
+        font-weight: 500;
+        background: linear-gradient(180deg, transparent 65%, rgba(212, 82, 77, 0.2) 65%);
+        display: inline-block;
+        border-radius: 2px;
+      }
+      .v-jyutping { font-size: 11px; color: var(--muted); font-family: 'SF Mono', Menlo, monospace; margin-top: 2px; }
+      .empty {
+        text-align: center;
+        color: var(--muted);
+        padding: 30px 10px;
+        font-size: 12px;
+      }
+      a { color: var(--jade); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      .footer {
+        margin-top: auto;
+        font-size: 10px;
+        color: var(--muted);
+        text-align: center;
+        padding-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎙️ 粵語學習</h1>
+    <div class="subtitle">最近收藏的生詞</div>
+
+    <div id="status" class="card" style="display: none">
+      <div id="status-text"></div>
+    </div>
+
+    <div id="vocab-list" class="card" style="flex: 1; overflow-y: auto">
+      <div class="empty">載入中…</div>
+    </div>
+
+    <div class="card" style="text-align: center">
+      <a href="https://zykongjian.com/yueyu" target="_blank">在網頁打開完整生詞本 →</a>
+    </div>
+
+    <div class="footer">字遊空間 · 粵語學習 0.1.0</div>
+
+    <script type="module" src="/src/sidepanel.ts"></script>
+  </body>
+</html>

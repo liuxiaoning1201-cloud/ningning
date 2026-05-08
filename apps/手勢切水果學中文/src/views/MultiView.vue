@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useWordPackStore } from '@/stores/wordPack';
 import { apiUrl, wsUrl } from '@/lib/api';
+import { readInputMode, writeInputMode, type InputMode } from '@/types/level';
 
 const router = useRouter();
+const route = useRoute();
 const wordStore = useWordPackStore();
 const { entries } = storeToRefs(wordStore);
+
+const inputMode = ref<InputMode>(
+  route.query.input === 'click' ? 'click' : route.query.input === 'pinch' ? 'pinch' : readInputMode()
+);
+
+function pickMode(m: InputMode) {
+  inputMode.value = m;
+  writeInputMode(m);
+}
 
 const roomCode = ref('');
 const nickname = ref(sessionStorage.getItem('fruit-player-name') || '');
@@ -87,7 +98,7 @@ function goPlay() {
     err.value = '請先建立或加入房間';
     return;
   }
-  router.push({ path: '/play', query: { room: code } });
+  router.push({ path: '/play', query: { room: code, input: inputMode.value } });
 }
 
 function disconnect() {
@@ -102,9 +113,33 @@ function disconnect() {
       <RouterLink to="/" class="mb-6 inline-block font-bold text-white/90 hover:underline">← 回首頁</RouterLink>
 
       <h1 class="mb-2 text-4xl font-black drop-shadow">多人房間</h1>
-      <p class="mb-8 text-lg font-semibold text-white/95 drop-shadow">
+      <p class="mb-6 text-lg font-semibold text-white/95 drop-shadow">
         由一人建立房間，其他人輸入相同房間碼加入；大家各自在本機玩，分數會同步到這裡。
       </p>
+
+      <!-- 玩法切換 -->
+      <div class="mb-6 rounded-full bg-white/35 p-1.5 ring-2 ring-white/40 backdrop-blur">
+        <div class="grid grid-cols-2 gap-1">
+          <button
+            type="button"
+            class="flex flex-col items-center justify-center rounded-full px-3 py-2 text-sm font-black transition"
+            :class="inputMode === 'pinch' ? 'bg-gradient-to-r from-[#ff6bcb] to-[#ff9e6d] text-white shadow' : 'text-white/85'"
+            @click="pickMode('pinch')"
+          >
+            <span class="flex items-center gap-1.5"><span class="text-lg">🖐</span>捏爆模式</span>
+            <span class="mt-0.5 text-[10px] font-semibold opacity-90">開鏡頭・捏合手勢</span>
+          </button>
+          <button
+            type="button"
+            class="flex flex-col items-center justify-center rounded-full px-3 py-2 text-sm font-black transition"
+            :class="inputMode === 'click' ? 'bg-gradient-to-r from-[#5d6dff] to-[#7ee8fa] text-white shadow' : 'text-white/85'"
+            @click="pickMode('click')"
+          >
+            <span class="flex items-center gap-1.5"><span class="text-lg">👆</span>點擊模式</span>
+            <span class="mt-0.5 text-[10px] font-semibold opacity-90">滑鼠/觸控直接點</span>
+          </button>
+        </div>
+      </div>
 
       <div class="mb-6 rounded-[2rem] bg-white/25 p-6 shadow-xl backdrop-blur-md ring-4 ring-white/30">
         <label class="mb-2 block text-sm font-black uppercase tracking-wider text-[#2a1050]/80">暱稱</label>

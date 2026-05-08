@@ -3,13 +3,14 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useClassStore } from '../stores/classStore'
 import {
-  ANIMAL_CONFIG, DEFAULT_SCORE_BUTTONS, ENCOURAGEMENTS_BY_CATEGORY,
-  CATEGORY_LABELS, CATEGORY_EMOJIS, CATEGORY_COLORS,
+  ANIMAL_CONFIG, ENCOURAGEMENTS_BY_CATEGORY,
   type AnimalType, type ScoreButton as ScoreButtonType, type ScoreEvent, type ScoreCategory, type Student,
+  type SpinnerCategory, type SpinnerItem, type Group,
 } from '../types'
 import StudentChip from '../components/StudentChip.vue'
-import ScoreButton from '../components/ScoreButton.vue'
 import QuickScorePopup from '../components/QuickScorePopup.vue'
+import DeductionEffect from '../components/DeductionEffect.vue'
+import SpinnerWheel, { type SpinnerDropMode } from '../components/SpinnerWheel.vue'
 
 const store = useClassStore()
 const router = useRouter()
@@ -19,8 +20,7 @@ const selectedStudentId = ref<string | null>(null)
 const showNoteInput = ref(false)
 const noteText = ref('')
 
-// 類別篩選
-const activeCategory = ref<ScoreCategory | 'all'>('all')
+// (category filter kept in QuickScorePopup)
 
 // 浮窗
 interface PopupState {
@@ -128,17 +128,8 @@ const displayStudents = computed(() => {
   return groupStudents.value
 })
 
-// 類別篩選過的主按鈕區按鈕
-const filteredButtons = computed(() => {
-  if (activeCategory.value === 'all') return DEFAULT_SCORE_BUTTONS
-  return DEFAULT_SCORE_BUTTONS.filter(b => b.category === activeCategory.value)
-})
+const storeButtons = computed(() => store.scoreButtons)
 
-const availableCategories = computed<ScoreCategory[]>(() => {
-  const cats = new Set<ScoreCategory>()
-  DEFAULT_SCORE_BUTTONS.forEach(b => cats.add(b.category))
-  return (Object.keys(CATEGORY_LABELS) as ScoreCategory[]).filter(c => cats.has(c))
-})
 
 function selectGroup(groupId: string) {
   selectedGroupId.value = groupId
@@ -168,8 +159,7 @@ function toggleStudent(studentId: string, event?: MouseEvent) {
   const group = store.getGroupById(student.groupId)
   const animal: AnimalType = group?.animal ?? 'owl'
 
-  // 浮窗中不顯示小組類別的按鈕，因為是對學生個人加分
-  const buttons = DEFAULT_SCORE_BUTTONS.filter(b => b.targetType === 'student')
+  const buttons = storeButtons.value.filter(b => b.targetType === 'student')
 
   popup.value = {
     mode: 'student',
@@ -192,7 +182,7 @@ function openGroupPopup(groupId: string, event: MouseEvent) {
     groupTitle: group.name,
     animal: group.animal,
     anchorRect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
-    buttons: DEFAULT_SCORE_BUTTONS.filter(b => b.targetType === 'group'),
+    buttons: storeButtons.value.filter(b => b.targetType === 'group'),
   }
 }
 
@@ -226,41 +216,17 @@ function handlePopupSelect(btn: ScoreButtonType) {
     )
   }
 
+  if (btn.points < 0) triggerDeductionEffect()
+
   popup.value = null
-}
 
-function isScoreButtonDisabled(button: ScoreButtonType): boolean {
-  if (button.targetType === 'group') {
-    return isAllGroupMode.value || !selectedGroupId.value
+  // 評分動作後檢查是否該掉落命運轉盤（事件驅動，避免老師離開頁面錯失）
+  if (store.activeLesson) {
+    scoreEventCountThisLesson.value += 1
+    maybeTriggerDropOnScoreEvent()
   }
-  return !selectedStudentId.value
 }
 
-function handleScore(button: ScoreButtonType) {
-  if (isScoreButtonDisabled(button)) return
-
-  const note = noteText.value.trim() || undefined
-
-  if (button.targetType === 'group' && selectedGroupId.value && !isAllGroupMode.value) {
-    store.addGroupScoreEvent(selectedGroupId.value, button, note)
-    const group = store.getGroupById(selectedGroupId.value)
-    showToast(`${group?.name ?? '小組'} ${button.label}`, button.emoji, button.points, ANIMAL_CONFIG[selectedAnimal.value].color, {
-      encouragement: getRandomEncouragement(button.category),
-      durationMs: 5000,
-    })
-  } else if (button.targetType === 'student' && selectedStudentId.value) {
-    const student = store.getStudentById(selectedStudentId.value)
-    store.addStudentScoreEvent(selectedStudentId.value, button, note)
-    showToast(`${student?.name ?? '學生'} ${button.label}`, button.emoji, button.points, ANIMAL_CONFIG[selectedAnimal.value].color, {
-      encouragement: getRandomEncouragement(button.category),
-      durationMs: 5000,
-    })
-    selectedStudentId.value = null
-  }
-
-  noteText.value = ''
-  showNoteInput.value = false
-}
 
 function handleUndo() {
   store.undoLastEvent()
@@ -336,6 +302,148 @@ function handleCancelLesson() {
   }
 }
 
+// ===== 命運轉盤 =====
+
+// 老師主動觸發的無偏置轉盤
+const showSpinner = ref(false)
+
+// 隨機掉落轉盤：由評分動作觸發，每堂課最多 1-2 次，依分差自動平衡
+interface DropOffer {
+  targetGroup: Group
+  mode: SpinnerDropMode
+  weights: Record<SpinnerCategory, number>
+}
+
+// 救援：偏向獎勵；挑戰：偏向反轉/挑戰
+const HELP_WEIGHTS: Record<SpinnerCategory, number> = { reward: 60, punishment: 10, reversal: 30 }
+const CHALLENGE_WEIGHTS: Record<SpinnerCategory, number> = { reward: 10, punishment: 55, reversal: 35 }
+
+const MAX_DROPS_PER_LESSON = 2
+const MIN_GAP_TO_TRIGGER = 5 // 領先組與最後一組分差達此值才觸發
+const MIN_ELAPSED_MIN = 8 // 課堂開始 8 分鐘後才可能掉落
+const MAX_ELAPSED_MIN = 50 // 超過 50 分鐘不再掉落
+const COOLDOWN_MIN = 10 // 兩次掉落之間最短間隔（避免一連串評分後連續掉落）
+const SCORE_EVENTS_BEFORE_FIRST_DROP = 5 // 第一次掉落前至少要先累積幾次評分
+
+const dropsThisLesson = ref(0)
+const lastDropAt = ref(0)
+const scoreEventCountThisLesson = ref(0)
+const pendingDropOffer = ref<DropOffer | null>(null)
+const showDropSpinner = ref(false)
+
+function getActiveLessonScores() {
+  const lesson = store.activeLesson
+  if (!lesson) return [] as { group: Group; score: number }[]
+  const map = new Map<string, number>()
+  store.groups.forEach(g => map.set(g.id, 0))
+  store.scoreEvents
+    .filter(e => e.sessionId === lesson.id)
+    .forEach(e => map.set(e.groupId, (map.get(e.groupId) ?? 0) + e.points))
+  return store.groups.map(g => ({ group: g, score: map.get(g.id) ?? 0 }))
+}
+
+function buildDropOffer(): DropOffer | null {
+  const scores = getActiveLessonScores()
+  if (scores.length < 2) return null
+  const sorted = [...scores].sort((a, b) => b.score - a.score)
+  const lead = sorted[0]
+  const trail = sorted[sorted.length - 1]
+  const gap = lead.score - trail.score
+  if (gap < MIN_GAP_TO_TRIGGER) return null
+
+  // 70% 救援落後組；30% 挑戰領先組
+  const helpMode = Math.random() < 0.7
+  return {
+    targetGroup: helpMode ? trail.group : lead.group,
+    mode: helpMode ? 'help' : 'challenge',
+    weights: helpMode ? HELP_WEIGHTS : CHALLENGE_WEIGHTS,
+  }
+}
+
+/**
+ * 在每次老師加 / 減分後呼叫；負責判斷是否要產生命運轉盤掉落提示。
+ * 改成事件驅動之後，老師不會因為離開頁面而錯失機會：只有他在按按鈕時才可能掉。
+ */
+function maybeTriggerDropOnScoreEvent() {
+  // 已有提示或正在抽轉盤就不重複觸發
+  if (pendingDropOffer.value || showDropSpinner.value) return
+  if (!store.activeLesson) return
+  if (dropsThisLesson.value >= MAX_DROPS_PER_LESSON) return
+
+  const elapsedMin = (Date.now() - store.activeLesson.startedAt) / 60000
+  if (elapsedMin < MIN_ELAPSED_MIN || elapsedMin > MAX_ELAPSED_MIN) return
+  if (lastDropAt.value && (Date.now() - lastDropAt.value) < COOLDOWN_MIN * 60 * 1000) return
+  if (scoreEventCountThisLesson.value < SCORE_EVENTS_BEFORE_FIRST_DROP) return
+
+  // 機率：以「每次評分動作」為單位計算
+  // 一節課平均評分 30~60 次，希望期望值落在 1~2 次
+  // 預設 8%；若已過 25 分鐘且本堂課還沒掉過，提高到 25% 保底
+  const baseProb = (elapsedMin > 25 && dropsThisLesson.value === 0) ? 0.25 : 0.08
+  if (Math.random() > baseProb) return
+
+  const offer = buildDropOffer()
+  if (!offer) return
+
+  pendingDropOffer.value = offer
+
+  // 額外用 toast 提醒老師
+  showToast(
+    offer.mode === 'help'
+      ? `命運轉盤掉落！${offer.targetGroup.name} 翻轉的機會來了`
+      : `命運轉盤掉落！${offer.targetGroup.name} 接受命運挑戰`,
+    '🎡',
+    0,
+    '#a855f7',
+    { durationMs: 6000 },
+  )
+}
+
+function acceptDropOffer() {
+  if (!pendingDropOffer.value) return
+  showDropSpinner.value = true
+}
+
+function dismissDropOffer() {
+  pendingDropOffer.value = null
+}
+
+function handleDropSpinResult(payload: { item: SpinnerItem; targetGroupId?: string; mode?: SpinnerDropMode }) {
+  const offer = pendingDropOffer.value
+  if (!offer) return
+  showToast(
+    `${offer.targetGroup.name} 抽到「${payload.item.label}」`,
+    payload.item.emoji,
+    0,
+    ANIMAL_CONFIG[offer.targetGroup.animal].color,
+    { durationMs: 6000 },
+  )
+}
+
+function closeDropSpinner() {
+  showDropSpinner.value = false
+  pendingDropOffer.value = null
+  dropsThisLesson.value += 1
+  lastDropAt.value = Date.now()
+}
+
+// 課堂切換時重置計數
+watch(() => store.activeLesson?.id, (newId, oldId) => {
+  if (newId === oldId) return
+  dropsThisLesson.value = 0
+  lastDropAt.value = 0
+  scoreEventCountThisLesson.value = 0
+  pendingDropOffer.value = null
+  showDropSpinner.value = false
+})
+
+// 扣分特效
+const showDeduction = ref(false)
+
+function triggerDeductionEffect() {
+  showDeduction.value = true
+  setTimeout(() => { showDeduction.value = false }, 2000)
+}
+
 // 若有 pending 加分，顯示提示
 const pendingBonusHint = computed(() => {
   const pending = store.classData.pendingBonusPoints ?? {}
@@ -403,6 +511,54 @@ const pendingBonusHint = computed(() => {
         ▶ 開始上課
       </button>
     </div>
+
+    <!-- Drop offer banner：隨機掉落命運轉盤的提示 -->
+    <Transition name="drop-banner">
+      <div
+        v-if="pendingDropOffer"
+        class="shrink-0 px-4 py-2.5 flex items-center gap-3 text-sm shadow-md cursor-pointer drop-banner"
+        :class="pendingDropOffer.mode === 'help'
+          ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white'
+          : 'bg-gradient-to-r from-rose-500 via-pink-500 to-amber-500 text-white'"
+        @click="acceptDropOffer"
+      >
+        <span class="text-2xl drop-icon">🎡</span>
+        <img
+          :src="ANIMAL_CONFIG[pendingDropOffer.targetGroup.animal].avatar"
+          :alt="`${pendingDropOffer.targetGroup.name} 頭像`"
+          class="w-9 h-9 rounded-full object-cover border-2 border-white/70 shrink-0"
+        />
+        <div class="flex-1 min-w-0">
+          <p class="font-bold text-sm flex items-center gap-1.5">
+            <span>{{ pendingDropOffer.mode === 'help' ? '🎯 命運轉盤掉落！' : '⚔️ 命運轉盤掉落！' }}</span>
+            <span class="text-[10px] font-medium bg-white/20 px-2 py-0.5 rounded-full">
+              本堂第 {{ dropsThisLesson + 1 }} 次
+            </span>
+          </p>
+          <p class="text-xs opacity-95 truncate">
+            <template v-if="pendingDropOffer.mode === 'help'">
+              讓落後的「{{ pendingDropOffer.targetGroup.name }}」轉動命運，獲得翻盤機會
+            </template>
+            <template v-else>
+              領先的「{{ pendingDropOffer.targetGroup.name }}」要面對命運挑戰
+            </template>
+          </p>
+        </div>
+        <button
+          @click.stop="dismissDropOffer"
+          class="text-white/80 hover:text-white text-xs px-2 py-1 rounded-lg bg-black/10 hover:bg-black/20 transition-colors cursor-pointer"
+          title="關閉"
+        >
+          ✕
+        </button>
+        <button
+          @click.stop="acceptDropOffer"
+          class="text-sm font-bold bg-white text-stone-700 px-4 py-1.5 rounded-lg shadow cursor-pointer hover:scale-105 transition-transform"
+        >
+          🎡 抽取
+        </button>
+      </div>
+    </Transition>
 
     <!-- Section 1: Group Tabs -->
     <div class="shrink-0 bg-white border-b border-stone-200 shadow-sm px-4 py-3">
@@ -477,119 +633,50 @@ const pendingBonusHint = computed(() => {
             ＋
           </button>
         </div>
+        <!-- Spinner button -->
+        <div class="w-px h-8 bg-stone-200 shrink-0" />
+        <button
+          @click="showSpinner = true"
+          class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150
+                 min-h-[48px] shrink-0 border-2 cursor-pointer active:scale-95
+                 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 text-purple-700 hover:border-purple-300 hover:shadow-md"
+        >
+          <span class="text-lg">🎡</span>
+          <span>轉盤</span>
+        </button>
       </div>
     </div>
 
     <!-- Main Content Area -->
     <div class="flex-1 flex min-h-0 overflow-hidden">
 
-      <!-- Left + Center: Students + Score Buttons -->
-      <div class="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+      <!-- Students Area (now takes full width minus sidebar) -->
+      <div class="flex-1 overflow-y-auto p-4">
+        <h2 class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <span>選擇學生</span>
+          <span v-if="selectedStudentId" class="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full normal-case tracking-normal">
+            已選擇 1 人
+          </span>
+        </h2>
 
-        <!-- Student Selection -->
-        <div class="lg:w-[280px] xl:w-[320px] shrink-0 border-r border-stone-100 overflow-y-auto p-4">
-          <h2 class="text-xs font-bold text-stone-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-            <span>選擇學生</span>
-            <span v-if="selectedStudentId" class="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full normal-case tracking-normal">
-              已選擇 1 人
-            </span>
-          </h2>
-
-          <div class="grid grid-cols-2 gap-2">
-            <StudentChip
-              v-for="student in displayStudents"
-              :key="student.id"
-              :student="student"
-              :selected="selectedStudentId === student.id"
-              :group-animal="isAllGroupMode ? getStudentAnimal(student.id) : selectedAnimal"
-              @click="toggleStudent(student.id, $event)"
-            />
-          </div>
-
-          <div v-if="displayStudents.length === 0" class="text-center py-10 text-stone-400 text-sm">
-            此小組暫無學生
-          </div>
-
-          <p class="text-[11px] text-stone-400 mt-4 leading-relaxed">
-            💡 點擊學生會在旁邊開啟快捷計分面板，免切換頁面！
-          </p>
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2">
+          <StudentChip
+            v-for="student in displayStudents"
+            :key="student.id"
+            :student="student"
+            :selected="selectedStudentId === student.id"
+            :group-animal="isAllGroupMode ? getStudentAnimal(student.id) : selectedAnimal"
+            @click="toggleStudent(student.id, $event)"
+          />
         </div>
 
-        <!-- Score Buttons -->
-        <div class="flex-1 overflow-y-auto p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-xs font-bold text-stone-400 uppercase tracking-wider">
-              計分按鈕
-            </h2>
-          </div>
-
-          <!-- Category Filter Tabs -->
-          <div class="flex gap-1.5 mb-4 overflow-x-auto pb-1">
-            <button
-              @click="activeCategory = 'all'"
-              class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer border-2"
-              :class="activeCategory === 'all'
-                ? 'bg-stone-700 text-white border-stone-700 shadow-sm'
-                : 'bg-white text-stone-500 border-stone-200 hover:bg-stone-50'"
-            >
-              全部
-            </button>
-            <button
-              v-for="cat in availableCategories"
-              :key="cat"
-              @click="activeCategory = cat"
-              class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer border-2 flex items-center gap-1"
-              :style="activeCategory === cat
-                ? { backgroundColor: CATEGORY_COLORS[cat].bar, color: 'white', borderColor: CATEGORY_COLORS[cat].bar }
-                : { backgroundColor: CATEGORY_COLORS[cat].bg, color: CATEGORY_COLORS[cat].text, borderColor: CATEGORY_COLORS[cat].border }"
-            >
-              <span>{{ CATEGORY_EMOJIS[cat] }}</span>
-              <span>{{ CATEGORY_LABELS[cat] }}</span>
-            </button>
-          </div>
-
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            <ScoreButton
-              v-for="btn in filteredButtons"
-              :key="btn.id"
-              :button="btn"
-              :disabled="isScoreButtonDisabled(btn)"
-              @click="handleScore(btn)"
-            />
-          </div>
-
-          <!-- Quick Note -->
-          <div class="mt-4">
-            <button
-              @click="showNoteInput = !showNoteInput"
-              class="text-xs text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <span>📝</span>
-              <span>{{ showNoteInput ? '收起備註' : '加入備註（選填）' }}</span>
-            </button>
-            <Transition name="slide-up">
-              <div v-if="showNoteInput" class="mt-2">
-                <input
-                  v-model="noteText"
-                  type="text"
-                  placeholder="例如：主動舉手回答問題..."
-                  class="w-full px-3 py-2.5 rounded-xl border-2 border-stone-200 text-sm
-                         focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100
-                         transition-all placeholder:text-stone-300"
-                  @keyup.enter="noteText.trim() && (showNoteInput = false)"
-                />
-              </div>
-            </Transition>
-          </div>
-
-          <!-- Scoring hint -->
-          <div class="mt-5 p-3 rounded-xl bg-stone-50 border border-stone-100">
-            <p class="text-xs text-stone-400 leading-relaxed">
-              <span class="font-semibold text-stone-500">操作提示：</span>
-              點擊學生會自動彈出快捷面板 ｜ 點擊小組標籤旁的「＋」可直接小組計分 ｜ 上方可按類別篩選按鈕
-            </p>
-          </div>
+        <div v-if="displayStudents.length === 0" class="text-center py-10 text-stone-400 text-sm">
+          此小組暫無學生
         </div>
+
+        <p class="text-[11px] text-stone-400 mt-4 leading-relaxed">
+          💡 點擊學生姓名即可開啟快捷計分面板 ｜ 點擊小組標籤旁的「＋」可直接小組計分
+        </p>
       </div>
 
       <!-- Right Sidebar: Activity Feed -->
@@ -620,7 +707,7 @@ const pendingBonusHint = computed(() => {
             >
               <div class="flex items-start gap-2">
                 <span class="text-base shrink-0 mt-0.5">
-                  {{ DEFAULT_SCORE_BUTTONS.find(b => b.label === event.label)?.emoji ?? '✨' }}
+                  {{ storeButtons.find(b => b.label === event.label)?.emoji ?? '✨' }}
                 </span>
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-1.5">
@@ -706,6 +793,37 @@ const pendingBonusHint = computed(() => {
       </div>
     </Teleport>
 
+    <!-- Spinner Wheel：老師主動觸發（無偏置） -->
+    <SpinnerWheel
+      v-if="showSpinner"
+      :config="store.spinnerConfig"
+      @close="showSpinner = false"
+      @result="() => {}"
+    />
+
+    <!-- Spinner Wheel：隨機掉落（帶平衡權重與目標小組） -->
+    <SpinnerWheel
+      v-if="showDropSpinner && pendingDropOffer"
+      :config="store.spinnerConfig"
+      :override-weights="pendingDropOffer.weights"
+      :target-group="{
+        id: pendingDropOffer.targetGroup.id,
+        name: pendingDropOffer.targetGroup.name,
+        avatar: ANIMAL_CONFIG[pendingDropOffer.targetGroup.animal].avatar,
+        color: ANIMAL_CONFIG[pendingDropOffer.targetGroup.animal].color,
+        mode: pendingDropOffer.mode,
+      }"
+      :title="pendingDropOffer.mode === 'help' ? '🎯 救援轉盤' : '⚔️ 命運挑戰'"
+      :subtitle="pendingDropOffer.mode === 'help'
+        ? '為落後的小組帶來逆轉的機會！'
+        : '領先的小組要接受命運的挑戰！'"
+      @result="handleDropSpinResult"
+      @close="closeDropSpinner"
+    />
+
+    <!-- Deduction Effect -->
+    <DeductionEffect :active="showDeduction" />
+
     <!-- Toast：計分時顯示對應類別鼓勵語約 5 秒，提示學生 -->
     <Teleport to="body">
       <TransitionGroup name="toast" tag="div" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 max-w-[90vw]">
@@ -780,5 +898,45 @@ const pendingBonusHint = computed(() => {
 }
 .slide-up-move {
   transition: transform 0.3s ease;
+}
+
+/* 隨機掉落橫幅動畫 */
+.drop-banner {
+  position: relative;
+  overflow: hidden;
+}
+.drop-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.25) 50%, transparent 70%);
+  animation: dropShine 2.6s linear infinite;
+  pointer-events: none;
+}
+@keyframes dropShine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.drop-icon {
+  display: inline-block;
+  animation: dropSpin 2.4s linear infinite;
+}
+@keyframes dropSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.drop-banner-enter-active,
+.drop-banner-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.drop-banner-enter-from {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.97);
+}
+.drop-banner-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.97);
 }
 </style>

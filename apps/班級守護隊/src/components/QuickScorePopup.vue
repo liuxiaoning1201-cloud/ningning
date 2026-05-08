@@ -41,14 +41,14 @@ const popupStyle = computed(() => {
     return {
       top: '50%',
       left: '50%',
-      marginTop: '-200px',
-      marginLeft: '-170px',
+      marginTop: '-250px',
+      marginLeft: '-240px',
     }
   }
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const popupWidth = 340
-  const popupHeight = 400
+  const popupWidth = 480
+  const popupHeight = 500
   let left = rect.x + rect.width + 12
   if (left + popupWidth > vw - 12) {
     left = rect.x - popupWidth - 12
@@ -96,7 +96,7 @@ const subtitle = computed(() => {
       @click="handleBackdropClick"
     />
     <div
-      class="quick-popup fixed z-50 bg-white rounded-2xl shadow-2xl border-2 p-4 w-[340px] max-h-[90vh] overflow-y-auto"
+      class="quick-popup fixed z-50 bg-white rounded-2xl shadow-2xl border-2 p-5 w-[480px] max-h-[90vh] overflow-y-auto"
       :style="[popupStyle, { borderColor: ANIMAL_CONFIG[animal].color }]"
       @click.stop
     >
@@ -104,7 +104,7 @@ const subtitle = computed(() => {
       <div class="flex items-center justify-between mb-3">
         <div class="flex items-center gap-2">
           <span
-            class="w-9 h-9 rounded-full flex items-center justify-center text-lg"
+            class="w-11 h-11 rounded-full flex items-center justify-center text-xl"
             :style="{ backgroundColor: ANIMAL_CONFIG[animal].color, color: 'white' }"
           >
             <template v-if="student">{{ student.seatNumber }}</template>
@@ -116,8 +116,8 @@ const subtitle = computed(() => {
             />
           </span>
           <div>
-            <p class="text-xs text-stone-400 leading-none">快速計分</p>
-            <p class="text-sm font-bold text-stone-700 mt-0.5">{{ subtitle }}</p>
+            <p class="text-sm text-stone-400 leading-none">快速計分</p>
+            <p class="text-base font-bold text-stone-700 mt-0.5">{{ subtitle }}</p>
           </div>
         </div>
         <button
@@ -155,22 +155,22 @@ const subtitle = computed(() => {
       </div>
 
       <!-- Buttons grid -->
-      <div class="grid grid-cols-2 gap-2">
+      <div class="grid grid-cols-3 gap-2.5">
         <button
           v-for="btn in filteredButtons"
           :key="btn.id"
           @click="handleSelect(btn)"
-          class="compact-btn relative flex flex-col items-center gap-0.5 rounded-xl px-2 py-2.5 border-2 cursor-pointer active:scale-95 transition-all hover:-translate-y-0.5 hover:shadow-md"
+          class="compact-btn relative flex flex-col items-center gap-1 rounded-xl px-2 py-3 border-2 cursor-pointer active:scale-95 transition-all hover:-translate-y-0.5 hover:shadow-md"
           :style="{
             backgroundColor: CATEGORY_COLORS[btn.category].bg,
             borderColor: CATEGORY_COLORS[btn.category].border,
             color: CATEGORY_COLORS[btn.category].text,
           }"
         >
-          <span class="text-xl leading-none">{{ btn.emoji }}</span>
-          <span class="text-[11px] font-bold leading-tight text-center">{{ btn.label }}</span>
+          <span class="text-2xl leading-none">{{ btn.emoji }}</span>
+          <span class="text-sm font-bold leading-tight text-center">{{ btn.label }}</span>
           <span
-            class="text-[10px] font-bold px-1.5 rounded-full mt-0.5"
+            class="text-xs font-bold px-2 py-0.5 rounded-full mt-0.5"
             :style="{
               backgroundColor: btn.points < 0 ? '#FEE2E2' : 'white',
               color: btn.points < 0 ? '#B91C1C' : CATEGORY_COLORS[btn.category].text,
@@ -180,7 +180,7 @@ const subtitle = computed(() => {
           </span>
           <span
             v-if="btn.targetType === 'group'"
-            class="absolute top-1 right-1 text-[8px] font-bold px-1 rounded bg-purple-100 text-purple-700"
+            class="absolute top-1 right-1 text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700"
           >組</span>
         </button>
       </div>

@@ -3,6 +3,27 @@ import type { LangRead } from './word';
 export type GameMode = 'timed' | 'count' | 'survival' | 'free';
 export type DisplayMode = 'hanzi_pinyin' | 'hanzi_only' | 'pinyin_only';
 export type VoicePolicy = LangRead | 'per_entry';
+/** 互動方式：捏爆（攝影機手勢）／點擊（滑鼠或觸控） */
+export type InputMode = 'pinch' | 'click';
+
+export const STORAGE_KEY_INPUT_MODE = 'fruit-cn-input-mode-v1';
+
+export function readInputMode(): InputMode {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY_INPUT_MODE);
+    return v === 'click' ? 'click' : 'pinch';
+  } catch {
+    return 'pinch';
+  }
+}
+
+export function writeInputMode(mode: InputMode) {
+  try {
+    localStorage.setItem(STORAGE_KEY_INPUT_MODE, mode);
+  } catch {
+    /* ignore */
+  }
+}
 
 export interface Level {
   id: string;

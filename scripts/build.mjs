@@ -104,4 +104,19 @@ buildVueApp('手勢切水果學中文', {
   },
 });
 
+// 粵語學習網頁 — 掛在 /yueyu/ 子路徑
+buildVueApp('yueyu-learn/web', {
+  outDir: 'yueyu',
+  env: { VITE_BASE_PATH: '/yueyu/' },
+});
+
+// 字字珠璣 中文連字棋 — 掛在 /zizi/ 子路徑
+buildVueApp('字字珠璣', {
+  outDir: 'zizi',
+  env: {
+    VITE_BASE_PATH: '/zizi/',
+    VITE_ZIZI_API: 'https://zizi-zhuji.liuxiaoning1201.workers.dev',
+  },
+});
+
 console.log('Done. Output:', OUT);

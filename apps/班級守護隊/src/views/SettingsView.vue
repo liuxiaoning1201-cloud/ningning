@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useClassStore } from '../stores/classStore'
-import { ANIMAL_CONFIG } from '../types'
-import type { Student } from '../types'
+import { ANIMAL_CONFIG, CATEGORY_LABELS, CATEGORY_EMOJIS, CATEGORY_COLORS, SPINNER_CATEGORY_CONFIG } from '../types'
+import type { Student, ScoreButton, ScoreCategory, SpinnerItem, SpinnerCategory } from '../types'
 import RewardPoolEditor from '../components/RewardPoolEditor.vue'
 
 const store = useClassStore()
@@ -128,6 +128,107 @@ function handleResetAll() {
 const sortedStudents = computed(() =>
   [...store.students].sort((a, b) => a.seatNumber - b.seatNumber)
 )
+
+// ===== Score Button Management =====
+const scoreBtnFilter = ref<ScoreCategory | 'all'>('all')
+const filteredScoreButtons = computed(() => {
+  const btns = store.scoreButtons
+  if (scoreBtnFilter.value === 'all') return btns
+  return btns.filter(b => b.category === scoreBtnFilter.value)
+})
+
+interface EditingScoreBtn {
+  id?: string
+  label: string
+  emoji: string
+  points: number
+  category: ScoreCategory
+  targetType: 'student' | 'group'
+}
+
+const editingScoreBtn = ref<EditingScoreBtn | null>(null)
+
+function openNewScoreBtn() {
+  editingScoreBtn.value = { label: '', emoji: '⭐', points: 1, category: 'learning', targetType: 'student' }
+}
+
+function openEditScoreBtn(btn: ScoreButton) {
+  editingScoreBtn.value = { id: btn.id, label: btn.label, emoji: btn.emoji, points: btn.points, category: btn.category, targetType: btn.targetType }
+}
+
+function saveScoreBtn() {
+  const e = editingScoreBtn.value
+  if (!e || !e.label.trim()) return
+  if (e.id) {
+    store.updateScoreButton(e.id, { label: e.label.trim(), emoji: e.emoji, points: e.points, category: e.category, targetType: e.targetType })
+  } else {
+    store.addScoreButton({ label: e.label.trim(), emoji: e.emoji, points: e.points, category: e.category, targetType: e.targetType })
+  }
+  editingScoreBtn.value = null
+}
+
+function deleteScoreBtn(id: string) {
+  if (window.confirm('確定刪除此計分按鈕？')) store.removeScoreButton(id)
+}
+
+// ===== Spinner Management =====
+const spinnerTab = ref<SpinnerCategory | 'weights'>('weights')
+const spinnerWeights = ref({ ...store.spinnerConfig.weights })
+
+function saveSpinnerWeights() {
+  store.updateSpinnerWeights(spinnerWeights.value)
+}
+
+const filteredSpinnerItems = computed(() => {
+  if (spinnerTab.value === 'weights') return []
+  return store.spinnerConfig.items.filter(i => i.category === spinnerTab.value)
+})
+
+interface EditingSpinnerItem {
+  id?: string
+  label: string
+  emoji: string
+  description: string
+  category: SpinnerCategory
+}
+
+const editingSpinnerItem = ref<EditingSpinnerItem | null>(null)
+
+function openNewSpinnerItem() {
+  const cat = spinnerTab.value === 'weights' ? 'reward' : spinnerTab.value
+  editingSpinnerItem.value = { label: '', emoji: '🎁', description: '', category: cat }
+}
+
+function openEditSpinnerItem(item: SpinnerItem) {
+  editingSpinnerItem.value = { id: item.id, label: item.label, emoji: item.emoji, description: item.description, category: item.category }
+}
+
+function saveSpinnerItem() {
+  const e = editingSpinnerItem.value
+  if (!e || !e.label.trim()) return
+  if (e.id) {
+    store.updateSpinnerItem(e.id, { label: e.label.trim(), emoji: e.emoji, description: e.description.trim(), category: e.category })
+  } else {
+    store.addSpinnerItem({ label: e.label.trim(), emoji: e.emoji, description: e.description.trim(), category: e.category })
+  }
+  editingSpinnerItem.value = null
+}
+
+function deleteSpinnerItem(id: string) {
+  if (window.confirm('確定刪除此轉盤項目？')) store.removeSpinnerItem(id)
+}
+
+function resetSpinner() {
+  if (window.confirm('還原為預設轉盤設定？您的自訂項目將被覆蓋。')) {
+    store.resetSpinnerConfig()
+    spinnerWeights.value = { ...store.spinnerConfig.weights }
+  }
+}
+
+const totalSpinnerWeight = computed(() => spinnerWeights.value.reward + spinnerWeights.value.punishment + spinnerWeights.value.reversal)
+function weightPercent(w: number) {
+  return totalSpinnerWeight.value > 0 ? Math.round((w / totalSpinnerWeight.value) * 100) : 0
+}
 </script>
 
 <template>
@@ -380,8 +481,267 @@ const sortedStudents = computed(() =>
       </div>
     </section>
 
+    <!-- 計分按鈕管理 -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-stone-100">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h2 class="text-lg font-semibold text-stone-700 flex items-center gap-2">
+          <span>✏️</span> 計分按鈕管理
+        </h2>
+        <div class="flex gap-2">
+          <button
+            @click="store.resetScoreButtons()"
+            class="px-4 py-2 bg-stone-100 text-stone-600 rounded-lg text-sm hover:bg-stone-200 transition-colors cursor-pointer"
+          >
+            還原預設
+          </button>
+          <button
+            @click="openNewScoreBtn"
+            class="px-4 py-2 bg-violet-500 text-white rounded-lg text-sm font-medium hover:bg-violet-600 transition-colors cursor-pointer"
+          >
+            ＋ 新增按鈕
+          </button>
+        </div>
+      </div>
+
+      <div class="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+        <button
+          @click="scoreBtnFilter = 'all'"
+          class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer border"
+          :class="scoreBtnFilter === 'all' ? 'bg-stone-700 text-white border-stone-700' : 'bg-stone-50 text-stone-500 border-stone-200 hover:bg-stone-100'"
+        >
+          全部
+        </button>
+        <button
+          v-for="(label, key) in CATEGORY_LABELS"
+          :key="key"
+          @click="scoreBtnFilter = key"
+          class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer border flex items-center gap-1"
+          :style="scoreBtnFilter === key
+            ? { backgroundColor: CATEGORY_COLORS[key].bar, color: 'white', borderColor: CATEGORY_COLORS[key].bar }
+            : { backgroundColor: CATEGORY_COLORS[key].bg, color: CATEGORY_COLORS[key].text, borderColor: CATEGORY_COLORS[key].border }"
+        >
+          {{ CATEGORY_EMOJIS[key] }} {{ label }}
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+        <div
+          v-for="btn in filteredScoreButtons"
+          :key="btn.id"
+          class="flex items-center gap-2 p-3 rounded-xl border-2 group relative"
+          :style="{ backgroundColor: CATEGORY_COLORS[btn.category].bg, borderColor: CATEGORY_COLORS[btn.category].border }"
+        >
+          <span class="text-xl">{{ btn.emoji }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold truncate" :style="{ color: CATEGORY_COLORS[btn.category].text }">{{ btn.label }}</p>
+            <p class="text-[10px]" :style="{ color: CATEGORY_COLORS[btn.category].text }">
+              {{ btn.points > 0 ? '+' : '' }}{{ btn.points }} · {{ btn.targetType === 'group' ? '小組' : '個人' }}
+            </p>
+          </div>
+          <div class="flex gap-1 opacity-60 group-hover:opacity-100 transition-opacity shrink-0">
+            <button @click="openEditScoreBtn(btn)" class="text-xs text-violet-600 hover:bg-violet-50 px-1.5 py-1 rounded cursor-pointer">編輯</button>
+            <button @click="deleteScoreBtn(btn.id)" class="text-xs text-red-500 hover:bg-red-50 px-1.5 py-1 rounded cursor-pointer">刪</button>
+          </div>
+        </div>
+      </div>
+      <p v-if="filteredScoreButtons.length === 0" class="text-center text-stone-400 py-6 text-sm">此類別尚無按鈕</p>
+    </section>
+
+    <!-- Score Button Edit Modal -->
+    <Teleport to="body">
+      <div
+        v-if="editingScoreBtn"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+        @click.self="editingScoreBtn = null"
+      >
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+          <h3 class="text-lg font-semibold text-stone-700 mb-4">{{ editingScoreBtn.id ? '編輯按鈕' : '新增按鈕' }}</h3>
+          <div class="space-y-3">
+            <div class="grid grid-cols-4 gap-3">
+              <div>
+                <label class="block text-xs text-stone-500 mb-1">圖示</label>
+                <input v-model="editingScoreBtn.emoji" type="text" maxlength="4" class="w-full px-2 py-2 border border-stone-200 rounded-lg text-xl text-center focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              </div>
+              <div class="col-span-3">
+                <label class="block text-xs text-stone-500 mb-1">名稱</label>
+                <input v-model="editingScoreBtn.label" type="text" class="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="例：主動發言" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-stone-500 mb-1">分數</label>
+                <input v-model.number="editingScoreBtn.points" type="number" class="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              </div>
+              <div>
+                <label class="block text-xs text-stone-500 mb-1">對象</label>
+                <select v-model="editingScoreBtn.targetType" class="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-300">
+                  <option value="student">個人</option>
+                  <option value="group">小組</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-stone-500 mb-1">類別</label>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="(label, key) in CATEGORY_LABELS"
+                  :key="key"
+                  @click="editingScoreBtn.category = key"
+                  class="text-xs font-bold px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all"
+                  :style="editingScoreBtn.category === key
+                    ? { backgroundColor: CATEGORY_COLORS[key].bar, color: 'white', borderColor: CATEGORY_COLORS[key].bar }
+                    : { backgroundColor: CATEGORY_COLORS[key].bg, color: CATEGORY_COLORS[key].text, borderColor: CATEGORY_COLORS[key].border }"
+                >
+                  {{ CATEGORY_EMOJIS[key] }} {{ label }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button @click="editingScoreBtn = null" class="px-4 py-2 text-sm text-stone-500 hover:bg-stone-50 rounded-xl cursor-pointer">取消</button>
+            <button @click="saveScoreBtn" :disabled="!editingScoreBtn.label.trim()" class="px-5 py-2 bg-violet-500 text-white rounded-xl text-sm font-bold hover:bg-violet-600 disabled:opacity-40 cursor-pointer">儲存</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- 獎勵卡池 -->
     <RewardPoolEditor />
+
+    <!-- 命運轉盤設定 -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-stone-100">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h2 class="text-lg font-semibold text-stone-700 flex items-center gap-2">
+          <span>🎡</span> 命運轉盤設定
+        </h2>
+        <div class="flex gap-2">
+          <button @click="resetSpinner" class="px-4 py-2 bg-stone-100 text-stone-600 rounded-lg text-sm hover:bg-stone-200 transition-colors cursor-pointer">還原預設</button>
+          <button v-if="spinnerTab !== 'weights'" @click="openNewSpinnerItem" class="px-4 py-2 bg-violet-500 text-white rounded-lg text-sm font-medium hover:bg-violet-600 transition-colors cursor-pointer">＋ 新增項目</button>
+        </div>
+      </div>
+
+      <p class="text-xs text-stone-500 mb-4">下課結算時，抽卡結束後會出現命運轉盤。轉盤分為獎勵、挑戰（知識複習）、反轉三種類型。</p>
+
+      <div class="flex gap-1.5 mb-5 overflow-x-auto pb-1">
+        <button
+          @click="spinnerTab = 'weights'"
+          class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer border"
+          :class="spinnerTab === 'weights' ? 'bg-stone-700 text-white border-stone-700' : 'bg-stone-50 text-stone-500 border-stone-200'"
+        >
+          ⚖️ 佔比設定
+        </button>
+        <button
+          v-for="(cfg, key) in SPINNER_CATEGORY_CONFIG"
+          :key="key"
+          @click="spinnerTab = key"
+          class="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer border flex items-center gap-1"
+          :style="spinnerTab === key
+            ? { backgroundColor: cfg.color, color: 'white', borderColor: cfg.color }
+            : { backgroundColor: cfg.lightColor, color: cfg.color, borderColor: cfg.color + '40' }"
+        >
+          {{ cfg.emoji }} {{ cfg.label }}（{{ store.spinnerConfig.items.filter(i => i.category === key).length }}）
+        </button>
+      </div>
+
+      <!-- Weights tab -->
+      <div v-if="spinnerTab === 'weights'" class="space-y-4">
+        <div v-for="(cfg, key) in SPINNER_CATEGORY_CONFIG" :key="key" class="flex items-center gap-4">
+          <span class="w-20 text-sm font-bold flex items-center gap-1" :style="{ color: cfg.color }">
+            {{ cfg.emoji }} {{ cfg.label }}
+          </span>
+          <input
+            v-model.number="spinnerWeights[key]"
+            type="range"
+            min="0"
+            max="100"
+            class="flex-1 h-2 rounded-full appearance-none cursor-pointer"
+            :style="{ accentColor: cfg.color }"
+            @change="saveSpinnerWeights"
+          />
+          <span class="w-12 text-right text-sm font-bold" :style="{ color: cfg.color }">
+            {{ weightPercent(spinnerWeights[key]) }}%
+          </span>
+        </div>
+        <div class="flex gap-3 mt-2">
+          <div
+            v-for="(cfg, key) in SPINNER_CATEGORY_CONFIG"
+            :key="key"
+            class="h-3 rounded-full transition-all duration-300"
+            :style="{ width: weightPercent(spinnerWeights[key]) + '%', backgroundColor: cfg.color }"
+          />
+        </div>
+      </div>
+
+      <!-- Items list -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div
+          v-for="item in filteredSpinnerItems"
+          :key="item.id"
+          class="flex items-center gap-3 p-3 rounded-xl border-2 group"
+          :style="{ backgroundColor: SPINNER_CATEGORY_CONFIG[item.category].lightColor, borderColor: SPINNER_CATEGORY_CONFIG[item.category].color + '40' }"
+        >
+          <span class="text-2xl">{{ item.emoji }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-stone-700 truncate">{{ item.label }}</p>
+            <p class="text-xs text-stone-500 truncate">{{ item.description }}</p>
+          </div>
+          <div class="flex gap-1 opacity-60 group-hover:opacity-100 transition-opacity shrink-0">
+            <button @click="openEditSpinnerItem(item)" class="text-xs text-violet-600 hover:bg-violet-50 px-1.5 py-1 rounded cursor-pointer">編輯</button>
+            <button @click="deleteSpinnerItem(item.id)" class="text-xs text-red-500 hover:bg-red-50 px-1.5 py-1 rounded cursor-pointer">刪</button>
+          </div>
+        </div>
+        <p v-if="filteredSpinnerItems.length === 0" class="text-center text-stone-400 py-6 text-sm col-span-full">此類別尚無項目</p>
+      </div>
+    </section>
+
+    <!-- Spinner Item Edit Modal -->
+    <Teleport to="body">
+      <div
+        v-if="editingSpinnerItem"
+        class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+        @click.self="editingSpinnerItem = null"
+      >
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+          <h3 class="text-lg font-semibold text-stone-700 mb-4">{{ editingSpinnerItem.id ? '編輯轉盤項目' : '新增轉盤項目' }}</h3>
+          <div class="space-y-3">
+            <div class="grid grid-cols-4 gap-3">
+              <div>
+                <label class="block text-xs text-stone-500 mb-1">圖示</label>
+                <input v-model="editingSpinnerItem.emoji" type="text" maxlength="4" class="w-full px-2 py-2 border border-stone-200 rounded-lg text-xl text-center focus:outline-none focus:ring-2 focus:ring-violet-300" />
+              </div>
+              <div class="col-span-3">
+                <label class="block text-xs text-stone-500 mb-1">名稱</label>
+                <input v-model="editingSpinnerItem.label" type="text" class="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-300" placeholder="例：背誦挑戰" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-stone-500 mb-1">說明</label>
+              <textarea v-model="editingSpinnerItem.description" rows="2" class="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-300 resize-none" placeholder="簡短描述" />
+            </div>
+            <div>
+              <label class="block text-xs text-stone-500 mb-1">類別</label>
+              <div class="flex gap-2">
+                <button
+                  v-for="(cfg, key) in SPINNER_CATEGORY_CONFIG"
+                  :key="key"
+                  @click="editingSpinnerItem.category = key"
+                  class="flex-1 text-xs font-bold py-2 rounded-lg border-2 cursor-pointer transition-all"
+                  :style="editingSpinnerItem.category === key
+                    ? { backgroundColor: cfg.color, color: 'white', borderColor: cfg.color }
+                    : { backgroundColor: cfg.lightColor, color: cfg.color, borderColor: cfg.color + '40' }"
+                >
+                  {{ cfg.emoji }} {{ cfg.label }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button @click="editingSpinnerItem = null" class="px-4 py-2 text-sm text-stone-500 hover:bg-stone-50 rounded-xl cursor-pointer">取消</button>
+            <button @click="saveSpinnerItem" :disabled="!editingSpinnerItem.label.trim()" class="px-5 py-2 bg-violet-500 text-white rounded-xl text-sm font-bold hover:bg-violet-600 disabled:opacity-40 cursor-pointer">儲存</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- 資料管理 -->
     <section class="bg-white rounded-2xl p-6 shadow-sm border border-stone-100">

@@ -72,10 +72,12 @@
       </div>
 
       <!-- 按鈕 -->
-      <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.75rem">
+      <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.75rem; flex-wrap: wrap">
         <button type="button" class="btn btn-primary" @click="checkAnswer">
           對答案
         </button>
+        <button type="button" class="btn btn-secondary" title="列印空白版（可在紙上書寫）" @click="onPrint('solve')">🖨 列印空白</button>
+        <button type="button" class="btn btn-secondary" title="列印解答版" @click="onPrint('answer')">🔑 列印解答</button>
         <span v-if="gameSession.showResult" class="muted">
           答對 {{ correctCount }} / {{ totalBlanks }} 格
           <span v-if="!allFilled">（尚有 {{ totalBlanks - filledCount }} 格未填）</span>
@@ -119,6 +121,7 @@ import { useRoute } from "vue-router";
 import { usePuzzleSetsStore } from "@/stores/puzzleSets";
 import { useGameSessionStore } from "@/stores/gameSession";
 import { computeCrosswordStats } from "@/lib/crosswordGenerator";
+import { printCrosswordPuzzle } from "@/lib/printCrossword";
 import type { CrosswordCell } from "@/lib/types";
 
 const route = useRoute();
@@ -172,10 +175,11 @@ const puzzleStats = computed(() => {
 const gridRows = computed(() => puzzle.value?.grid.length ?? 0);
 const gridCols = computed(() => puzzle.value?.grid[0]?.length ?? 0);
 
-// 動態計算 grid style：填滿畫布
+// 動態計算 grid style：每格固定尺寸（用 CSS var 統一控制），
+// 由 .grid-canvas 的 overflow:auto 在 grid 過大時提供滾動。
 const gridStyle = computed(() => ({
-  gridTemplateColumns: `repeat(${gridCols.value}, 1fr)`,
-  gridTemplateRows: `repeat(${gridRows.value}, 1fr)`,
+  gridTemplateColumns: `repeat(${gridCols.value}, var(--cell-size))`,
+  gridTemplateRows: `repeat(${gridRows.value}, var(--cell-size))`,
 }));
 
 // Cell indicator：橫向藍色大寫數字+→，豎向紅色小寫數字+↓；交叉格兩者都標
@@ -300,6 +304,13 @@ function resultText(clueId: string, _dir: "h" | "v"): string {
     .join("");
   if (userChars === correctChars) return " ✓";
   return ` （答案：${correctChars}）`;
+}
+
+function onPrint(mode: "solve" | "answer") {
+  const p = puzzle.value;
+  const s = set.value;
+  if (!p || !s) return;
+  printCrosswordPuzzle(p, { title: s.title, mode });
 }
 
 function checkAnswer() {
@@ -503,37 +514,44 @@ onUnmounted(() => { inputRefs.value.clear(); stopTimer(); });
   font-variant-numeric: tabular-nums;
 }
 
-/* 畫布：格子適應填滿 */
+/* 畫布：固定最小格子尺寸，grid 較大時可滾動 */
 .grid-canvas {
-  width: 100%;
-  max-width: min(92vw, 82vh);
+  --cell-size: clamp(2rem, 5.5vmin, 3rem);
+  max-width: 100%;
+  max-height: 70vh;
   margin: 0.5rem auto 0;
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  padding: 4px;
+  padding: 6px;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: auto;
   background: #f8f4ee;
+  /* 即使內容窄也要有最小寬度感（避免被父層擠成 0） */
+  min-height: 6rem;
 }
 
 .crossword-grid {
   display: grid;
   gap: 1px;
-  width: 100%;
+  width: max-content;
+  margin: 0 auto;
+  outline: none;
 }
 
 .cell {
   position: relative;
+  width: var(--cell-size);
+  height: var(--cell-size);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   font-weight: 800;
   border-radius: 2px;
   border: 1px solid var(--border);
   overflow: hidden;
-  font-size: clamp(0.7rem, 2.2vmin, 1.3rem);
+  /* 字體跟隨格子大小縮放，最小確保可讀 */
+  font-size: calc(var(--cell-size) * 0.55);
   line-height: 1;
-  padding-bottom: 1px;
 }
 
 .cell.block {
@@ -567,7 +585,7 @@ onUnmounted(() => { inputRefs.value.clear(); stopTimer(); });
   z-index: 2;
 }
 .cell-indicator {
-  font-size: clamp(0.28rem, 0.7vmin, 0.42rem);
+  font-size: calc(var(--cell-size) * 0.22);
   font-weight: 600;
   white-space: nowrap;
   opacity: 0.85;

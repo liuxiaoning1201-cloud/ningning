@@ -1,0 +1,29 @@
+{
+  "name": "@yueyu/mobile",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Capacitor wrapper that packs the yueyu-learn web app into iOS / Android APPs",
+  "scripts": {
+    "sync:web": "node ./scripts/copy-web.mjs",
+    "sync": "npm run sync:web && cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "add:ios": "cap add ios",
+    "add:android": "cap add android",
+    "ios:run": "cap run ios",
+    "android:run": "cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/camera": "^6.0.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/filesystem": "^6.0.1",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/share": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

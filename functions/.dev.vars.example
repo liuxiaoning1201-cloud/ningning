@@ -1,0 +1,22 @@
+# 本地開發環境變數模板 — 把此檔複製為 functions/.dev.vars 並填入真實值
+# .dev.vars 已被 .gitignore 排除，絕不會被提交。
+#
+# 真實的密鑰請通過以下命令注入到生產環境（永遠不要寫進任何代碼或文檔）：
+#   npx wrangler pages secret put DEEPSEEK_API_KEY --project-name zykongjian
+#   npx wrangler pages secret put AZURE_TTS_KEY    --project-name zykongjian
+#   npx wrangler pages secret put AZURE_TTS_REGION --project-name zykongjian
+
+# ── 鑑權（已存在，沿用倉庫現有設置） ──
+JWT_SECRET=replace-with-strong-random-string
+
+# ── DeepSeek（粵語翻譯 LLM） ──
+DEEPSEEK_API_KEY=sk-replace-with-your-deepseek-key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+
+# ── Azure 認知服務 TTS（粵語朗讀） ──
+AZURE_TTS_KEY=replace-with-your-azure-key
+AZURE_TTS_REGION=southeastasia
+
+# ── Cloudflare Turnstile（人機驗證，可選） ──
+# TURNSTILE_SECRET=

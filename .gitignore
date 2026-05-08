@@ -1,10 +1,27 @@
 node_modules/
 dist/
 .wrangler/
-# wrangler pages download config 產生的檔案，勿提交
-wrangler.toml
+# wrangler pages download config 產生的檔案，勿提交（僅根目錄）
+/wrangler.toml
 .env
 *.env
 !*.env.example
+# 本地開發 secret — 嚴禁提交！
+.dev.vars
+**/.dev.vars
+!**/.dev.vars.example
+*.key
+*.pem
 .DS_Store
 *.tsbuildinfo
+
+# Capacitor 自動生成的原生工程目錄；保留 native/ 與 ios-share-extension/ 等手寫源碼
+apps/yueyu-learn/mobile/ios/
+apps/yueyu-learn/mobile/android/
+apps/yueyu-learn/mobile/www/
+apps/yueyu-learn/mobile/node_modules/
+apps/yueyu-learn/mobile/.gradle/
+apps/yueyu-learn/mobile/build/
+*.xcuserdata/
+*.xcodeproj/xcuserdata/
+local.properties

@@ -3,8 +3,17 @@
  * 每個水果在 r=半徑的本地座標下繪製（中心 0,0）。
  */
 
-export type FruitKind = 'apple' | 'pear' | 'orange' | 'grape' | 'watermelon' | 'strawberry';
+export type FruitKind =
+  | 'apple'
+  | 'pear'
+  | 'orange'
+  | 'grape'
+  | 'watermelon'
+  | 'strawberry'
+  | 'bomb'
+  | 'rock';
 
+/** 一般可命中的水果（用於詞語映射） */
 export const FRUIT_KINDS: FruitKind[] = ['apple', 'pear', 'orange', 'grape', 'watermelon', 'strawberry'];
 
 const ACCENT: Record<FruitKind, { main: string; soft: string }> = {
@@ -14,9 +23,11 @@ const ACCENT: Record<FruitKind, { main: string; soft: string }> = {
   grape: { main: '#7b3fb6', soft: '#c89bf0' },
   watermelon: { main: '#21b25c', soft: '#ff5e7d' },
   strawberry: { main: '#e8254e', soft: '#ffb3c0' },
+  bomb: { main: '#1f1f24', soft: '#ff5566' },
+  rock: { main: '#6b5d4e', soft: '#a89888' },
 };
 
-/** 詞語 → 水果，種類確定（同詞同果） */
+/** 詞語 → 水果，種類確定（同詞同果，僅限可吃水果） */
 export function fruitForWord(word: string): FruitKind {
   let h = 0;
   for (let i = 0; i < word.length; i++) h = (h * 31 + word.charCodeAt(i)) >>> 0;
@@ -205,13 +216,99 @@ function drawStrawberry(ctx: CanvasRenderingContext2D, r: number) {
   }
 }
 
-const PAINTERS: Record<FruitKind, (ctx: CanvasRenderingContext2D, r: number) => void> = {
+function drawBomb(ctx: CanvasRenderingContext2D, r: number, t = 0) {
+  const grad = ctx.createRadialGradient(-r * 0.35, -r * 0.35, r * 0.1, 0, 0, r);
+  grad.addColorStop(0, '#52525c');
+  grad.addColorStop(0.5, '#23232a');
+  grad.addColorStop(1, '#0a0a0e');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.35, -r * 0.35, r * 0.22, r * 0.1, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#7a4a25';
+  ctx.lineWidth = Math.max(2, r * 0.08);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(r * 0.05, -r * 0.85);
+  ctx.quadraticCurveTo(r * 0.45, -r * 1.15, r * 0.65, -r * 0.85);
+  ctx.stroke();
+
+  const flicker = 0.55 + 0.45 * Math.abs(Math.sin(t * 0.012));
+  ctx.shadowColor = `rgba(255, 180, 60, ${flicker})`;
+  ctx.shadowBlur = r * (0.4 + flicker * 0.5);
+  ctx.fillStyle = '#fff7c0';
+  ctx.beginPath();
+  ctx.arc(r * 0.65, -r * 0.85, r * (0.13 + flicker * 0.06), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#ff8a1f';
+  for (let i = 0; i < 5; i++) {
+    const ang = (i / 5) * Math.PI * 2 + t * 0.01;
+    const sp = r * (0.18 + 0.08 * Math.sin(t * 0.02 + i));
+    ctx.beginPath();
+    ctx.arc(r * 0.65 + Math.cos(ang) * sp, -r * 0.85 + Math.sin(ang) * sp, r * 0.04, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawRock(ctx: CanvasRenderingContext2D, r: number) {
+  ctx.fillStyle = '#5d4f40';
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.85, r * 0.1);
+  ctx.lineTo(-r * 0.55, -r * 0.7);
+  ctx.lineTo(-r * 0.05, -r * 0.85);
+  ctx.lineTo(r * 0.55, -r * 0.55);
+  ctx.lineTo(r * 0.9, r * 0.05);
+  ctx.lineTo(r * 0.6, r * 0.75);
+  ctx.lineTo(-r * 0.1, r * 0.85);
+  ctx.lineTo(-r * 0.7, r * 0.6);
+  ctx.closePath();
+  ctx.fill();
+
+  const grad = ctx.createLinearGradient(-r * 0.6, -r * 0.6, r * 0.6, r * 0.6);
+  grad.addColorStop(0, 'rgba(180,160,140,0.55)');
+  grad.addColorStop(0.5, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.4)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.85, r * 0.1);
+  ctx.lineTo(-r * 0.55, -r * 0.7);
+  ctx.lineTo(-r * 0.05, -r * 0.85);
+  ctx.lineTo(r * 0.55, -r * 0.55);
+  ctx.lineTo(r * 0.9, r * 0.05);
+  ctx.lineTo(r * 0.6, r * 0.75);
+  ctx.lineTo(-r * 0.1, r * 0.85);
+  ctx.lineTo(-r * 0.7, r * 0.6);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(20,12,5,0.55)';
+  ctx.lineWidth = Math.max(1.2, r * 0.04);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.45, -r * 0.2);
+  ctx.lineTo(-r * 0.05, r * 0.3);
+  ctx.moveTo(r * 0.15, -r * 0.45);
+  ctx.lineTo(r * 0.5, r * 0.1);
+  ctx.stroke();
+}
+
+const PAINTERS: Record<FruitKind, (ctx: CanvasRenderingContext2D, r: number, t?: number) => void> = {
   apple: drawApple,
   pear: drawPear,
   orange: drawOrange,
   grape: drawGrape,
   watermelon: drawWatermelon,
   strawberry: drawStrawberry,
+  bomb: drawBomb,
+  rock: drawRock,
 };
 
 export function drawFruit(
@@ -220,7 +317,8 @@ export function drawFruit(
   cx: number,
   cy: number,
   r: number,
-  bobAngle = 0
+  bobAngle = 0,
+  t = 0
 ) {
   ctx.save();
   ctx.translate(cx, cy);
@@ -228,6 +326,6 @@ export function drawFruit(
   ctx.shadowColor = 'rgba(0,0,0,0.35)';
   ctx.shadowBlur = r * 0.3;
   ctx.shadowOffsetY = r * 0.15;
-  PAINTERS[kind](ctx, r);
+  PAINTERS[kind](ctx, r, t);
   ctx.restore();
 }

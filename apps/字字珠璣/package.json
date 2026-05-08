@@ -1,0 +1,22 @@
+{
+  "name": "zizi-zhuji-web",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npx vite --host",
+    "build": "npx vue-tsc -b --force && npx vite build",
+    "preview": "npx vite preview --host"
+  },
+  "dependencies": {
+    "pinia": "^2.2.6",
+    "vue": "^3.5.13",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.1",
+    "vue-tsc": "^2.1.10"
+  }
+}

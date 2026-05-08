@@ -1,0 +1,17 @@
+{
+  "name": "@yueyu/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./types": "./types.ts",
+    "./api-client": "./api-client.ts",
+    "./srs": "./srs.ts",
+    "./vocab-store": "./vocab-store.ts",
+    "./sentence-split": "./sentence-split.ts",
+    "./offline-dict": "./offline-dict.json"
+  }
+}

@@ -2,11 +2,41 @@
   <div class="page">
     <nav class="nav-bar">
       <RouterLink to="/" class="btn btn-secondary">← 首頁</RouterLink>
-      <button v-if="crosswordSets.length > 0" type="button" class="btn btn-secondary" @click="showHistory = !showHistory">
+      <button v-if="crosswordSets.length > 0" type="button" class="btn btn-secondary" :class="{ active: showHistory }" @click="toggleHistory">
         📋 出題記錄 ({{ crosswordSets.length }})
       </button>
     </nav>
     <h1 class="page-title" style="font-family: var(--font-heading)">📝 練習模式</h1>
+
+    <!-- 出題記錄（移到上方，點開立即看見） -->
+    <div v-if="showHistory" ref="historyPanelRef" class="card history-card" style="margin-bottom: 1rem">
+      <div class="history-header">
+        <h2 style="font-size: 1rem">📋 出題記錄</h2>
+        <button type="button" class="btn btn-secondary btn-sm" @click="showHistory = false">收起</button>
+      </div>
+      <div v-if="crosswordSets.length === 0" class="empty-state">尚無記錄。</div>
+      <ul v-else class="history-list">
+        <li v-for="row in crosswordHistoryRows" :key="row.set.id" class="history-item">
+          <span class="history-info">
+            <strong>{{ row.set.title }}</strong>
+            <span v-if="row.stats" class="history-stats">
+              共 {{ row.stats.totalWords }} 題 ·
+              縱橫交錯 <b class="stat-cross">{{ row.stats.crossedWords }}</b> ·
+              孤立 <b :class="{ 'stat-bad': row.stats.isolatedWords > 0 }">{{ row.stats.isolatedWords }}</b> ·
+              交叉率 {{ Math.round(row.stats.crossRate * 100) }}%
+              <span class="history-grid">· {{ row.set.crossword?.grid.length }}×{{ row.set.crossword?.grid[0]?.length ?? 0 }} 格</span>
+            </span>
+          </span>
+          <span class="actions">
+            <RouterLink :to="`/play/crossword/${row.set.id}`" class="btn btn-primary btn-sm">▶ 練習</RouterLink>
+            <button v-if="row.set.crossword" type="button" class="btn btn-secondary btn-sm" title="列印空白版" @click="printPuzzle(row.set, 'solve')">🖨 空白</button>
+            <button v-if="row.set.crossword" type="button" class="btn btn-secondary btn-sm" title="列印解答版" @click="printPuzzle(row.set, 'answer')">🔑 解答</button>
+            <RouterLink :to="`/settings/puzzles/crossword/${row.set.id}`" class="btn btn-secondary btn-sm">✏️</RouterLink>
+            <button type="button" class="btn btn-danger btn-sm" title="刪除" @click="deleteSet(row.set)">🗑</button>
+          </span>
+        </li>
+      </ul>
+    </div>
 
     <div class="card" style="margin-bottom: 1rem">
       <h2 style="font-size: 1rem; margin-bottom: 0.5rem">🎲 出題</h2>
@@ -30,7 +60,7 @@
         </label>
         <label>
           用詞數量
-          <input v-model.number="autoWordCount" type="number" min="0" :max="selectedBankItemCount" placeholder="0=全部" style="width: 4rem; padding: 0.4rem; border: 1px solid var(--border); border-radius: var(--radius)" />
+          <input v-model.number="autoWordCount" type="number" min="0" :max="selectedBankItemCount" placeholder="建議 12-20" title="0=全部；詞越多 grid 越大，建議 12-20" style="width: 5rem; padding: 0.4rem; border: 1px solid var(--border); border-radius: var(--radius)" />
         </label>
         <label style="display: flex; align-items: center; gap: 0.35rem">
           <input v-model="excludeUsedItems" type="checkbox" />
@@ -76,36 +106,12 @@
       </div>
     </div>
 
-    <!-- History modal -->
-    <div v-if="showHistory" class="card" style="margin-bottom: 1rem">
-      <h2 style="font-size: 1rem; margin-bottom: 0.5rem">📋 出題記錄</h2>
-      <div v-if="crosswordSets.length === 0" class="empty-state">尚無記錄。</div>
-      <ul v-else class="history-list">
-        <li v-for="row in crosswordHistoryRows" :key="row.set.id" class="history-item">
-          <span class="history-info">
-            <strong>{{ row.set.title }}</strong>
-            <span v-if="row.stats" class="history-stats">
-              共 {{ row.stats.totalWords }} 題 ·
-              縱橫交錯 <b class="stat-cross">{{ row.stats.crossedWords }}</b> ·
-              孤立 <b :class="{ 'stat-bad': row.stats.isolatedWords > 0 }">{{ row.stats.isolatedWords }}</b> ·
-              交叉率 {{ Math.round(row.stats.crossRate * 100) }}%
-            </span>
-          </span>
-          <span class="actions">
-            <RouterLink :to="`/play/crossword/${row.set.id}`" class="btn btn-primary btn-sm">練習</RouterLink>
-            <RouterLink :to="`/settings/puzzles/crossword/${row.set.id}`" class="btn btn-secondary btn-sm">✏️ 編輯</RouterLink>
-            <button v-if="row.set.crossword" type="button" class="btn btn-secondary btn-sm" title="列印" @click="printPuzzle(row.set)">🖨️ 列印</button>
-            <button type="button" class="btn btn-danger btn-sm" title="刪除" @click="deleteSet(row.set)">🗑️</button>
-          </span>
-        </li>
-      </ul>
-    </div>
   </div>
 
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watchEffect } from "vue";
+import { computed, nextTick, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { usePuzzleSetsStore, generateId } from "@/stores/puzzleSets";
 import { useGameSessionStore } from "@/stores/gameSession";
@@ -115,6 +121,7 @@ import {
   analyzeConnectivity,
   computeCrosswordStats,
 } from "@/lib/crosswordGenerator";
+import { printCrosswordPuzzle } from "@/lib/printCrossword";
 import type { DifficultyTier, PuzzleSet, WordBankItem } from "@/lib/types";
 import { BUILTIN_CHENGYU_BANK_ID } from "@/data/defaultChengyuBank";
 
@@ -125,8 +132,18 @@ const wordBanks = useWordBanksStore();
 
 const autoBankId = ref("");
 const autoTier = ref<DifficultyTier>(1);
-const autoWordCount = ref(0);
+const autoWordCount = ref(15);
 const showHistory = ref(false);
+const historyPanelRef = ref<HTMLElement | null>(null);
+
+function toggleHistory() {
+  showHistory.value = !showHistory.value;
+  if (showHistory.value) {
+    nextTick(() => {
+      historyPanelRef.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+}
 const selectedItemIds = ref<Set<string>>(new Set());
 /** 排除已在出題記錄中使用過的詞句（不從詞庫刪除，僅本輪不選） */
 const excludeUsedItems = ref(false);
@@ -315,116 +332,10 @@ function deleteSet(set: PuzzleSet) {
   puzzleSets.removeSet(set.id);
 }
 
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
-function printPuzzle(set: PuzzleSet) {
+function printPuzzle(set: PuzzleSet, mode: "solve" | "answer" = "solve") {
   const c = set.crossword;
   if (!c?.grid) return;
-
-  const rows = c.grid.length;
-  const cols = c.grid[0]?.length ?? 0;
-
-  // Build per-cell indicator map (same logic as CrosswordPlay)
-  const indicators: Record<string, { hLabel?: string; vLabel?: string }> = {};
-  const hClueMap = new Map<string, string>();
-  const vClueMap = new Map<string, string>();
-  for (const cl of c.horizontalClues) hClueMap.set(cl.id, cl.label);
-  for (const cl of c.verticalClues) vClueMap.set(cl.id, cl.label);
-  for (const w of c.words) {
-    const key = `${w.startRow},${w.startCol}`;
-    const cur = indicators[key] ?? {};
-    if (w.direction === "horizontal") cur.hLabel = hClueMap.get(w.id) ?? cur.hLabel;
-    else cur.vLabel = vClueMap.get(w.id) ?? cur.vLabel;
-    indicators[key] = cur;
-  }
-
-  let cells = "";
-  for (let r = 0; r < rows; r++) {
-    for (let ci = 0; ci < cols; ci++) {
-      const cell = c.grid[r]?.[ci];
-      if (!cell) continue;
-      const ind = indicators[`${r},${ci}`];
-      let indHtml = "";
-      if (ind) {
-        indHtml = `<span class="ind">`;
-        if (ind.hLabel) indHtml += `<span class="ih">${esc(ind.hLabel)}→</span>`;
-        if (ind.vLabel) indHtml += `<span class="iv">${esc(ind.vLabel)}↓</span>`;
-        indHtml += `</span>`;
-      }
-      if (cell.type === "block") cells += `<span class="c cb"></span>`;
-      else if (cell.type === "given") cells += `<span class="c cg">${indHtml}<span class="cv">${esc(cell.value)}</span></span>`;
-      else cells += `<span class="c ce">${indHtml}</span>`;
-    }
-  }
-
-  let hClues = "";
-  for (const h of c.horizontalClues) hClues += `<li><b class="lh">${esc(h.label)}.</b> ${esc(h.clue)}</li>`;
-  let vClues = "";
-  for (const v of c.verticalClues) vClues += `<li><b class="lv">${esc(v.label)}.</b> ${esc(v.clue)}</li>`;
-
-  // 豎向格子(rows > cols*1.2)：提示在右側；方形格子：提示在下方
-  const isTall = rows > cols * 1.2;
-
-  const maxGridWidth = isTall ? 400 : 580;
-  const sz = Math.min(32, Math.floor(maxGridWidth / Math.max(cols, 1)));
-  const szPx = `${sz}px`;
-  const charFontPx = Math.max(10, sz - 12);
-  const indFontPx = Math.max(6, Math.floor(sz * 0.28));
-
-  const wrapCss = isTall
-    ? "display:flex;flex-direction:row;gap:14px;align-items:flex-start"
-    : "display:flex;flex-direction:column;gap:10px;align-items:center";
-  const cluesCss = isTall
-    ? "flex:1;font-size:11px;line-height:1.55"
-    : "width:100%;display:flex;gap:20px;font-size:11px;line-height:1.55";
-  const clueColCss = isTall ? "" : "flex:1";
-
-  const html = `<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><title>${esc(set.title)}</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;padding:0.8cm;background:#fff;color:#333}
-h1{font-size:18px;text-align:center;margin-bottom:3px;color:#333}
-.sub{text-align:center;color:#666;font-size:11px;margin-bottom:10px}
-.wrap{${wrapCss}}
-.grid{display:grid;gap:0;grid-template-columns:repeat(${cols},${szPx});grid-template-rows:repeat(${rows},${szPx});flex-shrink:0}
-.c{position:relative;width:${szPx};height:${szPx};display:flex;align-items:flex-end;justify-content:center;
-  font-weight:800;border:1.2px solid #888;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding-bottom:1px}
-.cb{background:#eae6df;border-color:#c5bfb3}
-.cg{background:#e8f4fd;border-color:#90c8f0}
-.ce{background:#fffbf2;border:1.5px dashed #e0a050}
-.cv{font-size:${charFontPx}px;color:#1a1a1a;z-index:1}
-.ind{position:absolute;top:0;left:1px;display:flex;gap:1px;line-height:1;font-size:${indFontPx}px;font-weight:600;z-index:2}
-.ih{color:#2563eb}
-.iv{color:#dc2626}
-.clues{${cluesCss}}
-.clue-col{${clueColCss}}
-.clues h3{font-size:12px;margin:0 0 3px;font-weight:700}
-.clues ul{padding-left:16px;margin:0 0 8px}
-.clues li{margin-bottom:1px}
-.lh{color:#1d4ed8;font-weight:700}
-.lv{color:#b91c1c;font-weight:700}
-@media print{
-  @page{size:A4;margin:0.6cm}
-  body{padding:0.5cm}
-}
-</style></head><body>
-<h1>${esc(set.title)}</h1>
-<p class="sub">難度 ${c.difficulty} 星 · ${esc(c.levelTitle)}</p>
-<div class="wrap">
-<div class="grid">${cells}</div>
-<div class="clues">
-<div class="clue-col"><h3 style="color:#1d4ed8">→ 橫向提示</h3><ul>${hClues}</ul></div>
-<div class="clue-col"><h3 style="color:#b91c1c">↓ 豎向提示</h3><ul>${vClues}</ul></div>
-</div></div></body></html>`;
-
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const w = window.open(url);
-  if (!w) { alert("無法開啟列印頁面，請允許彈出視窗後重試。"); URL.revokeObjectURL(url); return; }
-  w.addEventListener("afterprint", () => { w.close(); URL.revokeObjectURL(url); });
-  w.onload = () => { setTimeout(() => w.print(), 300); };
+  printCrosswordPuzzle(c, { title: set.title, mode });
 }
 </script>
 
@@ -475,4 +386,22 @@ h1{font-size:18px;text-align:center;margin-bottom:3px;color:#333}
 .history-stats { font-size: 0.78rem; color: var(--text-muted); }
 .history-stats .stat-cross { color: #059669; }
 .history-stats .stat-bad { color: #b91c1c; }
+.history-grid { color: #6b7280; }
+
+.history-card {
+  border: 2px solid var(--primary);
+  background: #fef9f5;
+  scroll-margin-top: 1rem;
+}
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.btn-secondary.active {
+  background: #dbeafe;
+  border-color: #60a5fa;
+  color: #1d4ed8;
+}
 </style>

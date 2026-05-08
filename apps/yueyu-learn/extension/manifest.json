@@ -1,0 +1,56 @@
+{
+  "manifest_version": 3,
+  "name": "粵語學習 — 邊睇劇邊學",
+  "short_name": "粵語學習",
+  "version": "0.1.0",
+  "description": "看 YouTube / 網頁粵語視頻時自動把書面語字幕還原成粵語口語對照，含粵拼與朗讀。",
+  "default_locale": "zh_TW",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "粵語學習"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://m.youtube.com/*",
+        "https://www.bilibili.com/*",
+        "https://m.bilibili.com/*",
+        "https://www.tvb.com/*",
+        "https://*.tvb.com/*",
+        "https://*.mytvsuper.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://zykongjian.com/*",
+    "https://www.zykongjian.com/*",
+    "http://localhost:8788/*",
+    "http://localhost:5173/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["overlay.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

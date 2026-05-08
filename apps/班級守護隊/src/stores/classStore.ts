@@ -2,9 +2,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type {
   ClassData, Student, Group, ScoreEvent, Badge, ScoreButton, ScoreCategory,
-  LessonSession, RewardCard, RewardDraw,
+  LessonSession, RewardCard, RewardDraw, SpinnerItem, SpinnerCategory, SpinnerConfig,
 } from '../types'
-import { DEFAULT_BADGES, DEFAULT_REWARD_POOL, RARITY_CONFIG } from '../types'
+import {
+  DEFAULT_BADGES, DEFAULT_REWARD_POOL, RARITY_CONFIG,
+  DEFAULT_SCORE_BUTTONS, DEFAULT_SPINNER_CONFIG,
+} from '../types'
 
 const STORAGE_KEY = 'class-guardian-data'
 
@@ -53,6 +56,11 @@ function createDefaultClassData(): ClassData {
     rewardDraws: [],
     rewardPool: DEFAULT_REWARD_POOL.map(c => ({ ...c })),
     pendingBonusPoints: {},
+    scoreButtons: DEFAULT_SCORE_BUTTONS.map(b => ({ ...b })),
+    spinnerConfig: {
+      items: DEFAULT_SPINNER_CONFIG.items.map(i => ({ ...i })),
+      weights: { ...DEFAULT_SPINNER_CONFIG.weights },
+    },
     createdAt: Date.now(),
   }
 }
@@ -68,6 +76,12 @@ function migrateClassData(raw: any): ClassData {
     rewardDraws: raw.rewardDraws ?? [],
     rewardPool: raw.rewardPool && raw.rewardPool.length > 0 ? raw.rewardPool : base.rewardPool,
     pendingBonusPoints: raw.pendingBonusPoints ?? {},
+    scoreButtons: raw.scoreButtons && raw.scoreButtons.length > 0
+      ? raw.scoreButtons
+      : DEFAULT_SCORE_BUTTONS.map(b => ({ ...b })),
+    spinnerConfig: raw.spinnerConfig?.items?.length > 0
+      ? raw.spinnerConfig
+      : { items: DEFAULT_SPINNER_CONFIG.items.map(i => ({ ...i })), weights: { ...DEFAULT_SPINNER_CONFIG.weights } },
   }
   return merged
 }
@@ -106,6 +120,16 @@ export const useClassStore = defineStore('classStore', () => {
   const lessons = computed(() => classData.value.lessons)
   const rewardDraws = computed(() => classData.value.rewardDraws)
   const rewardPool = computed(() => classData.value.rewardPool)
+  const scoreButtons = computed(() =>
+    classData.value.scoreButtons && classData.value.scoreButtons.length > 0
+      ? classData.value.scoreButtons
+      : DEFAULT_SCORE_BUTTONS,
+  )
+  const spinnerConfig = computed<SpinnerConfig>(() =>
+    classData.value.spinnerConfig?.items?.length
+      ? classData.value.spinnerConfig as SpinnerConfig
+      : { items: DEFAULT_SPINNER_CONFIG.items, weights: { ...DEFAULT_SPINNER_CONFIG.weights } },
+  )
 
   const activeLesson = computed<LessonSession | null>(() => {
     return classData.value.lessons.find(l => l.isActive) ?? null
@@ -508,6 +532,92 @@ export const useClassStore = defineStore('classStore', () => {
     saveToStorage()
   }
 
+  // --- Score buttons CRUD ---
+
+  function addScoreButton(btn: Omit<ScoreButton, 'id'>) {
+    if (!classData.value.scoreButtons) classData.value.scoreButtons = []
+    classData.value.scoreButtons.push({ ...btn, id: generateId() })
+    saveToStorage()
+  }
+
+  function updateScoreButton(id: string, updates: Partial<Omit<ScoreButton, 'id'>>) {
+    const list = classData.value.scoreButtons ?? []
+    const btn = list.find(b => b.id === id)
+    if (!btn) return
+    Object.assign(btn, updates)
+    saveToStorage()
+  }
+
+  function removeScoreButton(id: string) {
+    if (!classData.value.scoreButtons) return
+    classData.value.scoreButtons = classData.value.scoreButtons.filter(b => b.id !== id)
+    saveToStorage()
+  }
+
+  function resetScoreButtons() {
+    classData.value.scoreButtons = DEFAULT_SCORE_BUTTONS.map(b => ({ ...b }))
+    saveToStorage()
+  }
+
+  // --- Spinner CRUD ---
+
+  function updateSpinnerWeights(weights: Record<SpinnerCategory, number>) {
+    if (!classData.value.spinnerConfig) {
+      classData.value.spinnerConfig = { items: DEFAULT_SPINNER_CONFIG.items.map(i => ({ ...i })), weights }
+    } else {
+      classData.value.spinnerConfig.weights = { ...weights }
+    }
+    saveToStorage()
+  }
+
+  function addSpinnerItem(item: Omit<SpinnerItem, 'id'>) {
+    if (!classData.value.spinnerConfig) {
+      classData.value.spinnerConfig = { items: [], weights: { ...DEFAULT_SPINNER_CONFIG.weights } }
+    }
+    classData.value.spinnerConfig.items.push({ ...item, id: generateId() })
+    saveToStorage()
+  }
+
+  function updateSpinnerItem(id: string, updates: Partial<Omit<SpinnerItem, 'id'>>) {
+    const items = classData.value.spinnerConfig?.items ?? []
+    const item = items.find(i => i.id === id)
+    if (!item) return
+    Object.assign(item, updates)
+    saveToStorage()
+  }
+
+  function removeSpinnerItem(id: string) {
+    if (!classData.value.spinnerConfig) return
+    classData.value.spinnerConfig.items = classData.value.spinnerConfig.items.filter(i => i.id !== id)
+    saveToStorage()
+  }
+
+  function resetSpinnerConfig() {
+    classData.value.spinnerConfig = {
+      items: DEFAULT_SPINNER_CONFIG.items.map(i => ({ ...i })),
+      weights: { ...DEFAULT_SPINNER_CONFIG.weights },
+    }
+    saveToStorage()
+  }
+
+  function spinWheel(): SpinnerItem {
+    const cfg = spinnerConfig.value
+    const { items, weights } = cfg
+    const totalWeight = weights.reward + weights.punishment + weights.reversal
+    let r = Math.random() * totalWeight
+    let chosenCategory: SpinnerCategory = 'reward'
+    if (r < weights.reward) {
+      chosenCategory = 'reward'
+    } else if (r < weights.reward + weights.punishment) {
+      chosenCategory = 'punishment'
+    } else {
+      chosenCategory = 'reversal'
+    }
+    const categoryItems = items.filter(i => i.category === chosenCategory)
+    if (categoryItems.length === 0) return items[Math.floor(Math.random() * items.length)]
+    return categoryItems[Math.floor(Math.random() * categoryItems.length)]
+  }
+
   // --- Class settings ---
 
   function updateClassName(name: string, semester: string) {
@@ -582,6 +692,18 @@ export const useClassStore = defineStore('classStore', () => {
     updateRewardCard,
     removeRewardCard,
     resetRewardPool,
+    scoreButtons,
+    addScoreButton,
+    updateScoreButton,
+    removeScoreButton,
+    resetScoreButtons,
+    spinnerConfig,
+    updateSpinnerWeights,
+    addSpinnerItem,
+    updateSpinnerItem,
+    removeSpinnerItem,
+    resetSpinnerConfig,
+    spinWheel,
     updateClassName,
     updateGroupName,
     resetAllData,

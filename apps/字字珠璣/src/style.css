@@ -1,0 +1,196 @@
+/* ── 字字珠璣 · 全域風格 ─────────────────────────────────
+   設計語言：中式典雅 × 兒童活力
+   - 主色：墨玉黑（棋）/ 朱砂紅（特效）
+   - 配色：宣紙米黃、靛青、淺金
+*/
+
+:root {
+  /* 字型 */
+  --font-heading: "Noto Serif TC", "Source Han Serif", "Songti TC", serif;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+
+  /* 主色板 */
+  --paper:        #fff7ec;          /* 宣紙底 */
+  --paper-deep:   #fceedb;
+  --ink:          #2d2419;          /* 墨玉黑 */
+  --ink-soft:     #5b4d3a;
+  --gold:         #c8943a;          /* 淺金 */
+  --gold-deep:    #a07623;
+  --crimson:      #c1352d;          /* 朱砂紅 */
+  --crimson-soft: #e35b53;
+  --indigo:       #2f4858;          /* 靛青（白棋輔色） */
+  --jade:         #6b8e63;          /* 翠綠（成功） */
+
+  --text:         var(--ink);
+  --text-muted:   var(--ink-soft);
+  --bg:           var(--paper);
+  --card-bg:      #fffefa;
+  --border:       #e8d9be;
+  --border-deep:  #d8c3a0;
+  --shadow:       0 4px 20px rgba(45, 36, 25, 0.08);
+  --shadow-deep:  0 8px 32px rgba(45, 36, 25, 0.14);
+  --radius-sm:    8px;
+  --radius:       14px;
+  --radius-lg:    22px;
+
+  /* 棋色 */
+  --black-stone:  radial-gradient(circle at 30% 30%, #5a4d3b, #1d160d 70%);
+  --white-stone:  radial-gradient(circle at 30% 30%, #fffef8, #d9cfb8 70%);
+
+  --primary:      var(--crimson);
+  --primary-soft: var(--crimson-soft);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-body);
+  background: linear-gradient(160deg, var(--paper) 0%, var(--paper-deep) 100%);
+  color: var(--text);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+/* ── 通用容器 ── */
+.page {
+  padding: 1.25rem 1rem 3rem;
+  min-height: 100vh;
+}
+
+@media (min-width: 720px) {
+  .page { padding: 2rem 2rem 4rem; }
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+}
+
+/* ── 按鈕 ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.3rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--crimson) 0%, var(--crimson-soft) 100%);
+  color: white;
+}
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(193, 53, 45, 0.3); }
+
+.btn-secondary {
+  background: white;
+  color: var(--text);
+  border-color: var(--border-deep);
+}
+.btn-secondary:hover { background: var(--paper-deep); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+.btn-ghost:hover { color: var(--text); background: rgba(45, 36, 25, 0.05); }
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold) 0%, var(--gold-deep) 100%);
+  color: white;
+}
+
+/* ── 文字工具 ── */
+.muted { color: var(--text-muted); font-size: 0.9rem; }
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+  border: 1px solid var(--border);
+}
+.tag-primary { background: rgba(193, 53, 45, 0.1); color: var(--crimson); border-color: rgba(193, 53, 45, 0.2); }
+.tag-gold    { background: rgba(200, 148, 58, 0.12); color: var(--gold-deep); border-color: rgba(200, 148, 58, 0.25); }
+.tag-jade    { background: rgba(107, 142, 99, 0.12); color: var(--jade); border-color: rgba(107, 142, 99, 0.25); }
+.tag-indigo  { background: rgba(47, 72, 88, 0.1); color: var(--indigo); border-color: rgba(47, 72, 88, 0.2); }
+
+/* ── 動畫 ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(193, 53, 45, 0.5); }
+  50%      { box-shadow: 0 0 0 8px rgba(193, 53, 45, 0); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+
+.animate-fade-in { animation: fadeIn 0.4s ease both; }
+.animate-pop     { animation: pop 0.3s ease both; }
+.animate-glow    { animation: glow 1.6s ease-in-out infinite; }
+.animate-shake   { animation: shake 0.4s ease both; }
+
+/* ── 表單 ── */
+input[type="text"], input[type="number"], select, textarea {
+  font-family: inherit;
+  padding: 0.55rem 0.85rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: var(--text);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--crimson);
+  box-shadow: 0 0 0 3px rgba(193, 53, 45, 0.12);
+}
+label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+  font-weight: 500;
+}
+
+/* ── 滾動條 ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border-deep); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }

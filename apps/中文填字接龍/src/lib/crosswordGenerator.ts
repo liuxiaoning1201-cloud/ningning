@@ -243,11 +243,20 @@ export function analyzeConnectivity(items: WordBankItem[]): ConnectivityReport {
 
 /** 從已有的 puzzle 物件重新計算統計（舊資料沒有 stats 時可用） */
 export function computeCrosswordStats(puzzle: CrosswordPuzzle): CrosswordStats {
+  // 舊資料可能缺欄位；安全降級回傳 0
+  if (!puzzle?.grid || !Array.isArray(puzzle.grid) || puzzle.grid.length === 0) {
+    return {
+      totalWords: 0, crossedWords: 0, isolatedWords: 0,
+      crossingCells: 0, totalCells: 0, crossRate: 0,
+      avgCrossPerWord: 0, density: 0,
+    };
+  }
+  const words = Array.isArray(puzzle.words) ? puzzle.words : [];
   const rows = puzzle.grid.length;
   const cols = puzzle.grid[0]?.length ?? 0;
   const cellOwners = new Map<string, Set<"h" | "v">>();
 
-  for (const w of puzzle.words) {
+  for (const w of words) {
     const d: "h" | "v" = w.direction === "horizontal" ? "h" : "v";
     for (let k = 0; k < w.text.length; k++) {
       const r = d === "h" ? w.startRow : w.startRow + k;
@@ -265,7 +274,7 @@ export function computeCrosswordStats(puzzle: CrosswordPuzzle): CrosswordStats {
     if (dirs.size === 2) crossingCells++;
   }
 
-  const perWordCrossings = puzzle.words.map((w) => {
+  const perWordCrossings = words.map((w) => {
     const d: "h" | "v" = w.direction === "horizontal" ? "h" : "v";
     let cnt = 0;
     for (let k = 0; k < w.text.length; k++) {
@@ -277,7 +286,7 @@ export function computeCrosswordStats(puzzle: CrosswordPuzzle): CrosswordStats {
     return cnt;
   });
 
-  const totalWords = puzzle.words.length;
+  const totalWords = words.length;
   const crossedWords = perWordCrossings.filter((n) => n > 0).length;
   const isolatedWords = totalWords - crossedWords;
 
@@ -350,40 +359,15 @@ export function generateCrosswordPuzzle(input: GeneratorInput): GeneratorOutput 
   let candidates = rankByConnectivity(allItems);
   const droppedItems: WordBankItem[] = [];
 
-  let best: AttemptResult | null = null;
-  let effectiveCfg = cfg;
+  let best: AttemptResult | null = runShrinkLoop(candidates, cfg, tier, droppedItems);
 
-  while (candidates.length >= 2) {
-    const attempts = Math.max(
-      30,
-      Math.round((candidates.length <= 5 ? 100 : candidates.length <= 10 ? 70 : 50) * cfg.attemptsMultiplier)
-    );
-    const result = runAttempts(candidates, tier, cfg, attempts);
-    if (result) { best = result; break; }
-
-    // 該詞集下找不到符合 tier 約束的佈局：丟掉「最難連接」的那個再試
-    const toDrop = candidates[candidates.length - 1];
-    droppedItems.push(toDrop);
-    candidates = candidates.slice(0, -1);
-  }
-
-  // 嚴格條件完全無解：分級降級
+  // 嚴格條件完全無解：大師模式 (★★★★★) 降級為挑戰級
   if (!best && cfg.minCrossingsPerWord > 1) {
-    // 大師模式 (★★★★★) 找不到「每詞 ≥ 2 交叉」的佈局 → 降到 tier 4 的 config 重試
     const relaxed: TierConfig = { ...cfg, minCrossingsPerWord: 1 };
-    effectiveCfg = relaxed;
-    candidates = rankByConnectivity(allItems);
     const droppedRelaxed: WordBankItem[] = [];
-    while (candidates.length >= 2) {
-      const attempts = Math.max(30, Math.round(70 * cfg.attemptsMultiplier));
-      const result = runAttempts(candidates, tier, relaxed, attempts);
-      if (result) { best = result; break; }
-      droppedRelaxed.push(candidates[candidates.length - 1]);
-      candidates = candidates.slice(0, -1);
-    }
+    best = runShrinkLoop(rankByConnectivity(allItems), relaxed, tier, droppedRelaxed);
     if (best) {
       warnings.push("詞集共字連通性不足以支持「每個詞至少 2 個交叉」的大師標準，已降級為挑戰級（每個詞至少 1 個交叉）。");
-      // 重置 droppedItems：因為降級後嘗試的丟棄過程才是有效的
       droppedItems.length = 0;
       droppedItems.push(...droppedRelaxed);
     }
@@ -391,7 +375,8 @@ export function generateCrosswordPuzzle(input: GeneratorInput): GeneratorOutput 
 
   // 低難度/最後保底：允許放寬約束（仍會嘗試多叢集交叉，但接受孤立詞）
   if (!best && cfg.maxIsolatedRatio > 0) {
-    const attempts = Math.max(50, Math.round(50 * cfg.attemptsMultiplier));
+    const baseAttempts = allItems.length <= 20 ? 30 : 20;
+    const attempts = Math.max(20, Math.round(baseAttempts * cfg.attemptsMultiplier));
     best = runAttempts(allItems, tier, cfg, attempts, /*lenient*/ true);
   }
 
@@ -405,15 +390,71 @@ export function generateCrosswordPuzzle(input: GeneratorInput): GeneratorOutput 
     );
   }
 
-  // 避免未使用變數警告（保留 effectiveCfg 以供後續擴充）
-  void effectiveCfg;
-
   return {
     puzzle,
     stats,
     droppedTexts: droppedItems.map((d) => d.text),
     warnings,
   };
+}
+
+/**
+ * Shrink-loop 的核心：嘗試 → 失敗 → 動態移除「目前最孤立」的詞 → 重試
+ * `candidates` 是調用者傳入的初始候選集（會被消耗）。
+ * 移除策略：每輪重新計算「在當前 candidates 內的共字連接度」，移除得分最低者。
+ *           這比固定排序更能在後期找到能交叉的最小子集。
+ */
+function runShrinkLoop(
+  initial: WordBankItem[],
+  cfg: TierConfig,
+  tier: DifficultyTier,
+  droppedOut: WordBankItem[]
+): AttemptResult | null {
+  let candidates = [...initial];
+  const maxShrinkBudget = Math.min(20, candidates.length - 2);
+  // 高難度禁止 forcePlace 替代品 → decay 不要太激進
+  const decayFloor = cfg.maxIsolatedRatio === 0 ? 0.6 : 0.3;
+  let shrinkRound = 0;
+
+  while (candidates.length >= 2) {
+    const baseAttempts =
+      candidates.length <= 5 ? 80 :
+      candidates.length <= 10 ? 50 :
+      candidates.length <= 20 ? 30 :
+      candidates.length <= 40 ? 20 : 15;
+    const decay = Math.max(decayFloor, 1 - shrinkRound / Math.max(1, maxShrinkBudget));
+    const attempts = Math.max(15, Math.round(baseAttempts * cfg.attemptsMultiplier * decay));
+
+    const result = runAttempts(candidates, tier, cfg, attempts);
+    if (result) return result;
+
+    // 動態挑出「在當前候選內最孤立」的詞移除（而非固定排序的尾部）
+    const dropIdx = pickLeastConnectedIdx(candidates);
+    droppedOut.push(candidates[dropIdx]);
+    candidates = candidates.filter((_, i) => i !== dropIdx);
+    shrinkRound++;
+  }
+  return null;
+}
+
+function pickLeastConnectedIdx(items: WordBankItem[]): number {
+  if (items.length === 0) return -1;
+  let worstIdx = items.length - 1;
+  let worstScore = Infinity;
+  for (let i = 0; i < items.length; i++) {
+    const ci = new Set(items[i].text.trim().split(""));
+    let score = 0;
+    for (let j = 0; j < items.length; j++) {
+      if (i === j) continue;
+      const cj = items[j].text.trim().split("");
+      if (cj.some((ch) => ci.has(ch))) score++;
+    }
+    if (score < worstScore) {
+      worstScore = score;
+      worstIdx = i;
+    }
+  }
+  return worstIdx;
 }
 
 /** 按「與其他詞的共字數」由高到低排序 —— 高連接度的詞優先保留 */
@@ -770,19 +811,36 @@ function tryAddCrossingsThenForce(
     if (remaining.length === 0) break;
 
     // Phase 2: 用剩下的詞開一個新叢集
-    //   先選「在 remaining 中共字最多」的詞當種子，放到空白區域
+    //   先選「在 remaining 中共字最多」的詞當種子，再依當前 grid 形狀決定放置位置：
+    //   grid 較寬就向下開新叢集（h），較高就向右開新叢集（v），維持接近方形的整體外觀
     const seedIdx = pickBestSeed(remaining);
     const seed = remaining[seedIdx];
     remaining.splice(seedIdx, 1);
 
-    const bounds = grid.getBounds();
     const seedWord = seed.text.trim();
-    const seedR = bounds.maxR === -Infinity ? 0 : bounds.maxR + 3;
-    const seedC = bounds.minC === Infinity ? 0 : bounds.minC;
-    grid.forcePlace(seedWord, seedR, seedC, "h");
+    const bounds = grid.getBounds();
+    const empty = bounds.maxR === -Infinity;
+    const curW = empty ? 0 : bounds.maxC - bounds.minC + 1;
+    const curH = empty ? 0 : bounds.maxR - bounds.minR + 1;
+
+    let seedR: number, seedC: number, seedDir: "h" | "v";
+    if (empty) {
+      seedR = 0; seedC = 0; seedDir = "h";
+    } else if (curW >= curH) {
+      // grid 已較寬：在下方開橫向叢集
+      seedR = bounds.maxR + 3;
+      seedC = bounds.minC;
+      seedDir = "h";
+    } else {
+      // grid 已較高：在右側開縱向叢集
+      seedR = bounds.minR;
+      seedC = bounds.maxC + 3;
+      seedDir = "v";
+    }
+    grid.forcePlace(seedWord, seedR, seedC, seedDir);
     const seedPw: PlacedWord = {
       word: seedWord,
-      dir: "h",
+      dir: seedDir,
       r: seedR,
       c: seedC,
       item: seed,

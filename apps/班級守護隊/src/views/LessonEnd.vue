@@ -60,7 +60,6 @@ function handleRevealDone() {
     return
   }
   confettiActive.value = true
-  // 放一發煙火
   nextTick(() => {
     confettiRef.value?.burst(120, { x: window.innerWidth / 2, y: window.innerHeight / 3 })
   })
@@ -78,7 +77,6 @@ function handleCardRevealed(card: RewardCard) {
   if (!currentWinnerGroup.value || !lesson.value) return
   const draw = store.recordDraw(lesson.value.id, currentWinnerGroup.value.id, card)
   revealedDraw.value = draw
-  // 傳說卡再放一次煙火
   if (card.rarity === 'legendary') {
     setTimeout(() => {
       confettiRef.value?.burst(150, { x: window.innerWidth / 2, y: window.innerHeight / 2 })
@@ -90,20 +88,16 @@ function applyDraw() {
   if (!revealedDraw.value) return
   store.applyRewardDraw(revealedDraw.value.id)
   allDraws.value.push(revealedDraw.value)
-  // 繼續下一組？
-  if (currentWinnerIdx.value + 1 < winnerGroups.value.length) {
-    currentWinnerIdx.value += 1
-    revealedDraw.value = null
-    generateCandidates()
-  } else {
-    stage.value = 'applied'
-  }
+  advanceAfterDraw()
 }
 
 function skipApply() {
   if (!revealedDraw.value) return
-  // 不套用，直接記錄但不生效（保留 draw，applied=false）
   allDraws.value.push(revealedDraw.value)
+  advanceAfterDraw()
+}
+
+function advanceAfterDraw() {
   if (currentWinnerIdx.value + 1 < winnerGroups.value.length) {
     currentWinnerIdx.value += 1
     revealedDraw.value = null

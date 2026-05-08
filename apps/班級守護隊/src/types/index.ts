@@ -117,7 +117,35 @@ export interface ClassData {
   rewardPool: RewardCard[]
   /** 下節課可對該小組加成的積分（來自「下課加分券」） */
   pendingBonusPoints?: Record<string, number>
+  /** 老師自訂計分按鈕（空陣列或 undefined 時 fallback 到 DEFAULT_SCORE_BUTTONS） */
+  scoreButtons?: ScoreButton[]
+  /** 命運轉盤設定 */
+  spinnerConfig?: SpinnerConfig
   createdAt: number
+}
+
+// ====== 命運轉盤 ======
+
+export type SpinnerCategory = 'reward' | 'punishment' | 'reversal'
+
+export interface SpinnerItem {
+  id: string
+  category: SpinnerCategory
+  label: string
+  emoji: string
+  description: string
+}
+
+export interface SpinnerConfig {
+  items: SpinnerItem[]
+  /** 三類佔比權重，如 { reward: 40, punishment: 30, reversal: 30 } */
+  weights: Record<SpinnerCategory, number>
+}
+
+export const SPINNER_CATEGORY_CONFIG: Record<SpinnerCategory, { label: string; color: string; lightColor: string; emoji: string }> = {
+  reward: { label: '獎勵', color: '#22C55E', lightColor: '#DCFCE7', emoji: '🎁' },
+  punishment: { label: '挑戰', color: '#F97316', lightColor: '#FFEDD5', emoji: '📖' },
+  reversal: { label: '反轉', color: '#A855F7', lightColor: '#F3E8FF', emoji: '🔄' },
 }
 
 export const ANIMAL_CONFIG: Record<
@@ -292,4 +320,45 @@ export const RARITY_CONFIG: Record<RewardRarity, { label: string; color: string;
   common: { label: '普通', color: '#6B7280', bg: '#F3F4F6', border: '#D1D5DB', weight: 60 },
   rare: { label: '稀有', color: '#7C3AED', bg: '#F3E8FF', border: '#C4B5FD', weight: 30 },
   legendary: { label: '傳說', color: '#D97706', bg: '#FEF3C7', border: '#FBBF24', weight: 10 },
+}
+
+export const DEFAULT_SPINNER_ITEMS: SpinnerItem[] = [
+  // 獎勵
+  { id: 'sp-r1', category: 'reward', emoji: '🎖️', label: '全組加印章', description: '冠軍組每人 +1 印章' },
+  { id: 'sp-r2', category: 'reward', emoji: '🎟️', label: '下課加分券', description: '下節課起始 +3 分' },
+  { id: 'sp-r3', category: 'reward', emoji: '👏', label: '掌聲鼓勵', description: '全班給予冠軍組熱烈掌聲' },
+  { id: 'sp-r4', category: 'reward', emoji: '💺', label: '自由座位', description: '冠軍組下節課自選座位' },
+  { id: 'sp-r5', category: 'reward', emoji: '🎤', label: '點歌權', description: '冠軍組可以點一首歌課間播放' },
+  { id: 'sp-r6', category: 'reward', emoji: '⏰', label: '提早下課', description: '全班提早 2 分鐘下課' },
+  { id: 'sp-r7', category: 'reward', emoji: '🌟', label: '小老師', description: '冠軍組派代表當 5 分鐘小老師' },
+  { id: 'sp-r8', category: 'reward', emoji: '📸', label: '榮耀時刻', description: '冠軍組合照貼上榮譽榜' },
+  { id: 'sp-r9', category: 'reward', emoji: '🍬', label: '甜蜜獎勵', description: '老師請冠軍組吃小點心' },
+  { id: 'sp-r10', category: 'reward', emoji: '🎲', label: '幸運骰子', description: '再擲一次骰子決定額外獎勵' },
+  // 懲罰（知識複習導向）
+  { id: 'sp-p1', category: 'punishment', emoji: '📖', label: '背誦挑戰', description: '全組合力背誦一首學過的古詩' },
+  { id: 'sp-p2', category: 'punishment', emoji: '✍️', label: '造句達人', description: '每人用今天學的詞語現場造一個句子' },
+  { id: 'sp-p3', category: 'punishment', emoji: '🧠', label: '知識搶答', description: '回答老師出的 3 道複習題' },
+  { id: 'sp-p4', category: 'punishment', emoji: '🗣️', label: '課文朗讀', description: '全組朗讀一段課文，要求有感情' },
+  { id: 'sp-p5', category: 'punishment', emoji: '🔢', label: '速算挑戰', description: '全組限時完成 5 道心算題' },
+  { id: 'sp-p6', category: 'punishment', emoji: '📚', label: '故事接龍', description: '全組每人說一句完成一個小故事' },
+  { id: 'sp-p7', category: 'punishment', emoji: '📝', label: '默寫小考', description: '每人默寫 3 個本週學過的生字' },
+  { id: 'sp-p8', category: 'punishment', emoji: '🎯', label: '成語填空', description: '全組合力完成 3 個成語填空' },
+  { id: 'sp-p9', category: 'punishment', emoji: '🌍', label: '知識分享', description: '每人分享一個今天學到的知識點' },
+  { id: 'sp-p10', category: 'punishment', emoji: '💬', label: '口語練習', description: '全組用英文進行 1 分鐘對話練習' },
+  // 反轉
+  { id: 'sp-v1', category: 'reversal', emoji: '🔄', label: '分數互換', description: '冠軍組與末位組交換本節課分數' },
+  { id: 'sp-v2', category: 'reversal', emoji: '⚡', label: '雙倍風險', description: '冠軍組下節課扣分翻倍' },
+  { id: 'sp-v3', category: 'reversal', emoji: '🧊', label: '冰凍時間', description: '冠軍組下節課前 3 分鐘無法加分' },
+  { id: 'sp-v4', category: 'reversal', emoji: '🎰', label: '命運輪迴', description: '再轉一次轉盤，結果疊加' },
+  { id: 'sp-v5', category: 'reversal', emoji: '🔀', label: '隨機交換', description: '冠軍組的獎勵卡效果轉給另一組' },
+  { id: 'sp-v6', category: 'reversal', emoji: '⚔️', label: '即時 PK', description: '冠軍組與隨機一組搶答 3 題' },
+  { id: 'sp-v7', category: 'reversal', emoji: '🛡️', label: '護盾消失', description: '冠軍組下節課第一次扣分加倍' },
+  { id: 'sp-v8', category: 'reversal', emoji: '🎭', label: '角色互換', description: '冠軍組派人當「小老師」出題考其他組' },
+  { id: 'sp-v9', category: 'reversal', emoji: '⏪', label: '時光回溯', description: '撤銷冠軍組最近一次加分' },
+  { id: 'sp-v10', category: 'reversal', emoji: '🌀', label: '全員洗牌', description: '所有組分數清零，下節課重新開始' },
+]
+
+export const DEFAULT_SPINNER_CONFIG: SpinnerConfig = {
+  items: DEFAULT_SPINNER_ITEMS.map(i => ({ ...i })),
+  weights: { reward: 40, punishment: 30, reversal: 30 },
 }

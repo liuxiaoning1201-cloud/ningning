@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-HK">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>粵語學習</title>
+    <style>
+      :root {
+        --paper: #f7f3eb;
+        --ink: #1a1a2e;
+        --accent: #d4524d;
+        --jade: #4a8e6f;
+        --muted: #6b7280;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 16px;
+        width: 320px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: 'PingFang HK', 'PingFang TC', 'Noto Sans HK', sans-serif;
+      }
+      h1 {
+        font-size: 16px;
+        margin: 0 0 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .subtitle {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 14px;
+      }
+      .card {
+        background: white;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 10px;
+        font-size: 13px;
+        border: 1px solid rgba(0,0,0,0.06);
+      }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+      .row:last-child { margin-bottom: 0; }
+      .switch {
+        appearance: none;
+        width: 36px;
+        height: 20px;
+        background: rgba(0,0,0,0.15);
+        border-radius: 10px;
+        position: relative;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .switch::before {
+        content: '';
+        position: absolute;
+        top: 2px; left: 2px;
+        width: 16px; height: 16px;
+        background: white;
+        border-radius: 50%;
+        transition: left 0.15s;
+      }
+      .switch:checked {
+        background: var(--jade);
+      }
+      .switch:checked::before { left: 18px; }
+      button {
+        background: var(--ink);
+        color: var(--paper);
+        border: none;
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        font-weight: 500;
+      }
+      button.primary { background: var(--accent); color: white; }
+      button.ghost { background: transparent; color: var(--ink); border: 1px solid rgba(0,0,0,0.12); }
+      a { color: var(--jade); text-decoration: none; font-size: 13px; }
+      a:hover { text-decoration: underline; }
+      .platform-tags {
+        display: flex; flex-wrap: wrap; gap: 4px;
+        font-size: 10px;
+        margin-top: 6px;
+      }
+      .tag {
+        padding: 2px 6px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 4px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎙️ 粵語學習</h1>
+    <div class="subtitle">睇粵語視頻時自動還原口語對白</div>
+
+    <div class="card">
+      <div class="row">
+        <strong>悬浮翻譯卡</strong>
+        <input type="checkbox" id="overlay-switch" class="switch" />
+      </div>
+      <div class="row">
+        <strong>雙軌字幕叠加</strong>
+        <input type="checkbox" id="dual-switch" class="switch" />
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="subtitle" style="margin-bottom: 4px">已支持平台</div>
+      <div class="platform-tags">
+        <span class="tag">YouTube</span>
+        <span class="tag">bilibili</span>
+        <span class="tag">TVB.com</span>
+        <span class="tag">myTV SUPER</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <a href="https://zykongjian.com/yueyu" target="_blank">📓 開啟生詞本網頁 →</a>
+    </div>
+
+    <div class="card">
+      <a href="https://zykongjian.com/yueyu#/translate" target="_blank">📝 粘貼字幕翻譯 →</a>
+    </div>
+
+    <div style="font-size: 10px; color: var(--muted); text-align: center; margin-top: 6px">
+      MVP 0.2.0 · 字遊空間
+    </div>
+
+    <script type="module" src="/src/popup.ts"></script>
+  </body>
+</html>
