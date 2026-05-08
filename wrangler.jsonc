@@ -8,15 +8,14 @@
       "database_name": "ziyoukongjian-db",
       "database_id": "e934c3e9-1744-47ac-b016-785efb04941d"
     }
-  ]
-  // ── 粵語學習插件綁定（待您執行 apps/yueyu-learn/SETUP.md 後加入此處） ──
-  //
-  // "kv_namespaces": [
-  //   { "binding": "YUEYU_TRANSLATE_KV", "id": "<從 wrangler kv namespace create 取得>" },
-  //   { "binding": "YUEYU_RATE_LIMIT_KV", "id": "<從 wrangler kv namespace create 取得>" }
-  // ],
+  ],
+  "kv_namespaces": [
+    { "binding": "YUEYU_TRANSLATE_KV", "id": "eb30ebe61ea446c48b4f27b6415b4b39" },
+    { "binding": "YUEYU_RATE_LIMIT_KV", "id": "fea30266f24e4e64a90c2d48f32cb6a1" }
+  ],
+  "ai": { "binding": "AI" }
+  // R2 桶（TTS 音頻緩存）— 啟用 R2 後再解開：
   // "r2_buckets": [
   //   { "binding": "YUEYU_AUDIO", "bucket_name": "yueyu-audio" }
-  // ],
-  // "ai": { "binding": "AI" }
+  // ]
 }
