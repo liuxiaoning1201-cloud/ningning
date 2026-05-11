@@ -7,6 +7,8 @@ import type {
   TranslateResponse,
   TtsRequest,
   TtsResponse,
+  AsrRequest,
+  AsrResponse,
   VocabEntry,
   VocabListResponse,
 } from './types';
@@ -102,6 +104,13 @@ export class CantoneseApi {
     return this.request('/api/cantonese/ocr', {
       method: 'POST',
       body: JSON.stringify({ image: imageDataUrl }),
+    });
+  }
+
+  asr(payload: AsrRequest): Promise<AsrResponse> {
+    return this.request('/api/cantonese/asr', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   }
 

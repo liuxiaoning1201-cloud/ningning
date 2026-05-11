@@ -81,6 +81,8 @@ const ALLOWED_WEB_ORIGINS = new Set([
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
   if (ALLOWED_WEB_ORIGINS.has(origin)) return true;
+  // Cloudflare Pages 預覽部署：<hash>.zykongjian.pages.dev
+  if (/^https:\/\/([a-z0-9-]+\.)?zykongjian\.pages\.dev$/i.test(origin)) return true;
   // 擴展 Origin 形如 chrome-extension://<id>。MVP 階段允許任意擴展調用，
   // 後續發布到商店拿到正式 ID 後改為精確比對。
   if (/^chrome-extension:\/\/[a-z]{32}$/i.test(origin)) return true;

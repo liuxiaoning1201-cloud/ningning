@@ -2,15 +2,8 @@
    詩友記 PoetPal - 主應用邏輯（靜態版）
    ============================================ */
 
-const API_URL = 'https://api.deepseek.com/chat/completions';
-const API_KEY = (function() {
-  const k = localStorage.getItem('poetpal-apikey');
-  if (k) return k;
-  const parts = ['sk-','59c6','824d','87fd','4b34','8f94','d957','fcd8','4d70'];
-  const def = parts.join('');
-  localStorage.setItem('poetpal-apikey', def);
-  return def;
-})();
+const API_URL = '/api/ai/deepseek';
+localStorage.removeItem('poetpal-apikey');
 
 const state = {
   currentView: 'chatlist',
@@ -312,14 +305,13 @@ async function sendMessage(poetId, userMessage) {
   ];
 
   try {
-    const apiKey = localStorage.getItem('poetpal-apikey') || API_KEY;
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        app: 'poetpal-chat',
         model: 'deepseek-chat',
         messages,
         temperature: 0.85,
@@ -946,11 +938,11 @@ async function aiInterpret(articleId) {
   const plainText = art.text.replace(/\{([^|]+)\|[^}]*\}/g, '$1');
 
   try {
-    const apiKey = localStorage.getItem('poetpal-apikey') || API_KEY;
     const res = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        app: 'poetpal-translate',
         model: 'deepseek-chat',
         messages: [
           { role: 'system', content: '你是一位香港中學的專業古文翻譯老師。請將以下文言文翻譯成通俗易懂的現代白話文。嚴格要求：1)必須使用香港繁體字（依照香港教育局標準用字，例如用「裏」不用「裡」、用「牀」不用「床」、用「啟」不用「啓」、用「綫」不用「線」等）；2)翻譯準確，忠於原文；3)語言流暢自然，適合香港中小學生閱讀；4)按原文的段落結構分段翻譯；5)不要加入個人評價或額外解釋。直接輸出翻譯結果。' },

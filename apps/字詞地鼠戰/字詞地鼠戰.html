@@ -1085,22 +1085,20 @@ body::after {
              highScoreEndEl.textContent = userHighScore;
         }
         
-        // --- AI 識別與題庫 (DeepSeek API) ---
-        
-        const DEEPSEEK_API_KEY = 'sk-a082925b9cb644449be8fa0e54a8f46c';
+        // --- AI 識別與題庫（經 Cloudflare 後端安全代理） ---
         
         async function callDeepSeekAPI(prompt, wantJson) {
             const body = {
+                app: 'word-mole',
                 model: 'deepseek-chat',
                 messages: [{ role: 'user', content: prompt }]
             };
             if (wantJson) body.response_format = { type: 'json_object' };
             try {
-                const response = await fetch('https://api.deepseek.com/chat/completions', {
+                const response = await fetch('/api/ai/deepseek', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(body)
                 });

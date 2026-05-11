@@ -1,5 +1,5 @@
 const AI_CACHE_KEY = "word-puzzle:aiCache:v2";
-const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+const AI_PROXY_URL = "/api/ai/deepseek";
 
 interface AiExplanation {
   word: string;
@@ -29,37 +29,22 @@ export function getCachedExplanation(word: string): AiExplanation | null {
 
 export async function getAiExplanation(
   word: string,
-  apiKey?: string,
-  apiUrl?: string
+  _apiKey?: string,
+  _apiUrl?: string
 ): Promise<AiExplanation> {
   const cached = getCachedExplanation(word);
   if (cached) return cached;
-
-  const url = apiUrl || import.meta.env.VITE_AI_API_URL || DEEPSEEK_API_URL;
-  const key = apiKey || import.meta.env.VITE_DEEPSEEK_API_KEY || "";
-
-  if (!key && !apiUrl) {
-    return {
-      word,
-      meaning: "（需要設定 API Key 或後端代理才能使用 AI 解讀）",
-      usage: "",
-      example: "",
-      timestamp: Date.now(),
-    };
-  }
 
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (key) {
-      headers["Authorization"] = `Bearer ${key}`;
-    }
 
-    const response = await fetch(url, {
+    const response = await fetch(AI_PROXY_URL, {
       method: "POST",
       headers,
       body: JSON.stringify({
+        app: "crossword-ai-explain",
         model: "deepseek-chat",
         messages: [
           {

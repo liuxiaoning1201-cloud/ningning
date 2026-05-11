@@ -15,16 +15,23 @@ onMounted(() => {
 
 const features = [
   {
+    name: 'asr',
+    title: '口語聽寫',
+    desc: '上傳粵語對白片段，直接聽出人物實際講法，附粵拼和常見詞例句',
+    icon: '🎧',
+    accent: 'jade',
+  },
+  {
     name: 'translate',
     title: '粘貼字幕翻譯',
-    desc: '把書面語字幕粘進來，一秒看到粵語口語對照與粵拼',
+    desc: '只有字幕沒有聲音時，用書面語推測粵語口語說法',
     icon: '📝',
     accent: 'accent',
   },
   {
     name: 'ocr',
     title: '截圖識別',
-    desc: '在手機看 Netflix / myTV SUPER 看不懂？截圖丟過來',
+    desc: '識別截圖中的書面字幕，再做口語對照',
     icon: '📷',
     accent: 'jade',
   },
@@ -55,20 +62,20 @@ function go(name: string) {
     <section class="text-center py-8 md:py-14">
       <div class="text-6xl mb-4">🎙️</div>
       <h1 class="text-3xl md:text-5xl font-bold tracking-tight mb-3" style="color: var(--color-ink)">
-        睇劇學粵語<br class="md:hidden" />
-        <span style="color: var(--color-accent)">字對字還原</span>
+        聽出真正嘅粵語<br class="md:hidden" />
+        <span style="color: var(--color-accent)">口語對白</span>
       </h1>
       <p class="text-base md:text-lg max-w-xl mx-auto leading-relaxed" style="color: var(--color-muted)">
-        TVB 老劇字幕都係書面語，但對白係地道粵語。<br />
-        我哋幫你還原每句話真實嘅口語講法，仲有粵拼同埋朗讀。
+        字幕係書面語，演員講嘅卻係地道粵語。<br />
+        先聽聲音識別口語，再補粵拼、解釋同例句朗讀。
       </p>
       <div class="mt-6 flex gap-3 justify-center flex-wrap">
         <button
           class="px-6 py-3 rounded-xl font-medium cursor-pointer transition hover:scale-105"
           style="background: var(--color-accent); color: white; box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 35%, transparent)"
-          @click="go('translate')"
+          @click="go('asr')"
         >
-          📝 馬上試試 →
+          🎧 開始聽寫 →
         </button>
         <button
           class="px-6 py-3 rounded-xl font-medium border cursor-pointer transition hover:bg-black/5"
@@ -80,7 +87,7 @@ function go(name: string) {
       </div>
     </section>
 
-    <!-- 4 個功能卡 -->
+    <!-- 功能卡 -->
     <section class="grid sm:grid-cols-2 gap-4">
       <button
         v-for="f in features"

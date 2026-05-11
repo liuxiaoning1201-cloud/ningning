@@ -15,6 +15,11 @@ export type {
   SrsState,
   OcrRequest,
   OcrResponse,
+  AsrRequest,
+  AsrResponse,
+  AsrSentence,
+  AsrTerm,
+  AsrTermExample,
 } from '../../../shared/cantoneseTypes';
 
 /** 後端統一錯誤響應 body 形狀（不要與 api-client 的 ApiError class 混淆） */

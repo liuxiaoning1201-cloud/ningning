@@ -89,12 +89,7 @@ export default {
 };
 
 async function generateAiWords(env, topic, count) {
-  const apiKey = env.AI_API_KEY;
-  const apiBase = env.AI_API_BASE || 'https://api.deepseek.com';
-
-  if (!apiKey) {
-    throw new Error('未配置 AI_API_KEY，請在 .dev.vars 或 Secrets 中設定');
-  }
+  const aiProxyUrl = env.AI_PROXY_URL || 'https://zykongjian.pages.dev/api/ai/deepseek';
 
   const prompt = `你是「誰是臥底」遊戲的專業出題助手。
 
@@ -110,13 +105,15 @@ async function generateAiWords(env, topic, count) {
 嚴格按以下 JSON 格式回覆，不要加任何額外文字、解釋或 markdown：
 [{"civilian":"平民詞1","spy":"臥底詞1"},{"civilian":"平民詞2","spy":"臥底詞2"}]`;
 
-  const resp = await fetch(`${apiBase}/chat/completions`, {
+  const resp = await fetch(aiProxyUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      // 讓 Pages Function 的 Origin 白名單識別為本平台流量。
+      'Origin': 'https://zykongjian.pages.dev',
     },
     body: JSON.stringify({
+      app: 'spy-game-ai-words',
       model: 'deepseek-chat',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 1024,

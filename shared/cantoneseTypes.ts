@@ -77,3 +77,44 @@ export interface OcrResponse {
   text: string;
   lines: string[];
 }
+
+export interface AsrRequest {
+  /** audio/video data URL 或純 base64 */
+  media: string;
+  /** 可選：畫面上原有書面字幕，只作語義輔助，不可覆蓋聽寫結果 */
+  subtitleHint?: string;
+}
+
+export interface AsrSentence {
+  /** 實際聽到的粵語口語對白 */
+  cantonese: string;
+  /** 整句粵拼 */
+  jyutping?: string;
+  /** 書面意思 / 普通話意思 */
+  meaning?: string;
+  /** 0-1，模型對此句的保守信心評估 */
+  confidence?: number;
+}
+
+export interface AsrTermExample {
+  cantonese: string;
+  jyutping?: string;
+  meaning: string;
+}
+
+export interface AsrTerm {
+  term: string;
+  jyutping?: string;
+  meaning: string;
+  note?: string;
+  examples: AsrTermExample[];
+}
+
+export interface AsrResponse {
+  /** Whisper 原始輸出，方便用戶對照 */
+  rawText: string;
+  /** 經保守校準後的自然粵語口語句子 */
+  sentences: AsrSentence[];
+  /** 高頻口語詞拓展 */
+  terms: AsrTerm[];
+}

@@ -14,6 +14,11 @@ const router = createRouter({
       component: () => import('../pages/PasteTranslate.vue'),
     },
     {
+      path: '/asr',
+      name: 'asr',
+      component: () => import('../pages/AsrUpload.vue'),
+    },
+    {
       path: '/ocr',
       name: 'ocr',
       component: () => import('../pages/OcrUpload.vue'),

@@ -9,6 +9,7 @@ const native = useNative()
 
 const navItems = [
   { name: 'home', label: '首頁', icon: '🏮' },
+  { name: 'asr', label: '口語聽寫', icon: '🎧' },
   { name: 'translate', label: '粘貼翻譯', icon: '📝' },
   { name: 'ocr', label: '截圖識別', icon: '📷' },
   { name: 'vocab', label: '生詞本', icon: '📓' },
