@@ -11,8 +11,16 @@
 import { errorJson, json, protect, type YueyuEnv, type YueyuPagesFn } from './_shared';
 import type { AsrRequest, AsrResponse, AsrSentence, AsrTerm } from '../../../shared/cantoneseTypes';
 
-const MAX_MEDIA_BYTES = 12 * 1024 * 1024;
-const WHISPER_MODEL = '@cf/openai/whisper-large-v3-turbo';
+// 單塊大小上限：Workers AI Whisper 在請求 >2MB 時會 3006: Request is too large。
+// 前端會先把音頻壓成 16kHz 單聲道 WAV 並切成 ≤20s 一段，所以單塊不會超過 ~1MB。
+const MAX_CHUNK_BYTES = 2 * 1024 * 1024;
+// 全部塊加起來最大 20MB，防止有人傳整集電影
+const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+const MAX_CHUNKS = 24; // 對應前端 24 × 20s = 8 分鐘上限
+const WHISPER_MODELS = [
+  '@cf/openai/whisper-large-v3-turbo',
+  '@cf/openai/whisper',
+] as const;
 
 interface WhisperResult {
   text?: string;
@@ -46,9 +54,6 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
     return errorJson(400, 'invalid_json');
   }
 
-  if (!body.media || typeof body.media !== 'string') {
-    return errorJson(400, 'missing_media', '請提供音頻或視頻片段');
-  }
   if (body.subtitleHint && body.subtitleHint.length > 1000) {
     return errorJson(400, 'subtitle_too_long', '字幕輔助文字最長 1000 字');
   }
@@ -56,13 +61,40 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
     return errorJson(503, 'asr_unavailable', '語音識別服務尚未配置（需 Cloudflare Workers AI 綁定）');
   }
 
-  const parsed = parseBase64Media(body.media);
-  if ('error' in parsed) return parsed.error;
-  if (parsed.bytes.length > MAX_MEDIA_BYTES) {
-    return errorJson(413, 'media_too_large', '音頻/視頻片段不能超過 12MB，建議截取 10-30 秒');
+  // 收集所有分塊：優先用 chunks，否則退回到單塊 media
+  const rawChunks: string[] = Array.isArray(body.chunks)
+    ? body.chunks.filter((c): c is string => typeof c === 'string' && c.length > 0)
+    : [];
+  if (!rawChunks.length && typeof body.media === 'string' && body.media.length > 0) {
+    rawChunks.push(body.media);
+  }
+  if (!rawChunks.length) {
+    return errorJson(400, 'missing_media', '請提供音頻或視頻片段');
+  }
+  if (rawChunks.length > MAX_CHUNKS) {
+    return errorJson(413, 'too_many_chunks', `音頻片段過多（>${MAX_CHUNKS}），請縮短到 ${MAX_CHUNKS * 20} 秒內`);
   }
 
-  const whisper = await transcribe(context.env, parsed.bytes);
+  const base64Chunks: string[] = [];
+  let totalBytes = 0;
+  for (const chunk of rawChunks) {
+    const parsed = parseBase64Media(chunk);
+    if ('error' in parsed) return parsed.error;
+    if (parsed.base64.length * 0.75 > MAX_CHUNK_BYTES) {
+      return errorJson(
+        413,
+        'chunk_too_large',
+        '單個音頻片段過大，請重新上傳（前端會自動切成小段）',
+      );
+    }
+    totalBytes += parsed.base64.length * 0.75;
+    if (totalBytes > MAX_TOTAL_BYTES) {
+      return errorJson(413, 'media_too_large', '音頻總長過長，請縮短到 5 分鐘以內');
+    }
+    base64Chunks.push(parsed.base64);
+  }
+
+  const whisper = await transcribeAll(context.env, base64Chunks);
   if ('error' in whisper) return errorJson(502, 'asr_failed', whisper.error);
 
   const rawText = normalizeTranscript(whisper.text || '');
@@ -81,40 +113,66 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
   return json(response);
 };
 
-function parseBase64Media(input: string): { bytes: Uint8Array; mime?: string } | { error: Response } {
+function parseBase64Media(input: string): { base64: string; mime?: string } | { error: Response } {
   const dataUrl = input.match(/^data:([^;]+);base64,(.+)$/i);
   const b64 = dataUrl ? dataUrl[2] : input;
   const mime = dataUrl?.[1];
   if (mime && !/^(audio|video)\//i.test(mime)) {
     return { error: errorJson(400, 'invalid_media_type', '只支援 audio/* 或 video/* 檔案') };
   }
-  if (b64.length * 0.75 > MAX_MEDIA_BYTES) {
-    return { error: errorJson(413, 'media_too_large', '音頻/視頻片段不能超過 12MB') };
-  }
-  try {
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return { bytes, mime };
-  } catch {
+  if (!/^[A-Za-z0-9+/=\s]+$/.test(b64)) {
     return { error: errorJson(400, 'invalid_base64', '音頻資料格式不正確') };
   }
+  return { base64: b64.replace(/\s+/g, ''), mime };
 }
 
-async function transcribe(
+/**
+ * 依序轉寫多個音頻塊：用 base64 字串作為 audio 參數（比 Array<number> payload 小 3-4 倍），
+ * 模型按優先順序回退，任一塊失敗則整體失敗。
+ */
+async function transcribeAll(
   env: YueyuEnv,
-  bytes: Uint8Array,
+  base64Chunks: string[],
 ): Promise<{ text: string } | { error: string }> {
-  try {
-    const result = (await env.AI!.run(WHISPER_MODEL, {
-      audio: Array.from(bytes),
-      task: 'transcribe',
-      language: 'zh',
-    })) as WhisperResult;
-    return { text: result.text || '' };
-  } catch {
-    return { error: '語音識別服務暫時無法處理這段音頻' };
+  const texts: string[] = [];
+  for (let i = 0; i < base64Chunks.length; i++) {
+    const piece = await transcribeOne(env, base64Chunks[i]);
+    if ('error' in piece) {
+      const idx = `第 ${i + 1}/${base64Chunks.length} 段`;
+      return {
+        error:
+          `語音識別失敗（${idx}）：${piece.error}。請確認該段含清晰粵語人聲，` +
+          '或重新截取後再試。',
+      };
+    }
+    if (piece.text) texts.push(piece.text.trim());
   }
+  return { text: texts.join(' ') };
+}
+
+async function transcribeOne(
+  env: YueyuEnv,
+  base64Audio: string,
+): Promise<{ text: string } | { error: string }> {
+  let lastError = '此片段暫時無法識別';
+  for (const model of WHISPER_MODELS) {
+    try {
+      const result = (await env.AI!.run(model, {
+        audio: base64Audio,
+        task: 'transcribe',
+        language: 'zh',
+        vad_filter: true,
+      })) as WhisperResult;
+      // 空字串視為「這一段沒人聲」，仍算成功，繼續下一塊
+      return { text: (result.text || '').trim() };
+    } catch (e) {
+      if (e instanceof Error && e.message) {
+        lastError = e.message.slice(0, 160);
+      }
+      continue;
+    }
+  }
+  return { error: lastError };
 }
 
 function normalizeTranscript(text: string): string {

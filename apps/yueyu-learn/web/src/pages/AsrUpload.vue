@@ -14,8 +14,10 @@ const previewUrl = ref('')
 const subtitleHint = ref('')
 const result = ref<AsrResponse | null>(null)
 const loading = ref(false)
+const loadingStage = ref('')
 const errorMsg = ref('')
 const selectedTerm = ref<AsrTerm | null>(null)
+const dragActive = ref(false)
 
 const sentenceText = computed(() =>
   result.value?.sentences.map((s) => s.cantonese).join('') || '',
@@ -29,36 +31,76 @@ async function pickFile(e: Event) {
 }
 
 async function handleFile(file: File) {
-  if (!file.type.startsWith('audio/') && !file.type.startsWith('video/')) {
-    errorMsg.value = '請選擇音頻或短視頻檔案'
+  const looksLikeMedia =
+    file.type.startsWith('audio/') ||
+    file.type.startsWith('video/') ||
+    /\.(mp3|m4a|wav|aac|flac|ogg|webm|mp4|mov|mkv|avi|3gp|opus|amr)$/i.test(file.name)
+  if (!looksLikeMedia) {
+    errorMsg.value = '請選擇音頻或視頻檔案'
     return
   }
-  if (file.size > 12 * 1024 * 1024) {
-    errorMsg.value = '檔案不能超過 12MB，建議截取 10-30 秒'
+  if (file.size > 200 * 1024 * 1024) {
+    errorMsg.value = '檔案不能超過 200MB，建議截取一段 30-60 秒'
     return
   }
 
   clear(false)
   fileName.value = file.name
   previewUrl.value = URL.createObjectURL(file)
+  loading.value = true
+  loadingStage.value = '正在準備音頻（解碼 → 重採樣到 16kHz）…'
+  errorMsg.value = ''
 
-  const media: string = await new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
+  let chunks: string[] = []
+  let fallbackMedia = ''
+  try {
+    // 統一處理：解碼 → 16kHz 單聲道 → 切成多個 ≤20 秒的 WAV，繞開 Workers AI 單請求大小限制
+    chunks = await fileToWhisperFriendlyWavChunks(file)
+  } catch (e) {
+    console.warn('audio compress failed, fallback to raw', e)
+    loadingStage.value = '本地音頻解碼失敗，改用原檔上傳…'
+    try {
+      fallbackMedia = await fileToDataUrl(file)
+    } catch {
+      loading.value = false
+      loadingStage.value = ''
+      errorMsg.value = '檔案讀取失敗，請重試或換一個檔案。'
+      return
+    }
+  }
 
-  await runAsr(media)
+  loadingStage.value = chunks.length > 1
+    ? `正在用 Whisper 聽寫 ${chunks.length} 個音頻片段…`
+    : '正在用 Whisper 聽寫粵語…'
+  await runAsr({ chunks: chunks.length ? chunks : undefined, media: fallbackMedia || undefined })
 }
 
-async function runAsr(media: string) {
+function onDragOver(e: DragEvent) {
+  e.preventDefault()
+  dragActive.value = true
+}
+
+function onDragLeave(e: DragEvent) {
+  e.preventDefault()
+  dragActive.value = false
+}
+
+async function onDrop(e: DragEvent) {
+  e.preventDefault()
+  dragActive.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (!file) return
+  await handleFile(file)
+}
+
+async function runAsr(payload: { chunks?: string[]; media?: string }) {
   loading.value = true
   errorMsg.value = ''
   selectedTerm.value = null
   try {
     result.value = await api.asr({
-      media,
+      chunks: payload.chunks,
+      media: payload.media,
       subtitleHint: subtitleHint.value.trim() || undefined,
     })
     selectedTerm.value = result.value.terms[0] ?? null
@@ -72,6 +114,7 @@ async function runAsr(media: string) {
     }
   } finally {
     loading.value = false
+    loadingStage.value = ''
   }
 }
 
@@ -82,6 +125,7 @@ function clear(resetInput = true) {
   result.value = null
   selectedTerm.value = null
   errorMsg.value = ''
+  loadingStage.value = ''
   if (resetInput && fileInput.value) fileInput.value.value = ''
 }
 
@@ -94,6 +138,128 @@ function confidenceLabel(n?: number) {
 
 function speak(text: string, speed: 'slow' | 'normal' = 'normal') {
   tts.speak(text, { speed, voice: 'female' })
+}
+
+function fileToDataUrl(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
+ * 把任意音頻 / 視頻檔案 → 多個 ≤20 秒的 16kHz 單聲道 WAV data URL。
+ *
+ * 為什麼是這個格式？
+ *   - Cloudflare Workers AI Whisper 對「單次請求 payload」有硬性大小限制（>2MB 會
+ *     返回 `3006: Request is too large`，<1MB 才穩定）。
+ *   - Whisper 內部就是工作在 16kHz 單聲道 PCM，多餘的取樣率/聲道既不會提升準確度，
+ *     反而會撐爆請求體積。
+ *   - 20 秒 × 16kHz × 1ch × 2byte ≈ 640KB raw → 約 ~853KB base64，安全穩在閾值下。
+ *
+ * 步驟：
+ *   1. AudioContext.decodeAudioData：瀏覽器原生解碼器，能吃 mp3/m4a/mp4/mov/wav/
+ *      webm/ogg/opus/aac/flac，視頻容器會自動丟掉視軌只留音軌。
+ *   2. 多聲道 → 單聲道（平均）。
+ *   3. OfflineAudioContext 重採樣到 16kHz。
+ *   4. 截取前 MAX_TOTAL_SECONDS（避免有人上傳整部電影）。
+ *   5. 切成 CHUNK_SECONDS 一塊，每塊獨立編碼成有效 16-bit PCM WAV。
+ *
+ * 後端會依序送每一塊給 Whisper，再把所有 text 合併。
+ */
+const MAX_TOTAL_SECONDS = 5 * 60 // 最長處理 5 分鐘
+const CHUNK_SECONDS = 20
+const TARGET_SAMPLE_RATE = 16000
+
+async function fileToWhisperFriendlyWavChunks(file: File): Promise<string[]> {
+  const arrayBuffer = await file.arrayBuffer()
+
+  const ContextCtor: typeof AudioContext =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  if (!ContextCtor) throw new Error('AudioContext unsupported')
+
+  const ctx = new ContextCtor()
+  let decoded: AudioBuffer
+  try {
+    decoded = await ctx.decodeAudioData(arrayBuffer.slice(0))
+  } finally {
+    void ctx.close()
+  }
+
+  const sourceRate = decoded.sampleRate
+  const totalLen = Math.min(decoded.length, Math.floor(sourceRate * MAX_TOTAL_SECONDS))
+
+  const monoSrc = new Float32Array(totalLen)
+  const channels = decoded.numberOfChannels
+  for (let c = 0; c < channels; c++) {
+    const data = decoded.getChannelData(c)
+    for (let i = 0; i < totalLen; i++) monoSrc[i] += data[i] / channels
+  }
+
+  const targetLen = Math.max(1, Math.floor((totalLen * TARGET_SAMPLE_RATE) / sourceRate))
+  const OfflineCtor: typeof OfflineAudioContext =
+    window.OfflineAudioContext ||
+    (window as unknown as { webkitOfflineAudioContext: typeof OfflineAudioContext })
+      .webkitOfflineAudioContext
+  if (!OfflineCtor) throw new Error('OfflineAudioContext unsupported')
+
+  const offline = new OfflineCtor(1, targetLen, TARGET_SAMPLE_RATE)
+  const buf = offline.createBuffer(1, totalLen, sourceRate)
+  buf.copyToChannel(monoSrc, 0)
+  const node = offline.createBufferSource()
+  node.buffer = buf
+  node.connect(offline.destination)
+  node.start()
+  const rendered = await offline.startRendering()
+
+  const pcm = rendered.getChannelData(0)
+  const samplesPerChunk = CHUNK_SECONDS * TARGET_SAMPLE_RATE
+  const chunks: string[] = []
+  for (let i = 0; i < pcm.length; i += samplesPerChunk) {
+    const slice = pcm.subarray(i, Math.min(i + samplesPerChunk, pcm.length))
+    if (slice.length === 0) break
+    const blob = encodeWav(slice, TARGET_SAMPLE_RATE)
+    chunks.push(await fileToDataUrl(blob))
+  }
+  if (chunks.length === 0) throw new Error('no audio samples decoded')
+  return chunks
+}
+
+function encodeWav(samples: Float32Array, sampleRate: number): Blob {
+  const dataBytes = samples.length * 2
+  const buf = new ArrayBuffer(44 + dataBytes)
+  const view = new DataView(buf)
+
+  // RIFF header
+  writeAscii(view, 0, 'RIFF')
+  view.setUint32(4, 36 + dataBytes, true)
+  writeAscii(view, 8, 'WAVE')
+  // fmt chunk
+  writeAscii(view, 12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true) // PCM
+  view.setUint16(22, 1, true) // mono
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true) // byte rate
+  view.setUint16(32, 2, true) // block align
+  view.setUint16(34, 16, true) // bits per sample
+  // data chunk
+  writeAscii(view, 36, 'data')
+  view.setUint32(40, dataBytes, true)
+
+  let offset = 44
+  for (let i = 0; i < samples.length; i++, offset += 2) {
+    const s = Math.max(-1, Math.min(1, samples[i]))
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+  }
+  return new Blob([buf], { type: 'audio/wav' })
+}
+
+function writeAscii(view: DataView, offset: number, str: string) {
+  for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
 }
 </script>
 
@@ -117,13 +283,25 @@ function speak(text: string, speed: 'slow' | 'normal' = 'normal') {
       <div class="space-y-4">
         <label
           class="card p-8 flex flex-col items-center justify-center cursor-pointer transition hover:scale-[1.01]"
-          style="border: 2px dashed color-mix(in srgb, var(--color-ink) 18%, transparent); background: color-mix(in srgb, var(--color-paper) 60%, white)"
+          :style="dragActive
+            ? 'border: 2px dashed var(--color-accent); background: color-mix(in srgb, var(--color-accent-soft) 40%, white)'
+            : 'border: 2px dashed color-mix(in srgb, var(--color-ink) 18%, transparent); background: color-mix(in srgb, var(--color-paper) 60%, white)'"
+          @dragover="onDragOver"
+          @dragleave="onDragLeave"
+          @drop="onDrop"
         >
-          <input ref="fileInput" type="file" accept="audio/*,video/*" class="hidden" @change="pickFile" />
+          <input
+            ref="fileInput"
+            type="file"
+            accept="audio/*,video/*,.mp3,.m4a,.wav,.aac,.flac,.ogg,.webm,.mp4,.mov,.mkv,.avi"
+            class="hidden"
+            @change="pickFile"
+          />
           <div class="text-5xl mb-3">🎧</div>
-          <div class="font-medium mb-1">上傳粵語音頻 / 短視頻</div>
-          <div class="text-xs text-center" style="color: var(--color-muted)">
-            建議 10-30 秒，支援 mp3 / m4a / wav / webm / mp4，12MB 以內
+          <div class="font-medium mb-1">拖拽上傳或點擊選擇音頻 / 視頻</div>
+          <div class="text-xs text-center leading-relaxed" style="color: var(--color-muted)">
+            支援 mp3 / m4a / wav / aac / flac / ogg / webm / mp4 / mov / mkv / avi。<br />
+            檔案太長會自動只取前 90 秒；音頻在你的瀏覽器先壓縮再上傳，不會把整段視頻發出去。
           </div>
         </label>
 
@@ -172,8 +350,10 @@ function speak(text: string, speed: 'slow' | 'normal' = 'normal') {
     <div v-if="loading" class="card p-4 flex items-center gap-3">
       <div class="animate-spin text-xl">⏳</div>
       <div>
-        <div class="font-medium">正在聽寫粵語對白…</div>
-        <div class="text-xs" style="color: var(--color-muted)">先用 Whisper 聽聲音，再做自然斷句和詞語拓展</div>
+        <div class="font-medium">{{ loadingStage || '正在聽寫粵語對白…' }}</div>
+        <div class="text-xs" style="color: var(--color-muted)">
+          先在你瀏覽器把音頻壓成 16kHz 單聲道，再交 Whisper 聽寫，最後做自然斷句和詞語拓展
+        </div>
       </div>
     </div>
 

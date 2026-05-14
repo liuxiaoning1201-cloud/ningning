@@ -79,8 +79,13 @@ export interface OcrResponse {
 }
 
 export interface AsrRequest {
-  /** audio/video data URL 或純 base64 */
-  media: string;
+  /** 單檔模式：audio/video data URL 或純 base64（後端會自動截短到 30 秒以內） */
+  media?: string;
+  /**
+   * 分塊模式：前端已把音頻切成多段（每段 ≤ ~20 秒、16kHz 單聲道 WAV data URL），
+   * 後端會依序送 Whisper、再合併文字。優先使用 `chunks`，與 `media` 二擇一。
+   */
+  chunks?: string[];
   /** 可選：畫面上原有書面字幕，只作語義輔助，不可覆蓋聽寫結果 */
   subtitleHint?: string;
 }

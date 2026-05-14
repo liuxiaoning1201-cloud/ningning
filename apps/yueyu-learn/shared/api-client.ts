@@ -160,7 +160,13 @@ export class ApiError extends Error {
   status: number;
   body: unknown;
   constructor(status: number, body: unknown) {
-    super(typeof body === 'object' && body && 'error' in body ? String((body as { error: unknown }).error) : `HTTP ${status}`);
+    const message =
+      typeof body === 'object' && body && 'message' in body && typeof (body as { message?: unknown }).message === 'string'
+        ? String((body as { message: string }).message)
+        : typeof body === 'object' && body && 'error' in body
+          ? String((body as { error: unknown }).error)
+          : `HTTP ${status}`;
+    super(message);
     this.status = status;
     this.body = body;
   }
