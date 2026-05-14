@@ -35,8 +35,23 @@ export interface YueyuEnv {
   YUEYU_RATE_LIMIT_KV?: KVNamespace;
   /** R2 桶：TTS 音頻緩存 */
   YUEYU_AUDIO?: R2Bucket;
-  /** Cloudflare Workers AI（OCR 用） */
+  /** Cloudflare Workers AI（OCR / 默認 ASR provider） */
   AI?: { run: (model: string, input: unknown) => Promise<unknown> };
+
+  /**
+   * Groq Whisper API Key — 用作 ASR fallback。
+   * 不填則只用 Cloudflare Workers AI；填了後當 CF 失敗會自動切到 Groq。
+   * 透過 `wrangler pages secret put GROQ_API_KEY` 設置。
+   */
+  GROQ_API_KEY?: string;
+  /** Groq 模型名，預設 `whisper-large-v3-turbo`。可選 `whisper-large-v3`（更準但慢） */
+  GROQ_WHISPER_MODEL?: string;
+
+  /**
+   * ASR provider 試驗順序，逗號分隔。預設 `cloudflare,groq`。
+   * 想完全切到 Groq：設成 `groq,cloudflare`；想停 Groq：設成 `cloudflare`。
+   */
+  ASR_PROVIDER_ORDER?: string;
 }
 
 export interface YueyuContext extends Record<string, unknown> {

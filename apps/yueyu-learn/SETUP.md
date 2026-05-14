@@ -130,10 +130,34 @@ npx wrangler d1 execute ziyoukongjian-db --remote --file=migrations/0003_cantone
 # 應用個人 API Keys 表
 npx wrangler d1 execute ziyoukongjian-db --remote --file=migrations/0004_cantonese_apikeys.sql
 
+# 應用 ASR 識別歷史表（粵語口語聽寫的「最近識別」面板用）
+npx wrangler d1 execute ziyoukongjian-db --remote --file=migrations/0005_cantonese_asr_history.sql
+
 # 順便把同樣的表結構建到本地（之後本地測試用）
 npx wrangler d1 execute ziyoukongjian-db --local --file=migrations/0003_cantonese.sql
 npx wrangler d1 execute ziyoukongjian-db --local --file=migrations/0004_cantonese_apikeys.sql
+npx wrangler d1 execute ziyoukongjian-db --local --file=migrations/0005_cantonese_asr_history.sql
 ```
+
+### 5.1.5 （強烈建議）配置 Groq Whisper 作為 ASR fallback
+
+Cloudflare Workers AI Whisper 對單次請求 >2MB 會返回 `3006: Request is too large`。
+即使前端已切塊壓縮，Groq 仍能作為穩定的第二防線（免費 14400 req/day、速度 10-50× realtime）。
+
+```bash
+# 1. 到 https://console.groq.com 註冊並創建 API Key（免費）
+# 2. 注入到 Pages secret（永遠不會進 git）
+npx wrangler pages secret put GROQ_API_KEY --project-name zykongjian
+# 貼上 gsk_ 開頭的 Key，回車
+```
+
+驗證：
+```bash
+npx wrangler pages secret list --project-name zykongjian
+# 應該同時看到 DEEPSEEK_API_KEY 與 GROQ_API_KEY
+```
+
+不配置也能跑（只用 Cloudflare Workers AI），但偶發 3006 沒辦法自動恢復。
 
 每條成功會看到 `🌀 Executing on remote database... ✅`。
 

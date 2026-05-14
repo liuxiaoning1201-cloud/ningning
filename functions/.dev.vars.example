@@ -18,5 +18,18 @@ DEEPSEEK_MODEL=deepseek-chat
 AZURE_TTS_KEY=replace-with-your-azure-key
 AZURE_TTS_REGION=southeastasia
 
+# ── Groq Whisper（粵語 ASR fallback，可選但強烈建議） ──
+#
+# 為什麼要它？Cloudflare Workers AI Whisper 對單次請求 >2MB 會返回 3006: Request is too large。
+# 即使前端已切塊壓縮，遇到極端情況（網絡抖動、單塊邊界恰好較大）仍會偶發 3006。
+# 配置了 GROQ_API_KEY 後，CF 失敗會自動 fallback 到 Groq，永遠不會空手而歸。
+#
+# 申請：https://console.groq.com → 創建 API Key（免費 14400 req/day，速度極快）
+# 設置：npx wrangler pages secret put GROQ_API_KEY --project-name zykongjian
+#
+# GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
+# GROQ_WHISPER_MODEL=whisper-large-v3-turbo   # 或 whisper-large-v3（更準但稍慢）
+# ASR_PROVIDER_ORDER=cloudflare,groq           # 默認；改成 `groq,cloudflare` 可直接走 Groq
+
 # ── Cloudflare Turnstile（人機驗證，可選） ──
 # TURNSTILE_SECRET=

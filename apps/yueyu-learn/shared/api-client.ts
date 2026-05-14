@@ -9,6 +9,7 @@ import type {
   TtsResponse,
   AsrRequest,
   AsrResponse,
+  AsrHistoryResponse,
   VocabEntry,
   VocabListResponse,
 } from './types';
@@ -111,6 +112,18 @@ export class CantoneseApi {
     return this.request('/api/cantonese/asr', {
       method: 'POST',
       body: JSON.stringify(payload),
+    });
+  }
+
+  /** 拉取當前用戶最近 30 條識別歷史（未登入返回空陣列） */
+  asrHistory(): Promise<AsrHistoryResponse> {
+    return this.request('/api/cantonese/asr', { method: 'GET' });
+  }
+
+  /** 刪除某條識別歷史記錄 */
+  asrHistoryDelete(id: string): Promise<{ ok: true }> {
+    return this.request(`/api/cantonese/asr?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     });
   }
 

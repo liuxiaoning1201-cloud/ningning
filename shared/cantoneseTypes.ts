@@ -88,6 +88,10 @@ export interface AsrRequest {
   chunks?: string[];
   /** 可選：畫面上原有書面字幕，只作語義輔助，不可覆蓋聽寫結果 */
   subtitleHint?: string;
+  /** 可選：原始檔名，用於落地歷史記錄供日後查找 */
+  fileName?: string;
+  /** 可選：音頻總時長（前端 decode 後估算），落歷史用於展示 */
+  durationSeconds?: number;
 }
 
 export interface AsrSentence {
@@ -122,4 +126,26 @@ export interface AsrResponse {
   sentences: AsrSentence[];
   /** 高頻口語詞拓展 */
   terms: AsrTerm[];
+  /** 後端實際成功的 provider 名（可能多個 provider 串聯） */
+  provider?: string;
+  /** 服務端儲存的 session id，可用於日後從歷史調回 */
+  sessionId?: string;
+}
+
+/** 歷史列表項：包含完整對白和高頻詞，方便前端離線重看 */
+export interface AsrHistorySession {
+  id: string;
+  fileName?: string;
+  rawText: string;
+  sentences: AsrSentence[];
+  terms: AsrTerm[];
+  provider?: string;
+  subtitleHint?: string;
+  chunkCount?: number;
+  durationSeconds?: number;
+  createdAt: string;
+}
+
+export interface AsrHistoryResponse {
+  sessions: AsrHistorySession[];
 }

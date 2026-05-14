@@ -9,7 +9,15 @@
  *   - 不做「書面語翻譯成口語」；只整理實際聽到的粵語對白。
  */
 import { errorJson, json, protect, type YueyuEnv, type YueyuPagesFn } from './_shared';
-import type { AsrRequest, AsrResponse, AsrSentence, AsrTerm } from '../../../shared/cantoneseTypes';
+import { transcribeAllChunks } from './asrProviders';
+import type {
+  AsrRequest,
+  AsrResponse,
+  AsrSentence,
+  AsrTerm,
+  AsrHistoryResponse,
+  AsrHistorySession,
+} from '../../../shared/cantoneseTypes';
 
 // 單塊大小上限：Workers AI Whisper 在請求 >2MB 時會 3006: Request is too large。
 // 前端會先把音頻壓成 16kHz 單聲道 WAV 並切成 ≤20s 一段，所以單塊不會超過 ~1MB。
@@ -17,16 +25,6 @@ const MAX_CHUNK_BYTES = 2 * 1024 * 1024;
 // 全部塊加起來最大 20MB，防止有人傳整集電影
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 const MAX_CHUNKS = 24; // 對應前端 24 × 20s = 8 分鐘上限
-const WHISPER_MODELS = [
-  '@cf/openai/whisper-large-v3-turbo',
-  '@cf/openai/whisper',
-] as const;
-
-interface WhisperResult {
-  text?: string;
-  transcription_info?: { language?: string };
-  words?: Array<{ word?: string; start?: number; end?: number }>;
-}
 
 interface DeepseekResponse {
   choices?: Array<{ message?: { content?: string } }>;
@@ -35,6 +33,19 @@ interface DeepseekResponse {
 interface RefinePayload {
   sentences?: AsrSentence[];
   terms?: AsrTerm[];
+}
+
+interface AsrHistoryRow {
+  id: string;
+  file_name: string | null;
+  raw_text: string;
+  sentences_json: string | null;
+  terms_json: string | null;
+  subtitle_hint: string | null;
+  provider: string | null;
+  chunk_count: number | null;
+  duration_seconds: number | null;
+  created_at: string;
 }
 
 export const onRequestPost: YueyuPagesFn = async (context) => {
@@ -94,7 +105,7 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
     base64Chunks.push(parsed.base64);
   }
 
-  const whisper = await transcribeAll(context.env, base64Chunks);
+  const whisper = await transcribeAllChunks(context.env, base64Chunks);
   if ('error' in whisper) return errorJson(502, 'asr_failed', whisper.error);
 
   const rawText = normalizeTranscript(whisper.text || '');
@@ -103,15 +114,169 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
   }
 
   const refined = await refineCantonese(rawText, body.subtitleHint || '', context.env);
-  const response: AsrResponse = refined ?? {
+  const baseResponse: AsrResponse = refined ?? {
     rawText,
     sentences: [{ cantonese: rawText, confidence: 0.72 }],
     terms: [],
   };
 
+  const providerName = whisper.providersUsed.join('+') || undefined;
+
+  // 若用戶已登入，把這次識別結果落地，方便之後從歷史調回（無需重跑 Whisper）
+  const sessionId = await saveAsrSession(context.env, guard.user?.id, {
+    fileName: typeof body.fileName === 'string' ? body.fileName.slice(0, 200) : undefined,
+    rawText,
+    sentences: baseResponse.sentences,
+    terms: baseResponse.terms,
+    subtitleHint: body.subtitleHint || undefined,
+    provider: providerName,
+    chunkCount: base64Chunks.length,
+    durationSeconds:
+      typeof body.durationSeconds === 'number' && isFinite(body.durationSeconds)
+        ? body.durationSeconds
+        : undefined,
+  });
+
+  const response: AsrResponse = {
+    ...baseResponse,
+    provider: providerName,
+    sessionId: sessionId ?? undefined,
+  };
+
   await guard.commitUsage();
   return json(response);
 };
+
+/**
+ * 識別歷史列表：返回當前用戶最近 30 條完整 session。
+ * 未登入用戶會被 protect() 攔截（requireAuth=true 默認）。
+ */
+export const onRequestGet: YueyuPagesFn = async (context) => {
+  const guard = await protect(context, {
+    bucket: 'asr-history',
+    ipPerMinute: 60,
+    ipPerDay: 1000,
+    userPerDay: 1000,
+  });
+  if (guard instanceof Response) return guard;
+  const user = guard.user!;
+
+  if (!context.env.DB) {
+    const empty: AsrHistoryResponse = { sessions: [] };
+    return json(empty);
+  }
+
+  const rows = await context.env.DB.prepare(
+    `SELECT id, file_name, raw_text, sentences_json, terms_json, subtitle_hint,
+            provider, chunk_count, duration_seconds, created_at
+       FROM cantonese_asr_sessions
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+      LIMIT 30`,
+  )
+    .bind(user.id)
+    .all<AsrHistoryRow>();
+
+  const sessions: AsrHistorySession[] = (rows.results ?? []).map((row) => ({
+    id: row.id,
+    fileName: row.file_name || undefined,
+    rawText: row.raw_text,
+    sentences: safeJsonParseArray<AsrSentence>(row.sentences_json),
+    terms: safeJsonParseArray<AsrTerm>(row.terms_json),
+    subtitleHint: row.subtitle_hint || undefined,
+    provider: row.provider || undefined,
+    chunkCount: row.chunk_count ?? undefined,
+    durationSeconds: row.duration_seconds ?? undefined,
+    createdAt: row.created_at,
+  }));
+
+  return json({ sessions } satisfies AsrHistoryResponse);
+};
+
+/**
+ * 刪除某條歷史記錄。前端「最近識別歷史」面板的清理按鈕用。
+ */
+export const onRequestDelete: YueyuPagesFn = async (context) => {
+  const guard = await protect(context, {
+    bucket: 'asr-history',
+    ipPerMinute: 60,
+    ipPerDay: 500,
+    userPerDay: 500,
+  });
+  if (guard instanceof Response) return guard;
+  const user = guard.user!;
+
+  if (!context.env.DB) return json({ ok: true });
+
+  const url = new URL(context.request.url);
+  const id = url.searchParams.get('id');
+  if (!id) return errorJson(400, 'missing_id');
+
+  await context.env.DB.prepare(
+    'DELETE FROM cantonese_asr_sessions WHERE id = ? AND user_id = ?',
+  )
+    .bind(id, user.id)
+    .run();
+
+  await guard.commitUsage();
+  return json({ ok: true });
+};
+
+interface SaveAsrSessionInput {
+  fileName?: string;
+  rawText: string;
+  sentences: AsrSentence[];
+  terms: AsrTerm[];
+  subtitleHint?: string;
+  provider?: string;
+  chunkCount?: number;
+  durationSeconds?: number;
+}
+
+async function saveAsrSession(
+  env: YueyuEnv,
+  userId: string | undefined,
+  input: SaveAsrSessionInput,
+): Promise<string | null> {
+  if (!userId || !env.DB) return null;
+  try {
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO cantonese_asr_sessions
+         (id, user_id, file_name, raw_text, sentences_json, terms_json,
+          subtitle_hint, provider, chunk_count, duration_seconds, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    )
+      .bind(
+        id,
+        userId,
+        input.fileName || null,
+        input.rawText,
+        JSON.stringify(input.sentences),
+        JSON.stringify(input.terms),
+        input.subtitleHint || null,
+        input.provider || null,
+        input.chunkCount ?? null,
+        input.durationSeconds ?? null,
+      )
+      .run();
+    return id;
+  } catch (e) {
+    // 落庫失敗不阻塞主流程：用戶仍然能拿到識別結果，只是這次不出現在歷史
+    console.warn('saveAsrSession failed', e);
+    return null;
+  }
+}
+
+function safeJsonParseArray<T>(raw: string | null): T[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 function parseBase64Media(input: string): { base64: string; mime?: string } | { error: Response } {
   const dataUrl = input.match(/^data:([^;]+);base64,(.+)$/i);
@@ -124,55 +289,6 @@ function parseBase64Media(input: string): { base64: string; mime?: string } | { 
     return { error: errorJson(400, 'invalid_base64', '音頻資料格式不正確') };
   }
   return { base64: b64.replace(/\s+/g, ''), mime };
-}
-
-/**
- * 依序轉寫多個音頻塊：用 base64 字串作為 audio 參數（比 Array<number> payload 小 3-4 倍），
- * 模型按優先順序回退，任一塊失敗則整體失敗。
- */
-async function transcribeAll(
-  env: YueyuEnv,
-  base64Chunks: string[],
-): Promise<{ text: string } | { error: string }> {
-  const texts: string[] = [];
-  for (let i = 0; i < base64Chunks.length; i++) {
-    const piece = await transcribeOne(env, base64Chunks[i]);
-    if ('error' in piece) {
-      const idx = `第 ${i + 1}/${base64Chunks.length} 段`;
-      return {
-        error:
-          `語音識別失敗（${idx}）：${piece.error}。請確認該段含清晰粵語人聲，` +
-          '或重新截取後再試。',
-      };
-    }
-    if (piece.text) texts.push(piece.text.trim());
-  }
-  return { text: texts.join(' ') };
-}
-
-async function transcribeOne(
-  env: YueyuEnv,
-  base64Audio: string,
-): Promise<{ text: string } | { error: string }> {
-  let lastError = '此片段暫時無法識別';
-  for (const model of WHISPER_MODELS) {
-    try {
-      const result = (await env.AI!.run(model, {
-        audio: base64Audio,
-        task: 'transcribe',
-        language: 'zh',
-        vad_filter: true,
-      })) as WhisperResult;
-      // 空字串視為「這一段沒人聲」，仍算成功，繼續下一塊
-      return { text: (result.text || '').trim() };
-    } catch (e) {
-      if (e instanceof Error && e.message) {
-        lastError = e.message.slice(0, 160);
-      }
-      continue;
-    }
-  }
-  return { error: lastError };
 }
 
 function normalizeTranscript(text: string): string {
