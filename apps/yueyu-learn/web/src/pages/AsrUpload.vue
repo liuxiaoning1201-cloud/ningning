@@ -100,14 +100,27 @@ async function handleFile(file: File) {
 
   let chunks: string[] = []
   let fallbackMedia = ''
+  let decodeFailed = false
   try {
     // 統一處理：解碼 → 16kHz 單聲道 → 切成多個 ≤20 秒的 WAV，繞開 Workers AI 單請求大小限制
     const out = await fileToWhisperFriendlyWavChunks(file)
     chunks = out.chunks
     audioDuration.value = out.durationSeconds
   } catch (e) {
-    console.warn('audio compress failed, fallback to raw', e)
-    loadingStage.value = '本地音頻解碼失敗，改用原檔上傳…'
+    decodeFailed = true
+    const reason = e instanceof Error ? e.message : String(e)
+    console.warn(`[ASR] 瀏覽器無法解碼此檔案，改用原檔上傳：${reason}`, {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+    })
+    // 提早告訴用戶：如果原檔大於 1.5MB，又是視頻容器，後端基本要靠 Groq 才能識別
+    const isVideoLike = file.type.startsWith('video/') || /\.(mp4|mov|hevc|mkv|webm|avi)$/i.test(file.name)
+    if (isVideoLike && file.size > 1.5 * 1024 * 1024) {
+      loadingStage.value = '本地解碼失敗（可能是 HEVC/H.265 視頻），改用原檔上傳，靠後端 Groq 處理…'
+    } else {
+      loadingStage.value = '本地音頻解碼失敗，改用原檔上傳…'
+    }
     try {
       fallbackMedia = await fileToDataUrl(file)
     } catch {
@@ -118,9 +131,13 @@ async function handleFile(file: File) {
     }
   }
 
-  loadingStage.value = chunks.length > 1
-    ? `正在用 Whisper 聽寫 ${chunks.length} 個音頻片段…`
-    : '正在用 Whisper 聽寫粵語…'
+  if (decodeFailed) {
+    loadingStage.value = '送後端識別…（無法本地切塊，靠後端 provider 處理大檔）'
+  } else {
+    loadingStage.value = chunks.length > 1
+      ? `正在用 Whisper 聽寫 ${chunks.length} 個音頻片段…`
+      : '正在用 Whisper 聽寫粵語…'
+  }
   await runAsr({ chunks: chunks.length ? chunks : undefined, media: fallbackMedia || undefined })
 }
 
@@ -641,8 +658,8 @@ function writeAscii(view: DataView, offset: number, str: string) {
 
     <div
       v-if="errorMsg"
-      class="card p-3 text-sm"
-      style="background: color-mix(in srgb, var(--color-accent) 8%, transparent); color: var(--color-accent)"
+      class="card p-4 text-sm leading-relaxed"
+      style="background: color-mix(in srgb, var(--color-accent) 8%, transparent); color: var(--color-accent); white-space: pre-line"
     >
       ⚠️ {{ errorMsg }}
     </div>

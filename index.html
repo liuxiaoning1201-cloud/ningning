@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>字遊空間</title>
+    <title>清沂遊</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -11,395 +14,585 @@
             box-sizing: border-box;
         }
 
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
-
         :root {
-            --cream-white: #f8f9f6;
-            --warm-beige: #f0f2ee;
-            --soft-gray: #e4e6e2;
-            --accent: #6b7c6f;
-            --accent-light: #9aa89c;
-            --dark-brown: #4a5c4a;
-            --text-dark: #3d4a3d;
+            /* 千里江山圖 · 青綠山水色板 */
+            --silk:          #efe6cf;  /* 絹底 */
+            --silk-deep:     #e6d7b6;  /* 絹底（深） */
+            --silk-mist:     #f6efde;  /* 絹底（淺·霧） */
+            --azure:         #2f6d8e;  /* 石青 */
+            --azure-light:   #4a93b0;  /* 石青（淺） */
+            --azure-deep:    #1f4f6b;  /* 石青（深） */
+            --malachite:     #2f7d5b;  /* 石綠 */
+            --malachite-light:#5aa67e; /* 石綠（淺） */
+            --malachite-deep:#1d5a3f;  /* 石綠（深） */
+            --gold:          #c39a3f;  /* 泥金 */
+            --gold-light:    #e0c073;  /* 泥金（淺） */
+            --cinnabar:      #b8472f;  /* 硃砂（鈐印） */
+            --ink:           #243530;  /* 墨綠 */
+            --ink-soft:      #3f534c;
         }
+
+        html { scroll-behavior: smooth; }
 
         body {
             font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(160deg, #f8f9f6 0%, #f2f4f0 45%, #eef0eb 100%);
+            background:
+                radial-gradient(circle at 80% -10%, rgba(195, 154, 63, 0.10) 0%, transparent 40%),
+                linear-gradient(180deg, #f3ecda 0%, #efe6cf 30%, #ece0c2 100%);
             min-height: 100vh;
-            padding: 40px 20px;
-            color: var(--text-dark);
+            color: var(--ink);
             overflow-x: hidden;
             position: relative;
         }
 
-        /* 背景裝飾元素 */
+        /* 絹本織紋（極淡） */
         body::before {
             content: '';
             position: fixed;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 30%, rgba(107, 124, 111, 0.06) 0%, transparent 45%);
-            animation: float 20s ease-in-out infinite;
-            z-index: 0;
+            inset: 0;
+            background-image:
+                repeating-linear-gradient(0deg, rgba(120, 90, 40, 0.025) 0px, rgba(120, 90, 40, 0.025) 1px, transparent 1px, transparent 3px),
+                repeating-linear-gradient(90deg, rgba(120, 90, 40, 0.02) 0px, rgba(120, 90, 40, 0.02) 1px, transparent 1px, transparent 3px);
             pointer-events: none;
-        }
-
-        body::after {
-            content: '';
-            position: fixed;
-            bottom: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 70% 70%, rgba(154, 168, 156, 0.05) 0%, transparent 45%);
-            animation: float 25s ease-in-out infinite reverse;
             z-index: 0;
-            pointer-events: none;
+            opacity: 0.7;
         }
 
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            33% { transform: translate(30px, -30px) rotate(120deg); }
-            66% { transform: translate(-20px, 20px) rotate(240deg); }
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        /* ===== Hero · 青綠山水 ===== */
+        .hero {
             position: relative;
+            width: 100%;
+            min-height: 520px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 64px;
             z-index: 1;
         }
 
-        /* 標題區域 */
-        .header {
-            text-align: center;
-            margin-bottom: 60px;
-            animation: fadeInDown 0.8s ease-out;
+        .hero-sky {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, #f6efde 0%, #f1e7cf 55%, rgba(241, 231, 207, 0) 100%);
+            z-index: 0;
         }
 
-        .header h1 {
-            font-size: 3rem;
-            font-weight: 300;
-            color: var(--text-dark);
-            margin-bottom: 10px;
-            letter-spacing: 0.1em;
+        .hero-art {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .hero-art svg { width: 100%; height: 100%; display: block; }
+
+        /* 泥金日 */
+        @keyframes sunGlow {
+            0%, 100% { opacity: 0.85; transform: scale(1); }
+            50%      { opacity: 1;    transform: scale(1.03); }
+        }
+        .sun-disc { transform-origin: center; animation: sunGlow 8s ease-in-out infinite; }
+
+        /* 雲霧漂移 */
+        @keyframes drift {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-60px); }
+        }
+        .mist-band { animation: drift 28s linear infinite alternate; }
+        .mist-band.slow { animation-duration: 42s; }
+
+        /* ===== 站名鈐印 ===== */
+        .brand {
             position: relative;
-            display: inline-block;
+            z-index: 3;
+            display: flex;
+            align-items: flex-start;
+            gap: 22px;
+            margin-top: 18px;
+            animation: fadeInDown 1s ease-out both;
         }
 
-        .header h1::after {
+        .brand-name {
+            font-family: 'Noto Serif TC', serif;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 4.4rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            color: var(--ink);
+            line-height: 1.05;
+            text-shadow: 0 2px 14px rgba(31, 79, 107, 0.18);
+        }
+        .brand-name .qing { color: var(--azure-deep); }
+        .brand-name .yi   { color: var(--malachite-deep); }
+        .brand-name .you  { color: var(--gold); }
+
+        .brand-side {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding-top: 6px;
+        }
+
+        .seal {
+            width: 58px;
+            height: 58px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--cinnabar), #9c3a26);
+            color: #fff;
+            font-family: 'Noto Serif TC', serif;
+            font-weight: 700;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            place-items: center;
+            font-size: 1.05rem;
+            line-height: 1;
+            letter-spacing: 0;
+            box-shadow: 0 4px 14px rgba(184, 71, 47, 0.35), inset 0 0 0 2px rgba(255,255,255,0.25);
+            transform: rotate(-2deg);
+        }
+        .seal span { display: block; }
+
+        .brand-sub {
+            writing-mode: vertical-rl;
+            font-family: 'Noto Serif TC', serif;
+            font-size: 0.95rem;
+            letter-spacing: 0.32em;
+            color: var(--ink-soft);
+            opacity: 0.85;
+        }
+
+        /* 開場引文 */
+        .epigraph {
+            position: relative;
+            z-index: 3;
+            margin-top: 30px;
+            text-align: center;
+            font-family: 'Noto Serif TC', serif;
+            color: var(--ink-soft);
+            animation: fadeInUp 1.2s ease-out 0.4s both;
+        }
+        .epigraph .verse {
+            font-size: 1.05rem;
+            letter-spacing: 0.18em;
+            line-height: 2;
+        }
+        .epigraph .cite {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 0.82rem;
+            letter-spacing: 0.2em;
+            color: var(--gold);
+            opacity: 0.95;
+        }
+
+        /* ===== 內容主體 ===== */
+        .container {
+            max-width: 1180px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+            padding: 30px 24px 80px;
+        }
+
+        .section { margin-top: 64px; }
+        .section:first-of-type { margin-top: 24px; }
+
+        .section-head {
+            display: flex;
+            align-items: baseline;
+            gap: 18px;
+            margin-bottom: 28px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(47, 109, 142, 0.18);
+            position: relative;
+        }
+        .section-head::after {
             content: '';
             position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60px;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
-            animation: expandLine 1s ease-out 0.5s both;
+            left: 0; bottom: -1px;
+            width: 64px; height: 3px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+            border-radius: 2px;
         }
 
-        @keyframes expandLine {
-            from { width: 0; opacity: 0; }
-            to { width: 60px; opacity: 1; }
+        .section-title {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.7rem;
+            font-weight: 600;
+            color: var(--azure-deep);
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-
-        .header p {
-            font-size: 1.1rem;
-            color: var(--dark-brown);
-            font-weight: 300;
-            margin-top: 25px;
+        .section-title .dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--malachite);
+            box-shadow: 0 0 0 4px rgba(47, 125, 91, 0.15);
+        }
+        .section-verse {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 0.92rem;
+            color: var(--ink-soft);
             opacity: 0.8;
+            letter-spacing: 0.12em;
         }
 
-        /* 軟件網格 */
         .apps-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-top: 50px;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 26px;
         }
 
-        /* 軟件卡片 */
+        /* ===== 冊頁卡片 ===== */
         .app-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 24px;
-            padding: 35px 30px;
+            background: linear-gradient(160deg, rgba(255,255,255,0.92) 0%, rgba(246,239,222,0.9) 100%);
+            border-radius: 16px;
+            padding: 32px 28px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(107, 124, 111, 0.2);
-            box-shadow: 0 8px 32px rgba(61, 74, 61, 0.06);
             position: relative;
             overflow: hidden;
+            border: 1px solid rgba(47, 109, 142, 0.2);
+            box-shadow: 0 10px 30px rgba(31, 79, 107, 0.07);
+            transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.45s ease, border-color 0.45s ease;
             opacity: 0;
-            animation: fadeInUp 0.6s ease-out forwards;
+            animation: fadeInUp 0.7s ease-out forwards;
         }
-
-        .app-card:nth-child(1) { animation-delay: 0.1s; }
-        .app-card:nth-child(2) { animation-delay: 0.2s; }
-        .app-card:nth-child(3) { animation-delay: 0.3s; }
-        .app-card:nth-child(4) { animation-delay: 0.4s; }
-        .app-card:nth-child(5) { animation-delay: 0.5s; }
-        .app-card:nth-child(6) { animation-delay: 0.55s; }
-        .app-card:nth-child(7) { animation-delay: 0.6s; }
-        .app-card:nth-child(8) { animation-delay: 0.65s; }
-        .app-card:nth-child(9) { animation-delay: 0.7s; }
-        .app-card:nth-child(10) { animation-delay: 0.7s; }
-        .app-card:nth-child(11) { animation-delay: 0.72s; }
-        .app-card:nth-child(12) { animation-delay: 0.75s; }
-        .app-card:nth-child(13) { animation-delay: 0.78s; }
-        .app-card:nth-child(14) { animation-delay: 0.8s; }
-
+        /* 冊頁內框（泥金細線） */
+        .app-card::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 1px solid rgba(195, 154, 63, 0.28);
+            border-radius: 10px;
+            pointer-events: none;
+            transition: border-color 0.45s ease;
+        }
+        /* 流光 */
         .app-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.5s;
+            top: 0; left: -120%;
+            width: 80%; height: 100%;
+            background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+            transition: left 0.7s ease;
+            z-index: 2;
         }
-
-        .app-card:hover::before {
-            left: 100%;
-        }
+        .app-card:hover::before { left: 130%; }
 
         .app-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 48px rgba(61, 74, 61, 0.12);
-            border-color: var(--accent);
+            transform: translateY(-8px);
+            box-shadow: 0 22px 46px rgba(31, 79, 107, 0.16);
+            border-color: var(--gold);
         }
+        .app-card:hover::after { border-color: rgba(195, 154, 63, 0.6); }
+        .app-card:active { transform: translateY(-3px); }
 
-        .app-card:active {
-            transform: translateY(-4px) scale(1.01);
-        }
-
-        /* 圖標容器 */
         .app-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 20px;
-            background: linear-gradient(135deg, var(--warm-beige) 0%, var(--soft-gray) 100%);
-            border-radius: 20px;
+            width: 78px;
+            height: 78px;
+            margin: 0 auto 18px;
+            background: linear-gradient(135deg, var(--azure-light) 0%, var(--malachite) 100%);
+            border-radius: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5rem;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 2.3rem;
             position: relative;
-            overflow: hidden;
+            box-shadow: 0 6px 16px rgba(31, 79, 107, 0.22), inset 0 -3px 8px rgba(0,0,0,0.12);
+            transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
         }
-
         .app-card:hover .app-icon {
-            transform: rotate(5deg) scale(1.1);
-            background: linear-gradient(135deg, var(--accent-light) 0%, var(--soft-gray) 100%);
+            transform: rotate(-4deg) scale(1.08);
         }
 
-        .app-icon::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
-            opacity: 0;
-            transition: opacity 0.4s;
-        }
-
-        .app-card:hover .app-icon::after {
-            opacity: 1;
-            animation: shine 1s ease-out;
-        }
-
-        @keyframes shine {
-            0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-
-        /* 標題 */
         .app-title {
-            font-size: 1.4rem;
-            font-weight: 500;
-            color: var(--text-dark);
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.32rem;
+            font-weight: 600;
+            color: var(--ink);
             margin-bottom: 10px;
+            letter-spacing: 0.04em;
             transition: color 0.3s;
         }
+        .app-card:hover .app-title { color: var(--azure-deep); }
 
-        .app-card:hover .app-title {
-            color: var(--dark-brown);
-        }
-
-        /* 描述 */
         .app-description {
-            font-size: 0.95rem;
-            color: var(--dark-brown);
+            font-size: 0.9rem;
+            color: var(--ink-soft);
+            opacity: 0.78;
+            line-height: 1.7;
+        }
+
+        /* ===== 頁尾 ===== */
+        .footer {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 36px 20px 56px;
+            font-family: 'Noto Serif TC', serif;
+            color: var(--ink-soft);
             opacity: 0.7;
-            line-height: 1.6;
-            margin-top: 8px;
+            letter-spacing: 0.16em;
+            font-size: 0.85rem;
         }
 
-        /* 動畫定義 */
+        /* ===== 動畫 ===== */
         @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-26px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(28px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* 響應式設計 */
+        /* ===== 響應式 ===== */
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .apps-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-
-            .app-card {
-                padding: 25px 20px;
-            }
+            .hero { min-height: 420px; padding-top: 44px; }
+            .brand-name { font-size: 3rem; }
+            .seal { width: 46px; height: 46px; font-size: 0.85rem; }
+            .epigraph .verse { font-size: 0.92rem; }
+            .section-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .section-title { font-size: 1.4rem; }
+            .apps-grid { grid-template-columns: 1fr; gap: 18px; }
+            .app-card { padding: 26px 22px; }
         }
 
-        /* 載入動畫 */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .loading {
-            animation: pulse 2s ease-in-out infinite;
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>字遊空間</h1>
-            <p>在文字世界裡自由遊戲</p>
+    <!-- ===== Hero · 青綠山水 ===== -->
+    <header class="hero">
+        <div class="hero-sky"></div>
+        <div class="hero-art" aria-hidden="true">
+            <svg viewBox="0 0 1440 520" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="gMistMtn" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"  stop-color="#aecbd6"/>
+                        <stop offset="100%" stop-color="#cfe0d8"/>
+                    </linearGradient>
+                    <linearGradient id="gAzure" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"  stop-color="#4a93b0"/>
+                        <stop offset="100%" stop-color="#2f6d8e"/>
+                    </linearGradient>
+                    <linearGradient id="gMalachite" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"  stop-color="#3f9069"/>
+                        <stop offset="100%" stop-color="#1d5a3f"/>
+                    </linearGradient>
+                    <linearGradient id="gFore" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"  stop-color="#23624a"/>
+                        <stop offset="100%" stop-color="#143b2c"/>
+                    </linearGradient>
+                    <radialGradient id="gSun" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%"  stop-color="#f3e0a6"/>
+                        <stop offset="60%" stop-color="#e0c073"/>
+                        <stop offset="100%" stop-color="#c39a3f"/>
+                    </radialGradient>
+                </defs>
+
+                <!-- 泥金日 -->
+                <circle class="sun-disc" cx="1140" cy="150" r="64" fill="url(#gSun)" opacity="0.92"/>
+
+                <!-- 遠峰·霧青 -->
+                <path d="M0,300 C150,258 250,292 360,252 C480,210 560,278 700,246 C840,214 960,288 1100,254 C1240,222 1340,276 1440,254 L1440,520 L0,520 Z"
+                      fill="url(#gMistMtn)" opacity="0.55"/>
+
+                <!-- 霧帶 1 -->
+                <g class="mist-band slow">
+                    <ellipse cx="420" cy="288" rx="320" ry="20" fill="#fbf6e8" opacity="0.45"/>
+                    <ellipse cx="1080" cy="300" rx="280" ry="16" fill="#fbf6e8" opacity="0.4"/>
+                </g>
+
+                <!-- 中峰·石青 -->
+                <path d="M0,360 C120,300 220,346 340,292 C460,238 540,332 680,300 C820,268 900,206 1040,278 C1180,350 1320,300 1440,322 L1440,520 L0,520 Z"
+                      fill="url(#gAzure)" opacity="0.9"/>
+
+                <!-- 霧帶 2 -->
+                <g class="mist-band">
+                    <ellipse cx="700" cy="372" rx="420" ry="18" fill="#f6efde" opacity="0.5"/>
+                </g>
+
+                <!-- 近峰·石綠 -->
+                <path d="M0,420 L120,344 L210,406 L330,322 L440,404 L570,300 L700,392 L840,330 L1000,406 L1140,342 L1280,412 L1440,360 L1440,520 L0,520 Z"
+                      fill="url(#gMalachite)"/>
+
+                <!-- 前景·深綠 -->
+                <path d="M0,472 L160,424 L300,472 L470,414 L650,474 L830,422 L1010,474 L1190,424 L1370,472 L1440,452 L1440,520 L0,520 Z"
+                      fill="url(#gFore)"/>
+
+                <!-- 泥金山脊提亮 -->
+                <path d="M570,300 L700,392 M1040,278 L900,206" stroke="#e0c073" stroke-width="2" opacity="0.5" fill="none" stroke-linecap="round"/>
+            </svg>
         </div>
 
-        <div class="apps-grid">
-            <div class="app-card" onclick="window.location.href='字詞地鼠戰/字詞地鼠戰.html'">
-                <div class="app-icon">🎯</div>
-                <h2 class="app-title">字詞地鼠戰</h2>
-                <p class="app-description">趣味字詞學習遊戲<br>通過打地鼠的方式練習字詞</p>
+        <div class="brand">
+            <div class="brand-name">
+                <span class="qing">清</span><span class="yi">沂</span><span class="you">遊</span>
             </div>
-
-            <div class="app-card" onclick="window.location.href='手勢點名/index.html'">
-                <div class="app-icon">✋</div>
-                <h2 class="app-title">手勢點名系統</h2>
-                <p class="app-description">創新的手勢互動點名<br>讓點名變得更有趣</p>
-            </div>
-
-            <div class="app-card" onclick="window.open('https://nie-bao-shizi-guo.pages.dev', '_blank')">
-                <div class="app-icon">🍎</div>
-                <h2 class="app-title">捏爆識字果</h2>
-                <p class="app-description">手勢捏爆水果學中文<br>限時闖關、干擾詞挑戰、錯詞本複習</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='班級守護隊/index.html'">
-                <div class="app-icon">🐾</div>
-                <h2 class="app-title">班級守護隊</h2>
-                <p class="app-description">小組加減分與班級管理<br>動物主題、任務徽章、有效學習紀錄</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='春江花月夜/春江花月夜.html'">
-                <div class="app-icon">🌙</div>
-                <h2 class="app-title">春江花月夜</h2>
-                <p class="app-description">手勢互動詩詞體驗<br>感受古典詩詞之美</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='crossword/index.html'">
-                <div class="app-icon">📝</div>
-                <h2 class="app-title">中文填字接龍</h2>
-                <p class="app-description">詞語、成語、語句填字練習<br>縱橫交錯，靈活訓練語文能力</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='zizi/index.html'">
-                <div class="app-icon">🎴</div>
-                <h2 class="app-title">字字珠璣</h2>
-                <p class="app-description">中文連字棋：成語/詩詞/句子六模板<br>內容 × 連線 × 勝負，老師可自訂</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='poetpal/index.html'">
-                <div class="app-icon">🏯</div>
-                <h2 class="app-title">詩友記</h2>
-                <p class="app-description">穿越時空與詩人聊天<br>50+ 位詩人等你來對話</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='句子排序小火車/index.html'">
-                <div class="app-icon">🚂</div>
-                <h2 class="app-title">句子排序小火車</h2>
-                <p class="app-description">拖曳詞語排進季節車廂<br>排對句子，火車開往下一關</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='詞語配配樂/index.html'">
-                <div class="app-icon">🎴</div>
-                <h2 class="app-title">詞語配配樂</h2>
-                <p class="app-description">詞語與解釋左右配對<br>配對成功卡牌消失，錯了會輕輕晃動提示</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='luoyang-trip/index.html'">
-                <div class="app-icon">🏛️</div>
-                <h2 class="app-title">洛陽鄭州訪學之旅</h2>
-                <p class="app-description">航班、日程與住宿一覽<br>河南訪學手冊（免登入）</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='誰是臥底/index.html'">
-                <div class="app-icon">🕵️</div>
-                <h2 class="app-title">誰是臥底</h2>
-                <p class="app-description">線上多人文字推理遊戲<br>AI 出題、自訂詞庫，課堂互動神器</p>
-            </div>
-
-            <div class="app-card" onclick="window.open('https://ancientastro-5esfkuhc.manus.space', '_blank')">
-                <div class="app-icon">🔭</div>
-                <h2 class="app-title">古代天文文化</h2>
-                <p class="app-description">探索古代天文學的奧秘<br>了解三垣二十八宿與曆法知識</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='yueyu/index.html'">
-                <div class="app-icon">🎙️</div>
-                <h2 class="app-title">粵語學習</h2>
-                <p class="app-description">睇劇學粵語口語<br>書面字幕一鍵還原、生詞本、間隔複習</p>
+            <div class="brand-side">
+                <div class="seal" title="清沂遊">
+                    <span>清</span><span>沂</span><span>遊</span><span>印</span>
+                </div>
+                <div class="brand-sub">悠想清沂・優遊詠歸</div>
             </div>
         </div>
-    </div>
+
+        <div class="epigraph">
+            <div class="verse">莫春者，春服既成，浴乎沂，風乎舞雩，詠而歸。</div>
+            <span class="cite">—— 《論語・先進》・陶淵明〈時運〉「悠想清沂」</span>
+        </div>
+    </header>
+
+    <!-- ===== 內容 ===== -->
+    <main class="container">
+
+        <!-- 詠詩亭 -->
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>詠詩亭</h2>
+                <span class="section-verse">情動於中而形於言・含英咀華</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='春江花月夜/春江花月夜.html'">
+                    <div class="app-icon">🌙</div>
+                    <h3 class="app-title">春江花月夜</h3>
+                    <p class="app-description">手勢互動詩詞體驗<br>感受古典詩詞之美</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='poetpal/index.html'">
+                    <div class="app-icon">🏯</div>
+                    <h3 class="app-title">詩友記</h3>
+                    <p class="app-description">穿越時空與詩人聊天<br>50+ 位詩人等你來對話</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='zizi/index.html'">
+                    <div class="app-icon">🎴</div>
+                    <h3 class="app-title">字字珠璣</h3>
+                    <p class="app-description">中文連字棋：成語/詩詞/句子六模板<br>內容 × 連線 × 勝負，老師可自訂</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 識字渡 -->
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>識字渡</h2>
+                <span class="section-verse">積字成句・寓教於樂</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='字詞地鼠戰/字詞地鼠戰.html'">
+                    <div class="app-icon">🎯</div>
+                    <h3 class="app-title">字詞地鼠戰</h3>
+                    <p class="app-description">趣味字詞學習遊戲<br>通過打地鼠的方式練習字詞</p>
+                </div>
+                <div class="app-card" onclick="window.open('https://nie-bao-shizi-guo.pages.dev', '_blank')">
+                    <div class="app-icon">🍎</div>
+                    <h3 class="app-title">捏爆識字果</h3>
+                    <p class="app-description">手勢捏爆水果學中文<br>限時闖關、干擾詞挑戰、錯詞本複習</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='crossword/index.html'">
+                    <div class="app-icon">📝</div>
+                    <h3 class="app-title">中文填字接龍</h3>
+                    <p class="app-description">詞語、成語、語句填字練習<br>縱橫交錯，靈活訓練語文能力</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='句子排序小火車/index.html'">
+                    <div class="app-icon">🚂</div>
+                    <h3 class="app-title">句子排序小火車</h3>
+                    <p class="app-description">拖曳詞語排進季節車廂<br>排對句子，火車開往下一關</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='詞語配配樂/index.html'">
+                    <div class="app-icon">🎴</div>
+                    <h3 class="app-title">詞語配配樂</h3>
+                    <p class="app-description">詞語與解釋左右配對<br>配對成功卡牌消失，錯了會輕輕晃動提示</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 言語舟 -->
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>言語舟</h2>
+                <span class="section-verse">言之有物・相與詠歸</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='yueyu/index.html'">
+                    <div class="app-icon">🎙️</div>
+                    <h3 class="app-title">粵語學習</h3>
+                    <p class="app-description">睇劇學粵語口語<br>書面字幕一鍵還原、生詞本、間隔複習</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='誰是臥底/index.html'">
+                    <div class="app-icon">🕵️</div>
+                    <h3 class="app-title">誰是臥底</h3>
+                    <p class="app-description">線上多人文字推理遊戲<br>AI 出題、自訂詞庫，課堂互動神器</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 課堂閣 -->
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>課堂閣</h2>
+                <span class="section-verse">教學相長・各得其所</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='班級守護隊/index.html'">
+                    <div class="app-icon">🐾</div>
+                    <h3 class="app-title">班級守護隊</h3>
+                    <p class="app-description">小組加減分與班級管理<br>動物主題、任務徽章、有效學習紀錄</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='手勢點名/index.html'">
+                    <div class="app-icon">✋</div>
+                    <h3 class="app-title">手勢點名系統</h3>
+                    <p class="app-description">創新的手勢互動點名<br>讓點名變得更有趣</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 遠遊記 -->
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>遠遊記</h2>
+                <span class="section-verse">讀萬卷書・行萬里路</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='luoyang-trip/index.html'">
+                    <div class="app-icon">🏛️</div>
+                    <h3 class="app-title">洛陽鄭州訪學之旅</h3>
+                    <p class="app-description">航班、日程與住宿一覽<br>河南訪學手冊（免登入）</p>
+                </div>
+                <div class="app-card" onclick="window.open('https://ancientastro-5esfkuhc.manus.space', '_blank')">
+                    <div class="app-icon">🔭</div>
+                    <h3 class="app-title">古代天文文化</h3>
+                    <p class="app-description">探索古代天文學的奧秘<br>了解三垣二十八宿與曆法知識</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        清沂遊 · 浴乎沂，風乎舞雩，詠而歸
+    </footer>
 
     <script>
-        // 添加點擊動畫效果
+        // 點擊漣漪（如水波）
         document.querySelectorAll('.app-card').forEach(card => {
             card.addEventListener('click', function(e) {
-                // 創建波紋效果
                 const ripple = document.createElement('span');
                 const rect = this.getBoundingClientRect();
                 const size = Math.max(rect.width, rect.height);
                 const x = e.clientX - rect.left - size / 2;
                 const y = e.clientY - rect.top - size / 2;
-                
                 ripple.style.cssText = `
                     position: absolute;
                     width: ${size}px;
@@ -407,35 +600,31 @@
                     left: ${x}px;
                     top: ${y}px;
                     border-radius: 50%;
-                    background: rgba(107, 124, 111, 0.25);
+                    background: rgba(47, 125, 91, 0.22);
                     transform: scale(0);
                     animation: ripple 0.6s ease-out;
                     pointer-events: none;
+                    z-index: 1;
                 `;
-                
                 this.appendChild(ripple);
-                
                 setTimeout(() => ripple.remove(), 600);
             });
         });
 
-        // 添加波紋動畫樣式
         const style = document.createElement('style');
-        style.textContent = `
-            @keyframes ripple {
-                to {
-                    transform: scale(2);
-                    opacity: 0;
-                }
-            }
-        `;
+        style.textContent = `@keyframes ripple { to { transform: scale(2); opacity: 0; } }`;
         document.head.appendChild(style);
 
-        // 頁面載入完成後的動畫
+        // 卡片依序浮現
+        document.querySelectorAll('.app-card').forEach((card, i) => {
+            card.style.animationDelay = (0.06 * i + 0.1) + 's';
+        });
+
+        // 頁面載入淡入
         window.addEventListener('load', () => {
             document.body.style.opacity = '0';
             setTimeout(() => {
-                document.body.style.transition = 'opacity 0.5s ease-in';
+                document.body.style.transition = 'opacity 0.6s ease-in';
                 document.body.style.opacity = '1';
             }, 100);
         });

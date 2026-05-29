@@ -19,11 +19,12 @@ import type {
   AsrHistorySession,
 } from '../../../shared/cantoneseTypes';
 
-// 單塊大小上限：Workers AI Whisper 在請求 >2MB 時會 3006: Request is too large。
-// 前端會先把音頻壓成 16kHz 單聲道 WAV 並切成 ≤20s 一段，所以單塊不會超過 ~1MB。
-const MAX_CHUNK_BYTES = 2 * 1024 * 1024;
-// 全部塊加起來最大 20MB，防止有人傳整集電影
-const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+// 單塊大小上限：因為 Groq 上限 25MB 可以接原始視頻容器，這裡放寬到 24MB。
+// CloudflareWhisperProvider 內部會自己做 1.6MB 預檢，遇到大塊會自動切到 Groq。
+// 如果用戶沒配 Groq、塊又超過 1.6MB，會在識別階段返回友善錯誤（提示配置 Groq 或先轉檔）。
+const MAX_CHUNK_BYTES = 24 * 1024 * 1024;
+// 全部塊加起來最大 40MB，防止有人傳整集電影
+const MAX_TOTAL_BYTES = 40 * 1024 * 1024;
 const MAX_CHUNKS = 24; // 對應前端 24 × 20s = 8 分鐘上限
 
 interface DeepseekResponse {
@@ -86,7 +87,7 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
     return errorJson(413, 'too_many_chunks', `音頻片段過多（>${MAX_CHUNKS}），請縮短到 ${MAX_CHUNKS * 20} 秒內`);
   }
 
-  const base64Chunks: string[] = [];
+  const chunkInputs: { base64: string; mime?: string }[] = [];
   let totalBytes = 0;
   for (const chunk of rawChunks) {
     const parsed = parseBase64Media(chunk);
@@ -95,18 +96,42 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
       return errorJson(
         413,
         'chunk_too_large',
-        '單個音頻片段過大，請重新上傳（前端會自動切成小段）',
+        `單個音頻片段超過 ${MAX_CHUNK_BYTES / 1024 / 1024}MB，請先截短或壓縮再上傳`,
       );
     }
     totalBytes += parsed.base64.length * 0.75;
     if (totalBytes > MAX_TOTAL_BYTES) {
       return errorJson(413, 'media_too_large', '音頻總長過長，請縮短到 5 分鐘以內');
     }
-    base64Chunks.push(parsed.base64);
+    chunkInputs.push({ base64: parsed.base64, mime: parsed.mime });
   }
 
-  const whisper = await transcribeAllChunks(context.env, base64Chunks);
-  if ('error' in whisper) return errorJson(502, 'asr_failed', whisper.error);
+  const whisper = await transcribeAllChunks(context.env, chunkInputs);
+  if ('error' in whisper) {
+    const baseMsg = whisper.error;
+    // 把「容量問題」翻譯成用戶能行動的具體建議
+    if (whisper.hint === 'needs_groq') {
+      return errorJson(
+        502,
+        'asr_needs_groq',
+        '此視頻無法在你的瀏覽器解碼成小段音頻（多半是 HEVC / iPhone 視頻格式，' +
+          'Chrome 與 Firefox 不支援解碼）。\n\n請選擇下面任一方案：\n' +
+          '1. 用 QuickTime / 線上工具把視頻轉成 mp3 或 m4a 純音頻再上傳；\n' +
+          '2. （推薦）配置 GROQ_API_KEY 環境變數（免費，5 分鐘），' +
+          '系統會自動用 Groq 處理大檔，永遠不用手動轉檔。' +
+          '\n\n技術細節：' + baseMsg,
+      );
+    }
+    if (whisper.hint === 'needs_smaller') {
+      return errorJson(
+        502,
+        'asr_too_large_for_groq',
+        '音頻超過所有 provider 的單檔上限（Groq 25MB），請截短或先壓縮再試。' +
+          '\n\n技術細節：' + baseMsg,
+      );
+    }
+    return errorJson(502, 'asr_failed', baseMsg);
+  }
 
   const rawText = normalizeTranscript(whisper.text || '');
   if (!rawText) {
@@ -130,7 +155,7 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
     terms: baseResponse.terms,
     subtitleHint: body.subtitleHint || undefined,
     provider: providerName,
-    chunkCount: base64Chunks.length,
+    chunkCount: chunkInputs.length,
     durationSeconds:
       typeof body.durationSeconds === 'number' && isFinite(body.durationSeconds)
         ? body.durationSeconds

@@ -18,6 +18,12 @@ const CF_WHISPER_MODELS = [
   '@cf/openai/whisper',
 ] as const;
 
+// Cloudflare Workers AI 對 Whisper audio payload 的硬限制：社區實測 1MB 穩定、>2MB 開始 3006。
+// 留一點安全邊際，1.6MB 為閾值；超過就直接讓 orchestrator 試下一家 provider（Groq）。
+const CF_MAX_AUDIO_BYTES = 1.6 * 1024 * 1024;
+// Groq 官方上限 25MB，留 1MB 作 multipart / 編碼 overhead
+const GROQ_MAX_AUDIO_BYTES = 24 * 1024 * 1024;
+
 interface CfWhisperResult {
   text?: string;
   transcription_info?: { language?: string };
@@ -37,10 +43,20 @@ export interface AsrProviderError {
 
 export type AsrProviderOutcome = AsrProviderSuccess | AsrProviderError;
 
+/**
+ * 單塊音頻輸入。
+ * - `base64`：純 base64（已去掉 data URL 前綴）
+ * - `mime`：原始 MIME 類型，幫助 Groq 等支援多容器的 provider 正確識別
+ */
+export interface AudioChunkInput {
+  base64: string;
+  mime?: string;
+}
+
 export interface AsrProvider {
   readonly name: string;
   isAvailable(env: YueyuEnv): boolean;
-  transcribe(env: YueyuEnv, base64Audio: string): Promise<AsrProviderOutcome>;
+  transcribe(env: YueyuEnv, chunk: AudioChunkInput): Promise<AsrProviderOutcome>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,13 +70,37 @@ class CloudflareWhisperProvider implements AsrProvider {
     return Boolean(env.AI);
   }
 
-  async transcribe(env: YueyuEnv, base64Audio: string): Promise<AsrProviderOutcome> {
+  async transcribe(env: YueyuEnv, chunk: AudioChunkInput): Promise<AsrProviderOutcome> {
+    const { base64, mime } = chunk;
+
+    // CF Whisper 在原始視頻容器（mp4/mov/webm）上經常無法抽音軌，
+    // 直接讓 orchestrator 切下一家（Groq 內建 FFmpeg 可直接處理）。
+    if (mime && /^video\//i.test(mime)) {
+      return {
+        error: `Cloudflare Workers AI 不支援直接識別 ${mime} 視頻容器（需要先在瀏覽器抽音軌）`,
+        provider: this.name,
+        retryable: true,
+      };
+    }
+
+    // 預檢大小：超過 CF Whisper 的 payload 上限就直接返回可重試錯誤，
+    // 讓 orchestrator 立刻切到下一家（通常是 Groq）。比實際請求再失敗快得多。
+    const sizeBytes = Math.ceil(base64.length * 0.75);
+    if (sizeBytes > CF_MAX_AUDIO_BYTES) {
+      return {
+        error: `音頻 ${(sizeBytes / 1024 / 1024).toFixed(2)}MB 超過 Cloudflare Workers AI ` +
+          `${(CF_MAX_AUDIO_BYTES / 1024 / 1024).toFixed(1)}MB 上限（這是 Workers AI 的硬限制）`,
+        provider: this.name,
+        retryable: true,
+      };
+    }
+
     let lastError = '此片段暫時無法識別';
     let retryable = false;
     for (const model of CF_WHISPER_MODELS) {
       try {
         const result = (await env.AI!.run(model, {
-          audio: base64Audio,
+          audio: base64,
           task: 'transcribe',
           language: 'zh',
           vad_filter: true,
@@ -95,18 +135,30 @@ class GroqWhisperProvider implements AsrProvider {
     return Boolean(env.GROQ_API_KEY);
   }
 
-  async transcribe(env: YueyuEnv, base64Audio: string): Promise<AsrProviderOutcome> {
+  async transcribe(env: YueyuEnv, chunk: AudioChunkInput): Promise<AsrProviderOutcome> {
     const apiKey = env.GROQ_API_KEY;
     if (!apiKey) {
       return { error: 'GROQ_API_KEY 未配置', provider: this.name, retryable: false };
     }
 
+    const { base64, mime } = chunk;
+    const sizeBytes = Math.ceil(base64.length * 0.75);
+    if (sizeBytes > GROQ_MAX_AUDIO_BYTES) {
+      return {
+        error: `音頻 ${(sizeBytes / 1024 / 1024).toFixed(1)}MB 超過 Groq ` +
+          `${(GROQ_MAX_AUDIO_BYTES / 1024 / 1024).toFixed(0)}MB 上限，請截短再試`,
+        provider: this.name,
+        retryable: false,
+      };
+    }
+
     try {
-      const bytes = base64ToBytes(base64Audio);
-      const blob = new Blob([bytes], { type: 'audio/wav' });
+      const bytes = base64ToBytes(base64);
+      const { filename, contentType } = pickGroqFilenameAndType(mime);
+      const blob = new Blob([bytes], { type: contentType });
 
       const form = new FormData();
-      form.append('file', blob, 'chunk.wav');
+      form.append('file', blob, filename);
       form.append('model', env.GROQ_WHISPER_MODEL || 'whisper-large-v3-turbo');
       form.append('language', 'zh');
       form.append('temperature', '0');
@@ -142,6 +194,34 @@ function base64ToBytes(b64: string): Uint8Array {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   return bytes;
+}
+
+/**
+ * Groq 的 Whisper API 需要從檔名/Content-Type 識別格式（內部走 FFmpeg）。
+ * 我們依照 MIME 推斷最合適的副檔名，讓 Groq 知道如何 demux。
+ * 支援格式：flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, webm
+ */
+function pickGroqFilenameAndType(mime?: string): { filename: string; contentType: string } {
+  const m = (mime || '').toLowerCase();
+  if (m.includes('flac')) return { filename: 'audio.flac', contentType: 'audio/flac' };
+  if (m.includes('mp3') || m.includes('mpeg') || m.includes('mpga')) {
+    return { filename: 'audio.mp3', contentType: 'audio/mpeg' };
+  }
+  if (m.includes('m4a') || m.includes('mp4a')) {
+    return { filename: 'audio.m4a', contentType: 'audio/mp4' };
+  }
+  if (m.includes('mp4') || m.includes('quicktime') || m.includes('mov')) {
+    // Groq 接受 mp4 視頻容器，內部會抽音軌
+    return { filename: 'media.mp4', contentType: 'video/mp4' };
+  }
+  if (m.includes('ogg') || m.includes('opus')) {
+    return { filename: 'audio.ogg', contentType: 'audio/ogg' };
+  }
+  if (m.includes('webm')) {
+    return { filename: 'audio.webm', contentType: 'audio/webm' };
+  }
+  // 默認當作 WAV（我們前端切塊產出的就是 WAV）
+  return { filename: 'audio.wav', contentType: 'audio/wav' };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,19 +262,22 @@ export function pickAsrProviders(env: YueyuEnv): AsrProvider[] {
  */
 async function transcribeOneChunk(
   env: YueyuEnv,
-  base64Audio: string,
-): Promise<{ text: string; provider: string } | { errors: string[] }> {
+  chunk: AudioChunkInput,
+): Promise<{ text: string; provider: string } | { errors: string[]; allOnlySizeIssue: boolean }> {
   const providers = pickAsrProviders(env);
   const errors: string[] = [];
+  let allOnlySizeIssue = true;
   for (const p of providers) {
-    const r = await p.transcribe(env, base64Audio);
+    const r = await p.transcribe(env, chunk);
     if ('error' in r) {
       errors.push(`${r.provider}: ${r.error}`);
+      // 只要有一個錯誤不是「換家就有救」的可重試錯誤，就不是純粹的容量問題
+      if (!r.retryable) allOnlySizeIssue = false;
       continue;
     }
     return { text: r.text, provider: r.provider };
   }
-  return { errors };
+  return { errors, allOnlySizeIssue };
 }
 
 /**
@@ -203,17 +286,26 @@ async function transcribeOneChunk(
  */
 export async function transcribeAllChunks(
   env: YueyuEnv,
-  base64Chunks: string[],
-): Promise<{ text: string; providersUsed: string[] } | { error: string }> {
+  chunks: AudioChunkInput[],
+): Promise<
+  | { text: string; providersUsed: string[] }
+  | { error: string; hint?: 'needs_groq' | 'needs_smaller' }
+> {
   const texts: string[] = [];
   const used = new Set<string>();
-  for (let i = 0; i < base64Chunks.length; i++) {
-    const r = await transcribeOneChunk(env, base64Chunks[i]);
+  for (let i = 0; i < chunks.length; i++) {
+    const r = await transcribeOneChunk(env, chunks[i]);
     if ('errors' in r) {
+      // 給上層一個 hint：是「裝 Groq 就好」還是「真的得改檔」
+      const hint: 'needs_groq' | 'needs_smaller' | undefined =
+        r.allOnlySizeIssue && !env.GROQ_API_KEY ? 'needs_groq'
+        : r.allOnlySizeIssue ? 'needs_smaller'
+        : undefined;
       return {
         error:
-          `第 ${i + 1}/${base64Chunks.length} 段識別失敗（已嘗試 ${r.errors.length} 個 provider）：` +
+          `第 ${i + 1}/${chunks.length} 段識別失敗（已試 ${r.errors.length} 家 provider）：` +
           r.errors.join(' ｜ '),
+        hint,
       };
     }
     if (r.text) texts.push(r.text);
