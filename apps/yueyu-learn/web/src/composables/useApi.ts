@@ -8,7 +8,7 @@ export function useApi(): CantoneseApi {
     // 必須走完整域名；純網頁 / PWA 走相對路徑即可。
     const apiBase =
       (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.())
-        ? (import.meta.env.VITE_API_BASE || 'https://zykongjian.com')
+        ? (import.meta.env.VITE_API_BASE || 'https://qingyiu.com')
         : ''
 
     _api = new CantoneseApi({

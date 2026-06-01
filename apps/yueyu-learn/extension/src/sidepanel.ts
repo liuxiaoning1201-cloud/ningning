@@ -27,8 +27,8 @@ async function load() {
   } catch (err) {
     const e = err as Error & { status?: number }
     if (e.status === 401) {
-      showStatus('請先登入 zykongjian.com 才能查看生詞本', 'var(--accent)')
-      listEl.innerHTML = `<div class="empty"><a href="https://zykongjian.com" target="_blank">點此登入 →</a></div>`
+      showStatus('請先登入 qingyiu.com 才能查看生詞本', 'var(--accent)')
+      listEl.innerHTML = `<div class="empty"><a href="https://qingyiu.com" target="_blank">點此登入 →</a></div>`
     } else {
       listEl.innerHTML = `<div class="empty">載入失敗：${escape(e.message || '網路錯誤')}</div>`
     }

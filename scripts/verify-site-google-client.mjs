@@ -2,7 +2,7 @@
 /**
  * 對照線上 /auth/config 與本機預期：提醒在 Google Cloud 憑證頁確認該「用戶端 ID」仍存在且已啟用。
  */
-const base = process.argv[2] || "https://zykongjian.pages.dev";
+const base = process.argv[2] || "https://qingyiu.com";
 const url = new URL("/auth/config", base).href;
 
 const res = await fetch(url);

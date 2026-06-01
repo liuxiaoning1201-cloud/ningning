@@ -30,7 +30,7 @@ async function refresh() {
     keys.value = r.keys
   } catch (err) {
     if (err instanceof ApiError && err.needsLogin) {
-      errorMsg.value = '請先登入 zykongjian.com 才能管理 API Key'
+      errorMsg.value = '請先登入 qingyiu.com 才能管理 API Key'
     } else {
       errorMsg.value = (err as Error).message || '載入失敗'
     }
@@ -139,7 +139,7 @@ onMounted(refresh)
       </div>
       <details class="text-xs" style="color: var(--color-muted)">
         <summary class="cursor-pointer">如何使用此 Key？</summary>
-        <pre class="mt-2 p-2 rounded text-[11px] overflow-x-auto" style="background: rgba(0,0,0,0.04)">curl https://zykongjian.com/api/cantonese/translate \
+        <pre class="mt-2 p-2 rounded text-[11px] overflow-x-auto" style="background: rgba(0,0,0,0.04)">curl https://qingyiu.com/api/cantonese/translate \
   -H "Authorization: Bearer {{ created.token }}" \
   -H "Content-Type: application/json" \
   -d '{"sentences":["你食咗飯未"]}'</pre>
@@ -264,7 +264,7 @@ onMounted(refresh)
       <p>每一次請求都帶上：</p>
       <pre class="p-2 rounded text-[11px] overflow-x-auto" style="background: rgba(0,0,0,0.04)">Authorization: Bearer zy_xxxxxxxx...</pre>
       <p>例：</p>
-      <pre class="p-2 rounded text-[11px] overflow-x-auto" style="background: rgba(0,0,0,0.04)">curl https://zykongjian.com/api/cantonese/translate \
+      <pre class="p-2 rounded text-[11px] overflow-x-auto" style="background: rgba(0,0,0,0.04)">curl https://qingyiu.com/api/cantonese/translate \
   -H "Authorization: Bearer zy_xxx..." \
   -H "Content-Type: application/json" \
   -d '{"sentences":["你食咗飯未"]}'</pre>

@@ -42,6 +42,8 @@
     "activeTab"
   ],
   "host_permissions": [
+    "https://qingyiu.com/*",
+    "https://www.qingyiu.com/*",
     "https://zykongjian.com/*",
     "https://www.zykongjian.com/*",
     "http://localhost:8788/*",

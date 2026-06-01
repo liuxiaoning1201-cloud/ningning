@@ -75,7 +75,7 @@ async function onSubtitleChange(text: string) {
   } catch (err) {
     const e = err as Error & { status?: number }
     if (e.status === 401) {
-      overlay.showHint('需要先登入 zykongjian.com 才能使用完整翻譯', 'login')
+      overlay.showHint('需要先登入 qingyiu.com 才能使用完整翻譯', 'login')
     } else if (e.status === 429) {
       overlay.showHint('今日配額已用完，明天再試', 'warn')
     } else {

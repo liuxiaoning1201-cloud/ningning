@@ -78,6 +78,9 @@ export function errorJson(status: number, error: string, message?: string, extra
 
 /** 允許的 Web Origin */
 const ALLOWED_WEB_ORIGINS = new Set([
+  'https://qingyiu.com',
+  'https://www.qingyiu.com',
+  // 舊網域過渡期保留
   'https://zykongjian.com',
   'https://www.zykongjian.com',
   // 本地開發

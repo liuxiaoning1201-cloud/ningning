@@ -143,7 +143,7 @@ export class OverlayController {
     } catch (err) {
       const e = err as Error & { status?: number }
       if (e.status === 401) {
-        this.showHint('請先登入 zykongjian.com', 'login')
+        this.showHint('請先登入 qingyiu.com', 'login')
       } else {
         this.showHint('收藏失敗，請稍後再試', 'warn')
       }
