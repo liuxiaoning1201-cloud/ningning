@@ -1,5 +1,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* 確保 hidden 屬性永遠生效（覆蓋 .overlay/.palette/.sticker-tools 的 display） */
+[hidden] { display: none !important; }
+
 :root {
   /* 千里江山圖 · 青綠山水色板（沿用站台風格） */
   --silk:        #efe6cf;
