@@ -151,10 +151,10 @@ const App = {
                 <div class="left-col">
                     ${scene ? this.sceneCardHTML(scene) : '<div id="sceneSlot"></div>'}
                     <div id="cube-container"></div>
-                    <div class="cube-hint">左鍵點詞語選用 · 右鍵或 Shift+左鍵轉動魔方</div>
+                    <div class="cube-hint">點一下詞語就放進故事 · 拖曳可轉動魔方看各面</div>
                     <div class="cube-actions">
-                        <button class="btn btn-ghost" id="btnShuffle">🎲 轉一轉</button>
-                        <button class="btn btn-ghost" id="btnRefill">🔄 換一批詞</button>
+                        <button class="btn btn-ghost" id="btnShuffle">🔄 轉一轉（換個面）</button>
+                        <button class="btn btn-ghost" id="btnRefill">🎲 換一批詞</button>
                     </div>
                     <div class="slots" id="slots"></div>
                 </div>
@@ -164,9 +164,18 @@ const App = {
                     <div class="prompt-line" id="promptLine"></div>
                     <div class="writing-panel">
                         <input class="write-title-input" id="workTitle" placeholder="幫你的故事取個題目…">
-                        <textarea class="write-area" id="writeArea" placeholder="開始寫吧！點魔方上的詞語可以放進故事裡。"></textarea>
+                        <textarea class="write-area" id="writeArea" placeholder="開始寫吧！點魔方上的詞語可以放進故事裡。你也可以自由打字、調整詞語順序。"></textarea>
                         <div class="write-meta"><span id="wordCount">0 字</span><span id="usedInfo"></span></div>
-                        <div class="drawer" id="drawer"><h4>🎒 詞語抽屜（點一下放進故事）</h4><div id="drawerBody"></div></div>
+                        <div class="ai-bar">
+                            <button class="btn btn-primary" id="btnAIReview">👩‍🏫 請 AI 老師看看（語序・邏輯・建議）</button>
+                        </div>
+                        <div id="aiFeedback"></div>
+                        <div class="drawer" id="drawer"><h4>🎒 詞語抽屜（點一下放進故事）</h4><div id="drawerBody"></div>
+                            <div class="addword-row">
+                                <input type="text" id="customWord" placeholder="自己想到的詞？打進去按 ＋" maxlength="12">
+                                <button id="btnAddWord">＋ 加詞</button>
+                            </div>
+                        </div>
                         <div style="display:flex;gap:10px;margin-top:14px">
                             ${mode === 'picturebook'
                                 ? '<button class="btn btn-accent" id="btnPageDone">🖼️ 完成這頁並生成插圖</button><button class="btn btn-primary" id="btnFinish">📕 完成繪本</button>'
@@ -190,14 +199,16 @@ const App = {
         const s = this.session;
         const container = document.getElementById('cube-container');
         s.cube = new window.Cube3D(container, (item) => this.handleWordPick(item));
-        this.refillCube();
-        if (s.mode === 'inspire') setTimeout(() => s.cube.shuffle(10), 300);
+        this.refillCube(true);
         if (s.mode === 'constraint') this.setupChallenge();
 
-        document.getElementById('btnShuffle').onclick = () => s.cube.shuffle(10);
+        document.getElementById('btnShuffle').onclick = () => s.cube.spin();
         document.getElementById('btnRefill').onclick = () => this.refillCube();
         document.getElementById('writeArea').addEventListener('input', () => this.onTextInput());
         document.getElementById('btnFinish').onclick = () => this.finish();
+        document.getElementById('btnAIReview').onclick = () => this.requestAIReview();
+        document.getElementById('btnAddWord').onclick = () => this.addCustomWord();
+        document.getElementById('customWord').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addCustomWord(); });
         if (s.mode === 'picturebook') document.getElementById('btnPageDone').onclick = () => this.finishPage();
         if (s.mode === 'relay') document.getElementById('btnRelayNext').onclick = () => this.relayNext();
         this.renderSlots();
@@ -205,14 +216,14 @@ const App = {
         this.updateDrawer();
     },
 
-    refillCube() {
+    refillCube(silent) {
         const decks = {};
         ELEMENT_ORDER.forEach(el => { decks[el] = window.Adaptive.deckForElement(el, 9); });
         this.session.cube.fillFacesByElement(decks);
         // 收集新詞供抽屜參考
         this.session._lastDecks = decks;
         this.updateDrawer();
-        this.toast('魔方換上新詞了！');
+        if (!silent) this.toast('魔方換上新詞了！');
     },
 
     setupChallenge() {
@@ -312,7 +323,12 @@ const App = {
         const settings = window.Store.loadSettings();
         const text = (document.getElementById('writeArea') || {}).value || '';
         const decks = this.session._lastDecks || {};
-        body.innerHTML = ELEMENT_ORDER.map(el => {
+        const custom = this.session.customWords || [];
+        const customHTML = custom.length
+            ? `<div class="drawer-group"><div class="dg-title">📝 我自己加的詞</div><div class="chips">${
+                custom.map(w => `<span class="chip custom ${text.includes(w) ? 'used' : ''}" data-w="${w}" data-custom="1">${w}<span class="chip-x" data-del="${w}">×</span></span>`).join('')
+            }</div></div>` : '';
+        body.innerHTML = customHTML + ELEMENT_ORDER.map(el => {
             const e = ELEMENTS[el];
             const items = (decks[el] || []).slice(0, 6);
             if (!items.length) return '';
@@ -324,7 +340,14 @@ const App = {
             }</div></div>`;
         }).join('');
         body.querySelectorAll('.chip').forEach(chip => {
-            chip.onclick = () => {
+            chip.onclick = (e) => {
+                // 刪除自訂詞
+                if (e.target.dataset.del) {
+                    this.session.customWords = (this.session.customWords || []).filter(w => w !== e.target.dataset.del);
+                    this.updateDrawer();
+                    return;
+                }
+                if (chip.dataset.custom) { this.insertText(chip.dataset.w); return; }
                 const id = chip.dataset.id;
                 const item = this.findItem(id);
                 if (item && item.stage === 'new') {
@@ -334,6 +357,63 @@ const App = {
                 }
             };
         });
+    },
+
+    addCustomWord() {
+        const input = document.getElementById('customWord');
+        if (!input) return;
+        const w = (input.value || '').trim();
+        if (!w) return;
+        this.session.customWords = this.session.customWords || [];
+        if (!this.session.customWords.includes(w)) this.session.customWords.unshift(w);
+        input.value = '';
+        this.insertText(w);
+        this.updateDrawer();
+    },
+
+    // ============ AI 老師回饋 ============
+    async requestAIReview() {
+        const text = (document.getElementById('writeArea').value || '').trim();
+        const box = document.getElementById('aiFeedback');
+        if (text.replace(/\s/g, '').length < 4) { this.toast('先寫一兩句，AI 老師才看得出來喔'); return; }
+        const btn = document.getElementById('btnAIReview');
+        btn.disabled = true;
+        box.innerHTML = `<div class="ai-feedback"><div class="aif-head"><div class="aif-avatar">👩‍🏫</div>
+            <div class="aif-title">AI 老師正在閱讀你的故事<span class="ai-loading"></span></div></div></div>`;
+        try {
+            const fb = await window.AITeacher.review(text);
+            if (!fb) throw new Error('解析失敗');
+            this.renderAIFeedback(fb);
+        } catch (e) {
+            const offline = (e && e.message === 'llm_not_configured');
+            box.innerHTML = `<div class="ai-feedback"><div class="aif-head"><div class="aif-avatar">👩‍🏫</div>
+                <div class="aif-title">AI 老師暫時休息中</div></div>
+                <div class="aif-overall">${offline ? 'AI 回饋服務尚未開通（伺服器未設定 DeepSeek 金鑰）。你仍可以自由創作與生成插圖。' : '連線好像出了點問題，待會再試試看。'}</div></div>`;
+        } finally {
+            btn.disabled = false;
+        }
+    },
+
+    renderAIFeedback(fb) {
+        const box = document.getElementById('aiFeedback');
+        const score = Math.max(1, Math.min(5, Number(fb.score) || 3));
+        const sents = Array.isArray(fb.sentences) ? fb.sentences : [];
+        const sentHTML = sents.map(s => {
+            const warn = s.ok === false || (s.issue && s.issue.trim());
+            return `<div class="aif-sent ${warn ? 'warn' : ''}">
+                <div class="aif-orig">「${s.original || ''}」</div>
+                ${warn && s.issue ? `<div class="aif-issue">⚠️ ${s.issue}</div>` : '<div class="aif-issue" style="color:#1f9d57">✓ 這句寫得通順</div>'}
+                ${s.suggestion && s.suggestion.trim() ? `<div class="aif-fix">💡 試試：<b>${s.suggestion}</b></div>` : ''}
+            </div>`;
+        }).join('');
+        box.innerHTML = `<div class="ai-feedback">
+            <div class="aif-head"><div class="aif-avatar">👩‍🏫</div>
+                <div class="aif-title">AI 老師的回饋</div>
+                <div class="aif-score">${'⭐'.repeat(score)}${'☆'.repeat(5 - score)}</div></div>
+            <div class="aif-overall">${fb.overall || ''}</div>
+            ${sentHTML}
+            <div class="aif-cheer">💗 ${fb.encouragement || '繼續加油，你寫得很棒！'}</div>
+        </div>`;
     },
 
     findItem(id) {
@@ -435,8 +515,17 @@ const App = {
             if (!pages.length) { this.toast('至少完成一頁繪本'); return; }
         } else {
             if (text.replace(/\s/g, '').length < 10) { this.toast('再多寫幾句，故事會更精彩！'); return; }
-            const result = await window.ImageGen.generate(s.slots, s.scene, text);
-            pages = [{ pageId: 'p_1', text, imageUrl: result.imageUrl, imagePrompt: result.prompt, usedWords: this.collectUsedIds(text) }];
+            // 逐句生成插圖：每一句對應一幅畫
+            const generated = await window.ImageGen.generatePages(text, s.slots, s.scene, (done, total) => {
+                this.toast(`正在為第 ${Math.min(done + 1, total)}/${total} 句畫插圖…`);
+            });
+            pages = generated.map((p, i) => ({
+                pageId: 'p_' + (i + 1),
+                text: p.text,
+                imageUrl: p.imageUrl,
+                imagePrompt: p.imagePrompt,
+                usedWords: this.collectUsedIds(p.text),
+            }));
         }
 
         // 限制式：檢查必用挑戰詞
@@ -705,6 +794,7 @@ const App = {
         document.getElementById('setRequired').value = s.requiredStretchPerStory;
         document.getElementById('setPinyin').checked = s.showPinyin;
         document.getElementById('setAuto').checked = s.autoAdapt;
+        document.getElementById('setStyle').value = s.imageStyle || 'storybook';
         document.getElementById('setEndpoint').value = s.imageEndpoint || '';
         this.modal('settingsModal', true);
         const save = () => {
@@ -713,10 +803,11 @@ const App = {
             s.requiredStretch = s.requiredStretchPerStory;
             s.showPinyin = document.getElementById('setPinyin').checked;
             s.autoAdapt = document.getElementById('setAuto').checked;
+            s.imageStyle = document.getElementById('setStyle').value;
             s.imageEndpoint = document.getElementById('setEndpoint').value.trim();
             window.Store.saveSettings(s);
         };
-        ['setIntensity', 'setRequired', 'setPinyin', 'setAuto', 'setEndpoint'].forEach(id => {
+        ['setIntensity', 'setRequired', 'setPinyin', 'setAuto', 'setStyle', 'setEndpoint'].forEach(id => {
             document.getElementById(id).onchange = save;
         });
     },

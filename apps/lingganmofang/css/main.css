@@ -108,8 +108,11 @@ body {
 .scene-card .scene-title { position: absolute; bottom: 12px; left: 16px; color: #fff; font-weight: 700;
     text-shadow: 0 2px 8px rgba(0,0,0,.3); font-size: 1.1rem; }
 
-#cube-container { width: 100%; height: 420px; background: rgba(108,99,255,.06);
-    border-radius: 18px; overflow: hidden; border: 1px solid var(--line); }
+#cube-container { width: 100%; height: 480px;
+    background: radial-gradient(circle at 50% 38%, rgba(108,99,255,.12), rgba(108,99,255,.04) 70%);
+    border-radius: 18px; overflow: hidden; border: 1px solid var(--line); touch-action: none; cursor: grab; }
+#cube-container:active { cursor: grabbing; }
+@media (max-width: 900px){ #cube-container { height: 380px; } }
 .cube-hint { text-align: center; color: var(--ink-soft); font-size: .82rem; margin-top: 8px; }
 .cube-actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
 
@@ -147,6 +150,37 @@ body {
 .chip.stretch { border-color: var(--gold); background: #fffaf0; box-shadow: 0 0 0 2px rgba(245,179,1,.15); }
 .chip.used { opacity: .45; }
 .chip .chip-py { font-size: .68rem; color: var(--ink-soft); margin-left: 4px; }
+
+/* ===== 自己加詞 ===== */
+.addword-row { display: flex; gap: 8px; margin-top: 10px; }
+.addword-row input { flex: 1; padding: 9px 12px; border: 1px solid var(--line); border-radius: 20px; font-family: inherit; font-size: .92rem; outline: none; }
+.addword-row input:focus { border-color: var(--primary); }
+.addword-row button { padding: 9px 16px; border: 1px solid var(--primary); background: #fff; color: var(--primary); border-radius: 20px; cursor: pointer; font-family: inherit; font-weight: 600; }
+.addword-row button:hover { background: var(--primary); color: #fff; }
+.chip.custom { border-color: var(--accent); background: #fff5ef; }
+.chip .chip-x { margin-left: 6px; color: var(--ink-soft); font-weight: 700; }
+
+/* ===== AI 老師回饋 ===== */
+.ai-bar { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+.ai-bar .btn { flex: 1; }
+.ai-feedback { margin-top: 14px; border: 1px solid #e4ddff; background: linear-gradient(180deg,#faf9ff,#f4f2ff);
+    border-radius: 14px; padding: 16px 18px; animation: pop .25s ease-out; }
+.ai-feedback .aif-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ai-feedback .aif-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,var(--primary),var(--accent));
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.ai-feedback .aif-title { font-weight: 700; font-family: 'Noto Serif TC', serif; }
+.ai-feedback .aif-score { margin-left: auto; font-size: 1.1rem; }
+.ai-feedback .aif-overall { line-height: 1.8; margin-bottom: 10px; }
+.aif-sent { border-left: 3px solid var(--line); padding: 6px 0 6px 12px; margin: 8px 0; }
+.aif-sent.warn { border-left-color: var(--accent); }
+.aif-sent .aif-orig { color: var(--ink-soft); font-size: .9rem; }
+.aif-sent .aif-issue { color: #d9534f; font-size: .9rem; margin: 3px 0; }
+.aif-sent .aif-fix { background: #eef9f0; border-radius: 8px; padding: 6px 10px; margin-top: 4px; font-size: .95rem; }
+.aif-sent .aif-fix b { color: #1f9d57; }
+.ai-feedback .aif-cheer { margin-top: 10px; font-weight: 600; color: var(--primary-deep); }
+.ai-loading { display: inline-block; }
+.ai-loading::after { content: '…'; animation: dots 1.2s steps(4,end) infinite; }
+@keyframes dots { 0%{content:'';} 25%{content:'.';} 50%{content:'..';} 75%{content:'...';} }
 
 .challenge-bar { background: #f0f9ff; border: 1px solid #d3ecff; border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; }
 .challenge-bar .cb-title { font-size: .85rem; color: var(--ink-soft); margin-bottom: 8px; }

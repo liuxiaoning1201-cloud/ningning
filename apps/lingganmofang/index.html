@@ -13,7 +13,7 @@
 
     <!-- Google Fonts 改為非阻塞載入，載不到時自動退回系統字型 -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@500;700&display=swap" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="css/main.css?v=2">
+    <link rel="stylesheet" href="css/main.css?v=3">
 </head>
 <body>
     <!-- 頂部導覽 -->
@@ -57,8 +57,16 @@
                 <input type="number" id="setRequired" min="0" max="6" value="2"></div>
             <div class="setting"><label><input type="checkbox" id="setPinyin"> 顯示拼音輔助</label></div>
             <div class="setting"><label><input type="checkbox" id="setAuto"> 自動調節難度（85% 法則）</label></div>
-            <div class="setting"><label>文字生圖代理端點（選填，Cloudflare Worker）</label>
-                <input type="text" id="setEndpoint" placeholder="https://your-worker.workers.dev"></div>
+            <div class="setting"><label>🎨 插圖風格</label>
+                <select id="setStyle">
+                    <option value="storybook">繪本插畫 · 溫暖可愛（推薦）</option>
+                    <option value="watercolor">水彩風 · 柔和夢幻</option>
+                    <option value="anime">動畫風 · 鮮明卡通</option>
+                    <option value="realistic">半寫實 · 細緻光影</option>
+                </select>
+            </div>
+            <div class="setting"><label>文字生圖端點（進階・選填）</label>
+                <input type="text" id="setEndpoint" placeholder="預設用站點 /api/image，可填自訂 Worker"></div>
             <hr>
             <div class="setting"><label>詞庫管理</label>
                 <button class="btn btn-ghost full" id="btnExport">📥 匯出詞庫（Excel）</button>
@@ -86,12 +94,13 @@
         </div>
     </div>
 
-    <script src="js/srs.js?v=2"></script>
-    <script src="js/data.js?v=2"></script>
-    <script src="js/storage.js?v=2"></script>
-    <script src="js/adaptive.js?v=2"></script>
-    <script src="js/cube.js?v=2"></script>
-    <script src="js/image.js?v=2"></script>
-    <script src="js/app.js?v=2"></script>
+    <script src="js/srs.js?v=3"></script>
+    <script src="js/data.js?v=3"></script>
+    <script src="js/storage.js?v=3"></script>
+    <script src="js/adaptive.js?v=3"></script>
+    <script src="js/ai.js?v=3"></script>
+    <script src="js/cube.js?v=3"></script>
+    <script src="js/image.js?v=3"></script>
+    <script src="js/app.js?v=3"></script>
 </body>
 </html>

@@ -47,6 +47,8 @@ const DEFAULT_SETTINGS = {
     autoAdapt: true,
     childLevel: 1.5,   // 連續水平估計（約對應難度刻度 1-6）
     reachDelta: 1.2,   // 桃子高度
+    imageStyle: 'storybook', // 生圖風格：storybook | watercolor | anime | realistic
+    imageEndpoint: '',       // 留空＝用站點同源 /api/image
 };
 
 function loadSettings() {
