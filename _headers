@@ -1,3 +1,9 @@
 # 讓瀏覽器較常重新驗證填字 SPA 入口，減少舊版 JS 快取導致 Google Client ID 錯誤
 /crossword/index.html
   Cache-Control: public, max-age=0, must-revalidate
+
+# 靈感魔方：HTML 與自家 JS 每次重新驗證，避免舊版快取卡住更新
+/lingganmofang/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/lingganmofang/js/*
+  Cache-Control: public, max-age=0, must-revalidate
