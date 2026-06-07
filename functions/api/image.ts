@@ -34,9 +34,9 @@ export const onRequestPost: YueyuPagesFn = async (context) => {
   const guard = await protect(context, {
     bucket: 'image',
     requireAuth: false,
-    ipPerMinute: 8,
-    ipPerDay: 120,
-    userPerDay: 200,
+    ipPerMinute: 24,
+    ipPerDay: 200,
+    userPerDay: 300,
     globalPerDay: 4000,
   });
   if (guard instanceof Response) return guard;
