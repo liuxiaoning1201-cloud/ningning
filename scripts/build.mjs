@@ -62,6 +62,7 @@ const STATIC_APPS = [
   '詞語配配樂',
   'luoyang-trip',
   '誰是臥底',
+  '巧手猜猜畫',
   'lingganmofang',
 ];
 

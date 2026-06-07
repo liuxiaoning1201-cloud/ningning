@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>巧手猜猜畫</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+
+<!-- ================= 大廳 ================= -->
+<section id="screen-lobby" class="screen active">
+  <div class="lobby">
+    <div class="logo">
+      <div class="logo-emoji">🖐️</div>
+      <h1 class="logo-title">巧手猜猜畫</h1>
+      <p class="logo-sub">用生活小物，拼出妙趣中文</p>
+    </div>
+    <div class="lobby-card">
+      <label class="field-label" for="input-name">你的暱稱</label>
+      <input id="input-name" class="text-input" type="text" maxlength="12" placeholder="輸入暱稱開始" autocomplete="off" />
+
+      <button id="btn-create" class="btn btn-primary btn-block">建立房間（老師）</button>
+
+      <div class="divider"><span>或</span></div>
+
+      <label class="field-label" for="input-room-code">房間碼</label>
+      <input id="input-room-code" class="text-input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="輸入 6 位數字" autocomplete="off" />
+      <button id="btn-join" class="btn btn-secondary btn-block">加入房間</button>
+
+      <p id="lobby-error" class="error-text" hidden></p>
+    </div>
+    <p class="lobby-foot">清沂遊 · 巧手猜猜畫</p>
+  </div>
+</section>
+
+<!-- ================= 等待房間 ================= -->
+<section id="screen-room" class="screen">
+  <div class="room-top">
+    <button id="btn-leave" class="btn-ghost">← 離開</button>
+    <div class="room-code-chip">房間碼 <strong id="room-code"></strong>
+      <button id="btn-copy" class="btn-tiny" title="複製房間碼">複製</button>
+    </div>
+  </div>
+
+  <div class="room-grid">
+    <div class="panel">
+      <h3 class="panel-title">玩家 <span id="player-count" class="count-badge">0</span></h3>
+      <ul id="room-player-list" class="player-list"></ul>
+    </div>
+
+    <!-- 房主設定面板 -->
+    <div id="host-panel" class="panel" hidden>
+      <h3 class="panel-title">設定詞庫</h3>
+
+      <div class="setting-block">
+        <div class="block-head">AI 生詞</div>
+        <div class="ai-row">
+          <input id="input-topic" class="text-input sm" type="text" maxlength="20" placeholder="輸入主題，例如：水果" />
+          <button id="btn-ai-gen" class="btn btn-primary sm">生成</button>
+        </div>
+        <p id="ai-hint" class="hint"></p>
+      </div>
+
+      <div class="setting-block">
+        <div class="block-head">
+          單詞本
+          <span class="block-tools">
+            <select id="select-theme" class="select sm"><option value="">選擇主題…</option></select>
+            <button id="btn-load-theme" class="btn-tiny">載入</button>
+            <button id="btn-del-theme" class="btn-tiny danger">刪除</button>
+          </span>
+        </div>
+        <div class="ai-row">
+          <input id="input-save-theme" class="text-input sm" type="text" maxlength="16" placeholder="存為主題名稱" />
+          <button id="btn-save-theme" class="btn btn-secondary sm">存入單詞本</button>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="block-head">
+          候選詞語 <span id="word-selected-count" class="count-badge">0</span>
+          <span class="block-tools">
+            <button id="btn-add-word" class="btn-tiny">＋自訂</button>
+            <button id="btn-select-all" class="btn-tiny">全選</button>
+            <button id="btn-clear-all" class="btn-tiny">清空</button>
+          </span>
+        </div>
+        <div id="word-chips" class="word-chips"></div>
+      </div>
+
+      <div class="setting-block">
+        <div class="block-head">遊戲設定</div>
+        <div class="num-row">
+          <label>每回合秒數
+            <input id="input-round-time" class="text-input sm num" type="number" min="30" max="300" value="90" />
+          </label>
+          <label>總回合數
+            <input id="input-total-rounds" class="text-input sm num" type="number" min="1" max="30" value="6" />
+          </label>
+        </div>
+      </div>
+
+      <button id="btn-start" class="btn btn-primary btn-block big">開始遊戲</button>
+    </div>
+
+    <!-- 非房主等待 -->
+    <div id="guest-wait" class="panel" hidden>
+      <h3 class="panel-title">等待老師開始</h3>
+      <p class="wait-text">老師正在準備今天的題目，<br>準備好用生活小物拼字了嗎？🖐️</p>
+      <div class="wait-spinner"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 遊戲畫面 ================= -->
+<section id="screen-game" class="screen">
+  <!-- 左欄：回合 + 計分榜 -->
+  <aside class="col-left">
+    <div class="round-info">
+      <div class="round-badge">第 <span id="round-now">1</span> / <span id="round-total">6</span> 回合</div>
+      <div id="timer" class="timer">90</div>
+    </div>
+    <div class="drawer-info">
+      本回合出題：<strong id="drawer-name">—</strong>
+    </div>
+    <h4 class="score-title">計分榜</h4>
+    <ul id="scoreboard" class="scoreboard"></ul>
+    <button id="btn-skip" class="btn-ghost full" hidden>跳過此回合</button>
+  </aside>
+
+  <!-- 中央：共享畫布 -->
+  <main class="col-center">
+    <div class="stage-head">
+      <div id="word-status" class="word-status"></div>
+    </div>
+    <div id="stage" class="stage">
+      <div id="stage-canvas" class="stage-canvas"></div>
+      <div id="stage-hint" class="stage-hint">出題者正在用小物拼字…</div>
+      <!-- 選中貼紙的工具列 -->
+      <div id="sticker-tools" class="sticker-tools" hidden>
+        <button data-act="bigger" class="st-btn" title="放大">＋</button>
+        <button data-act="smaller" class="st-btn" title="縮小">－</button>
+        <button data-act="rotate-l" class="st-btn" title="左轉">↺</button>
+        <button data-act="rotate-r" class="st-btn" title="右轉">↻</button>
+        <button data-act="front" class="st-btn" title="移到最前">⬆</button>
+        <button data-act="delete" class="st-btn danger" title="刪除">🗑</button>
+      </div>
+    </div>
+    <!-- 出題者貼紙調色盤 -->
+    <div id="palette" class="palette" hidden></div>
+  </main>
+
+  <!-- 右欄：搶猜 + 即時答案 -->
+  <aside class="col-right">
+    <h4 class="answers-title">大家的答案</h4>
+    <div id="answers-feed" class="answers-feed"></div>
+    <div id="guess-box" class="guess-box">
+      <input id="input-guess" class="text-input" type="text" maxlength="20" placeholder="輸入你的答案…" autocomplete="off" />
+      <button id="btn-guess" class="btn btn-primary">猜</button>
+    </div>
+    <div id="drawer-note" class="drawer-note" hidden>你是本回合出題者，動手拼字吧！</div>
+  </aside>
+</section>
+
+<!-- ================= 回合結算 / 學習卡 浮層 ================= -->
+<div id="overlay" class="overlay" hidden>
+  <div class="overlay-card">
+    <div id="overlay-body"></div>
+    <button id="overlay-close" class="btn btn-secondary" hidden>關閉</button>
+  </div>
+</div>
+
+<!-- 提示 toast -->
+<div id="toast" class="toast" hidden></div>
+
+<script src="./app.js"></script>
+</body>
+</html>
