@@ -149,7 +149,7 @@ const App = {
             cube: null, requiredStretch: settings.requiredStretch != null ? settings.requiredStretch : 2,
             pages: [], relayStep: 0,
             challengeWords: [],
-            builder: [], builderAI: null,
+            builder: [], committed: '',
         };
         const m = MODULES[mode];
         const app = document.getElementById('app');
@@ -180,11 +180,11 @@ const App = {
                     <div class="prompt-line" id="promptLine"></div>
                     ${this.builderHTML()}
                     <div class="writing-panel">
-                        <input class="write-title-input" id="workTitle" placeholder="幫你的故事取個題目…">
-                        <textarea class="write-area" id="writeArea" placeholder="按上面的「加進故事」把句子放進來，也可以直接打字修改。"></textarea>
+                        <div class="wp-title">📖 我的故事</div>
+                        <textarea class="write-area" id="writeArea" placeholder="上面排好的句子會即時出現在這裡，你也可以直接打字修改…"></textarea>
                         <div class="write-meta"><span id="wordCount">0 字</span><span id="usedInfo"></span></div>
                         <div class="ai-bar">
-                            <button class="btn btn-primary" id="btnAIReview">👩‍🏫 請 AI 老師看看整篇（語序・邏輯・建議）</button>
+                            <button class="btn btn-accent" id="btnAIReview">👩‍🏫 請 AI 老師看看（語序・邏輯・建議，可採納）</button>
                         </div>
                         <div id="aiFeedback"></div>
                         <div style="display:flex;gap:10px;margin-top:14px">
@@ -218,17 +218,14 @@ const App = {
         document.getElementById('btnLeft').onclick = () => s.cube.spin('left');
         document.getElementById('btnRight').onclick = () => s.cube.spin('right');
         document.getElementById('btnRefill').onclick = () => this.refillCube();
-        document.getElementById('writeArea').addEventListener('input', () => this.onTextInput());
+        // 學生在下面直接打字：把目前內容當成已寫好的故事，並清空上面的詞塊托盤
+        document.getElementById('writeArea').addEventListener('input', () => this.onUserType());
         document.getElementById('btnFinish').onclick = () => this.finish();
         document.getElementById('btnAIReview').onclick = () => this.requestAIReview();
         document.getElementById('btnAddWord').onclick = () => this.addCustomWord();
         document.getElementById('customWord').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addCustomWord(); });
         if (s.mode === 'picturebook') document.getElementById('btnPageDone').onclick = () => this.finishPage();
         if (s.mode === 'relay') document.getElementById('btnRelayNext').onclick = () => this.relayNext();
-        // 造句區（所有版塊共用）
-        document.getElementById('btnSelfCheck').onclick = () => this.builderSelfCheck();
-        document.getElementById('btnAIPolish').onclick = () => this.builderAIPolish();
-        document.getElementById('btnCommit').onclick = () => this.builderCommit();
         this.renderBuilder();
         this.renderSlots();
         this.updatePromptLine();
@@ -266,7 +263,6 @@ const App = {
             this.updatePromptLine();
             this.placeWord(item.word);
             this.updateDrawer();
-            this.beep();
         };
         if (item.stage === 'new') {
             // 桃子：先彈例句鷹架，現學現用
@@ -401,12 +397,16 @@ const App = {
         const box = document.getElementById('aiFeedback');
         const score = Math.max(1, Math.min(5, Number(fb.score) || 3));
         const sents = Array.isArray(fb.sentences) ? fb.sentences : [];
-        const sentHTML = sents.map(s => {
+        this._aiSents = sents;
+        const sentHTML = sents.map((s, i) => {
             const warn = s.ok === false || (s.issue && s.issue.trim());
+            const canAdopt = s.suggestion && s.suggestion.trim() && s.suggestion.trim() !== (s.original || '').trim();
             return `<div class="aif-sent ${warn ? 'warn' : ''}">
                 <div class="aif-orig">「${s.original || ''}」</div>
                 ${warn && s.issue ? `<div class="aif-issue">⚠️ ${s.issue}</div>` : '<div class="aif-issue" style="color:#1f9d57">✓ 這句寫得通順</div>'}
-                ${s.suggestion && s.suggestion.trim() ? `<div class="aif-fix">💡 試試：<b>${s.suggestion}</b></div>` : ''}
+                ${canAdopt ? `<div class="aif-fix">💡 試試：<b>${s.suggestion}</b></div>
+                    <div class="aif-adopt-row"><button class="btn btn-primary aif-adopt" data-i="${i}">採納這句</button>
+                    <span class="aif-keep">（不採納就保留你自己的）</span></div>` : ''}
             </div>`;
         }).join('');
         box.innerHTML = `<div class="ai-feedback">
@@ -416,7 +416,28 @@ const App = {
             <div class="aif-overall">${fb.overall || ''}</div>
             ${sentHTML}
             <div class="aif-cheer">💗 ${fb.encouragement || '繼續加油，你寫得很棒！'}</div>
+            <div class="aif-foot">採納喜歡的建議後，就可以按下面的「完成創作」囉！</div>
         </div>`;
+        box.querySelectorAll('.aif-adopt').forEach(btn => {
+            btn.onclick = () => this.adoptSuggestion(Number(btn.dataset.i), btn);
+        });
+    },
+
+    // 採納某一句的 AI 改寫：把故事框中的原句換成建議句
+    adoptSuggestion(i, btn) {
+        const s = (this._aiSents || [])[i];
+        if (!s || !s.suggestion) return;
+        const ta = document.getElementById('writeArea');
+        const orig = (s.original || '').trim();
+        if (orig && ta.value.includes(orig)) ta.value = ta.value.replace(orig, s.suggestion.trim());
+        else ta.value = s.suggestion.trim();
+        // 採納後以故事框為準，清空詞塊托盤
+        this.session.committed = ta.value;
+        this.session.builder = [];
+        this.renderBuilder();
+        this.onTextInput();
+        if (btn) { btn.textContent = '已採納 ✓'; btn.disabled = true; btn.classList.add('adopted'); }
+        this.toast('已採納，故事更新了！');
     },
 
     findItem(id) {
@@ -457,24 +478,17 @@ const App = {
     // ============ 故事接龍：拖拽造句 + 自我優化 + AI 採納互動 ============
     builderHTML() {
         return `<div class="builder-card">
-            <div class="bc-title">🧩 把詞語排成一句通順的話</div>
-            <div class="bc-sub">先點魔方挑六要素的詞，再從下面「補充詞」加上連接詞、小幫手詞，<b>按住詞語左右拖動</b>排出正確語序，點 × 可刪除。</div>
+            <div class="bc-title">🧩 拖一拖，把詞語排成通順的句子</div>
+            <div class="bc-sub">點魔方挑六要素的詞，再從「補充詞」加連接詞、標點，<b>按住詞語左右拖動</b>排出語序。排好的句子會<b>即時出現在下面的「我的故事」</b>，也可以直接在下面打字修改。</div>
             <div class="builder" id="builder"></div>
-            <div class="builder-preview" id="builderPreview"></div>
             <div class="helper-drawer">
-                <div class="hd-head">🔗 補充詞抽屜<span>魔方裡沒有的連接詞・小幫手詞，幫你把句子串通順</span></div>
+                <div class="hd-head">🔗 補充詞抽屜<span>魔方裡沒有的連接詞・小幫手詞・標點，幫你把句子串通順</span></div>
                 <div id="drawerBody"></div>
                 <div class="addword-row">
                     <input type="text" id="customWord" placeholder="自己想到的詞？打進去按 ＋" maxlength="12">
                     <button id="btnAddWord">＋ 加詞</button>
                 </div>
             </div>
-            <div class="builder-actions">
-                <button class="btn btn-ghost" id="btnSelfCheck">🔍 自我檢查</button>
-                <button class="btn btn-accent" id="btnAIPolish">🤖 給 AI 老師潤色</button>
-                <button class="btn btn-primary" id="btnCommit">✅ 加進故事</button>
-            </div>
-            <div id="builderChat"></div>
         </div>`;
     },
 
@@ -483,9 +497,26 @@ const App = {
         this.session.builder.push(word);
         this.beep();
         this.renderBuilder();
+        this.refreshStory();
     },
 
     builderText() { return this.session.builder.join(''); },
+
+    // 把「已寫好的故事(committed) + 正在排的詞塊」即時同步到下面的故事框
+    refreshStory() {
+        const ta = document.getElementById('writeArea');
+        if (!ta) return;
+        ta.value = (this.session.committed || '') + this.builderText();
+        this.onTextInput();
+    },
+
+    // 學生在下面故事框直接打字：把目前文字鎖定為故事內容，清空上面的詞塊托盤
+    onUserType() {
+        const ta = document.getElementById('writeArea');
+        this.session.committed = ta.value;
+        if (this.session.builder.length) { this.session.builder = []; this.renderBuilder(); }
+        this.onTextInput();
+    },
 
     renderBuilder() {
         const box = document.getElementById('builder');
@@ -493,15 +524,14 @@ const App = {
         const arr = this.session.builder;
         box.innerHTML = arr.length
             ? arr.map((w, i) => `<span class="bchip" draggable="true" data-i="${i}">${w}<span class="bx" data-del="${i}">×</span></span>`).join('')
-            : '<span class="builder-empty">（這裡會排出你的句子…）</span>';
-        const prev = document.getElementById('builderPreview');
-        if (prev) prev.textContent = arr.length ? ('你的句子：' + this.builderText()) : '';
+            : '<span class="builder-empty">（點魔方或補充詞，這裡會排出你的句子，可左右拖動…）</span>';
 
         // 刪除
         box.querySelectorAll('.bx').forEach(x => x.onclick = (e) => {
             e.stopPropagation();
             this.session.builder.splice(Number(x.dataset.del), 1);
             this.renderBuilder();
+            this.refreshStory();
         });
         // 拖拽排序
         let dragFrom = null;
@@ -520,87 +550,9 @@ const App = {
                 arr2.splice(to, 0, moved);
                 dragFrom = null;
                 this.renderBuilder();
+                this.refreshStory();
             });
         });
-    },
-
-    builderSelfCheck() {
-        const text = this.builderText();
-        const chat = document.getElementById('builderChat');
-        if (text.replace(/\s/g, '').length < 2) { this.toast('先排幾個詞再檢查喔'); return; }
-        const conns = ['然後', '接著', '因為', '所以', '可是', '但是', '於是', '終於', '忽然', '後來', '而且', '雖然', '一邊', '正在'];
-        const hasConn = conns.some(c => text.includes(c));
-        const tips = [];
-        if (!hasConn) tips.push('你的句子裡好像沒有<b>連接詞</b>（像「然後、因為、所以」）。加一個會更通順！');
-        if (this.session.builder.length < 3) tips.push('句子有點短，試著再加一兩個詞，把<b>時間、地點、心情</b>補上去。');
-        if (!tips.length) tips.push('句子結構看起來不錯！可以再唸一遍，或交給 AI 老師潤色看看。');
-        chat.innerHTML = `<div class="bchat">
-            <div class="bubble bubble-self">${text}</div>
-            <div class="bubble bubble-tip"><b>自我檢查</b><ul>${tips.map(t => `<li>${t}</li>`).join('')}</ul></div>
-        </div>`;
-    },
-
-    async builderAIPolish() {
-        const text = this.builderText();
-        if (text.replace(/\s/g, '').length < 2) { this.toast('先排幾個詞，AI 才幫得上忙'); return; }
-        const chat = document.getElementById('builderChat');
-        chat.innerHTML = `<div class="bchat">
-            <div class="bubble bubble-self">${text}</div>
-            <div class="bubble bubble-ai"><span class="ai-loading">AI 老師思考中</span></div>
-        </div>`;
-        try {
-            const res = await window.AITeacher.polishSentence(text);
-            if (!res || !res.suggestion) throw new Error('no');
-            this.session.builderAI = res.suggestion;
-            chat.innerHTML = `<div class="bchat">
-                <div class="bubble bubble-self">${text}</div>
-                <div class="bubble bubble-ai">
-                    <div class="ai-name">👩‍🏫 AI 老師建議</div>
-                    <div class="ai-sugg">「${res.suggestion}」</div>
-                    ${res.reason ? `<div class="ai-reason">💡 ${res.reason}</div>` : ''}
-                    <div class="ai-choose">
-                        <button class="btn btn-primary" id="btnAdopt">採納這個寫法</button>
-                        <button class="btn btn-ghost" id="btnReject">用我自己的</button>
-                    </div>
-                </div></div>`;
-            document.getElementById('btnAdopt').onclick = () => this.builderAdopt(res.suggestion);
-            document.getElementById('btnReject').onclick = () => this.builderReject();
-        } catch (e) {
-            const offline = (e && e.message === 'llm_not_configured');
-            chat.innerHTML = `<div class="bchat"><div class="bubble bubble-self">${text}</div>
-                <div class="bubble bubble-ai">${offline ? 'AI 老師服務尚未開通，你可以先用自己的句子。' : 'AI 老師暫時連不上，待會再試。'}</div></div>`;
-        }
-    },
-
-    builderAdopt(suggestion) {
-        // 採納：把建構區換成 AI 的句子（拆成單一整句 chip，仍可再編輯刪改）
-        this.session.builder = [suggestion];
-        this.session.builderAI = null;
-        this.renderBuilder();
-        const chat = document.getElementById('builderChat');
-        chat.innerHTML = `<div class="bchat"><div class="bubble bubble-tip">✅ 已採納 AI 老師的寫法，按「加進故事」就完成這一句。</div></div>`;
-        this.toast('已採納，記得加進故事');
-    },
-
-    builderReject() {
-        this.session.builderAI = null;
-        const chat = document.getElementById('builderChat');
-        chat.innerHTML = `<div class="bchat"><div class="bubble bubble-tip">👍 保留你自己的句子，很有主見！按「加進故事」即可。</div></div>`;
-    },
-
-    builderCommit() {
-        let sentence = this.builderText().trim();
-        if (sentence.replace(/\s/g, '').length < 2) { this.toast('句子太短，再排幾個詞吧'); return; }
-        if (!/[。！？…]$/.test(sentence)) sentence += '。';
-        const ta = document.getElementById('writeArea');
-        ta.value = (ta.value ? ta.value + '' : '') + sentence;
-        // 清空建構區，準備下一句
-        this.session.builder = [];
-        this.session.builderAI = null;
-        this.renderBuilder();
-        document.getElementById('builderChat').innerHTML = '';
-        this.onTextInput();
-        this.toast('這一句加進故事了！');
     },
 
     // ============ 看圖繪本：選場景 + 多頁 ============
@@ -641,6 +593,7 @@ const App = {
         this.hideGenOverlay();
         this.session.pages.push({ pageId: 'p_' + (this.session.pages.length + 1), text, imageUrl: result.imageUrl, imagePrompt: result.prompt, usedWords: this.collectUsedIds(text) });
         document.getElementById('writeArea').value = '';
+        this.session.committed = ''; this.session.builder = []; this.renderBuilder();
         document.getElementById('pageInfo').textContent = `已完成 ${this.session.pages.length} 頁`;
         this.onTextInput();
         this.refillCube();
@@ -671,8 +624,10 @@ const App = {
 
     async finish() {
         const s = this.session;
-        const title = (document.getElementById('workTitle').value || '').trim() || '我的故事';
         const text = document.getElementById('writeArea').value.trim();
+        // 自動取題目：用第一句的前幾個字
+        const firstSentence = (text.split(/[。！？\n…]/)[0] || '').trim();
+        const title = firstSentence ? firstSentence.slice(0, 12) : '我的故事';
 
         // ── 先驗證，避免白白呼叫生圖 ──
         if (s.mode === 'picturebook') {

@@ -140,6 +140,12 @@ body {
 .prompt-line b { color: var(--accent); }
 
 .writing-panel { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+.wp-title { font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 1.15rem; margin-bottom: 10px; }
+.aif-adopt-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.aif-adopt { padding: 6px 14px; font-size: .88rem; }
+.aif-adopt.adopted { background: #34c77b; }
+.aif-keep { font-size: .8rem; color: var(--ink-soft); }
+.aif-foot { margin-top: 12px; font-size: .85rem; color: var(--primary-deep); font-weight: 600; }
 .write-title-input { width: 100%; border: none; border-bottom: 2px solid var(--line); font-family: 'Noto Serif TC', serif;
     font-size: 1.2rem; font-weight: 700; padding: 6px 2px; margin-bottom: 12px; outline: none; }
 .write-title-input:focus { border-color: var(--primary); }
