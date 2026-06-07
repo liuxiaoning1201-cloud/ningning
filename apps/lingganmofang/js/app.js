@@ -140,6 +140,7 @@ const App = {
             cube: null, requiredStretch: settings.requiredStretch != null ? settings.requiredStretch : 2,
             pages: [], relayStep: 0,
             challengeWords: [],
+            builder: [], builderAI: null,
         };
         const m = MODULES[mode];
         const app = document.getElementById('app');
@@ -151,10 +152,16 @@ const App = {
                 <div class="left-col">
                     ${scene ? this.sceneCardHTML(scene) : '<div id="sceneSlot"></div>'}
                     <div id="cube-container"></div>
-                    <div class="cube-hint">點一下詞語就放進故事 · 拖曳可轉動魔方看各面</div>
-                    <div class="cube-actions">
-                        <button class="btn btn-ghost" id="btnShuffle">🔄 轉一轉（換個面）</button>
-                        <button class="btn btn-ghost" id="btnRefill">🎲 換一批詞</button>
+                    <div class="cube-hint">點一下詞語就放進故事 · 用方向鍵或拖曳轉動魔方看各面</div>
+                    <div class="cube-controls">
+                        <div class="dpad">
+                            <button class="dbtn up" id="btnUp" title="往上轉">▲</button>
+                            <button class="dbtn left" id="btnLeft" title="往左轉">◀</button>
+                            <button class="dbtn center" disabled>🎲</button>
+                            <button class="dbtn right" id="btnRight" title="往右轉">▶</button>
+                            <button class="dbtn down" id="btnDown" title="往下轉">▼</button>
+                        </div>
+                        <button class="btn btn-ghost" id="btnRefill">🔄 換一批詞</button>
                     </div>
                     <div class="slots" id="slots"></div>
                 </div>
@@ -162,6 +169,7 @@ const App = {
                     ${mode === 'relay' ? this.relayStepsHTML() : ''}
                     ${mode === 'constraint' ? '<div class="challenge-bar"><div class="cb-title">今日挑戰：把這些新詞用進你的故事</div><div class="challenge-words" id="challengeWords"></div></div>' : ''}
                     <div class="prompt-line" id="promptLine"></div>
+                    ${mode === 'relay' ? this.builderHTML() : ''}
                     <div class="writing-panel">
                         <input class="write-title-input" id="workTitle" placeholder="幫你的故事取個題目…">
                         <textarea class="write-area" id="writeArea" placeholder="開始寫吧！點魔方上的詞語可以放進故事裡。你也可以自由打字、調整詞語順序。"></textarea>
@@ -202,7 +210,10 @@ const App = {
         this.refillCube(true);
         if (s.mode === 'constraint') this.setupChallenge();
 
-        document.getElementById('btnShuffle').onclick = () => s.cube.spin();
+        document.getElementById('btnUp').onclick = () => s.cube.spin('up');
+        document.getElementById('btnDown').onclick = () => s.cube.spin('down');
+        document.getElementById('btnLeft').onclick = () => s.cube.spin('left');
+        document.getElementById('btnRight').onclick = () => s.cube.spin('right');
         document.getElementById('btnRefill').onclick = () => this.refillCube();
         document.getElementById('writeArea').addEventListener('input', () => this.onTextInput());
         document.getElementById('btnFinish').onclick = () => this.finish();
@@ -210,7 +221,14 @@ const App = {
         document.getElementById('btnAddWord').onclick = () => this.addCustomWord();
         document.getElementById('customWord').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addCustomWord(); });
         if (s.mode === 'picturebook') document.getElementById('btnPageDone').onclick = () => this.finishPage();
-        if (s.mode === 'relay') document.getElementById('btnRelayNext').onclick = () => this.relayNext();
+        if (s.mode === 'relay') {
+            document.getElementById('btnRelayNext').onclick = () => this.relayNext();
+            document.getElementById('btnSelfCheck').onclick = () => this.builderSelfCheck();
+            document.getElementById('btnAIPolish').onclick = () => this.builderAIPolish();
+            document.getElementById('btnCommit').onclick = () => this.builderCommit();
+            document.querySelectorAll('#connectives .ck').forEach(c => c.onclick = () => this.addBuilderChip(c.dataset.c));
+            this.renderBuilder();
+        }
         this.renderSlots();
         this.updatePromptLine();
         this.updateDrawer();
@@ -245,7 +263,7 @@ const App = {
             s.candidates.set(item.wordId, item);
             this.renderSlots();
             this.updatePromptLine();
-            this.insertText(item.word);
+            this.placeWord(item.word);
             this.updateDrawer();
             this.beep();
         };
@@ -266,6 +284,12 @@ const App = {
         this.modal('wordCard', true);
         document.getElementById('wcUse').onclick = () => { this.modal('wordCard', false); onUse(); };
         document.getElementById('wcCancel').onclick = () => this.modal('wordCard', false);
+    },
+
+    // 放置一個詞：故事接龍 → 進入「句子建構區」；其他版塊 → 直接插入打字框
+    placeWord(word) {
+        if (this.session.mode === 'relay') this.addBuilderChip(word);
+        else this.insertText(word);
     },
 
     insertText(word) {
@@ -347,13 +371,13 @@ const App = {
                     this.updateDrawer();
                     return;
                 }
-                if (chip.dataset.custom) { this.insertText(chip.dataset.w); return; }
+                if (chip.dataset.custom) { this.placeWord(chip.dataset.w); return; }
                 const id = chip.dataset.id;
                 const item = this.findItem(id);
                 if (item && item.stage === 'new') {
-                    this.showWordCard(this.toCardItem(item), () => { this.recordCandidate(item); this.insertText(item.word.word); });
+                    this.showWordCard(this.toCardItem(item), () => { this.recordCandidate(item); this.placeWord(item.word.word); });
                 } else {
-                    this.recordCandidate(item); this.insertText(chip.dataset.w);
+                    this.recordCandidate(item); this.placeWord(chip.dataset.w);
                 }
             };
         });
@@ -367,7 +391,7 @@ const App = {
         this.session.customWords = this.session.customWords || [];
         if (!this.session.customWords.includes(w)) this.session.customWords.unshift(w);
         input.value = '';
-        this.insertText(w);
+        this.placeWord(w);
         this.updateDrawer();
     },
 
@@ -451,6 +475,152 @@ const App = {
         });
     },
 
+    // ============ 故事接龍：拖拽造句 + 自我優化 + AI 採納互動 ============
+    builderHTML() {
+        const conns = ['然後', '接著', '因為', '所以', '可是', '於是', '終於', '忽然', '後來', '而且'];
+        return `<div class="builder-card">
+            <div class="bc-title">🧩 把詞語排成一句通順的話</div>
+            <div class="bc-sub">點魔方或下面的詞語加進來，<b>按住詞語左右拖動</b>可以調整順序，點 × 可刪除。</div>
+            <div class="builder" id="builder"></div>
+            <div class="builder-preview" id="builderPreview"></div>
+            <div class="connectives" id="connectives">
+                <span class="ck-title">🔗 連接詞：</span>
+                ${conns.map(c => `<span class="ck" data-c="${c}">${c}</span>`).join('')}
+            </div>
+            <div class="builder-actions">
+                <button class="btn btn-ghost" id="btnSelfCheck">🔍 自我檢查</button>
+                <button class="btn btn-accent" id="btnAIPolish">🤖 給 AI 老師潤色</button>
+                <button class="btn btn-primary" id="btnCommit">✅ 加進故事</button>
+            </div>
+            <div id="builderChat"></div>
+        </div>`;
+    },
+
+    addBuilderChip(word) {
+        if (!word) return;
+        this.session.builder.push(word);
+        this.beep();
+        this.renderBuilder();
+    },
+
+    builderText() { return this.session.builder.join(''); },
+
+    renderBuilder() {
+        const box = document.getElementById('builder');
+        if (!box) return;
+        const arr = this.session.builder;
+        box.innerHTML = arr.length
+            ? arr.map((w, i) => `<span class="bchip" draggable="true" data-i="${i}">${w}<span class="bx" data-del="${i}">×</span></span>`).join('')
+            : '<span class="builder-empty">（這裡會排出你的句子…）</span>';
+        const prev = document.getElementById('builderPreview');
+        if (prev) prev.textContent = arr.length ? ('你的句子：' + this.builderText()) : '';
+
+        // 刪除
+        box.querySelectorAll('.bx').forEach(x => x.onclick = (e) => {
+            e.stopPropagation();
+            this.session.builder.splice(Number(x.dataset.del), 1);
+            this.renderBuilder();
+        });
+        // 拖拽排序
+        let dragFrom = null;
+        box.querySelectorAll('.bchip').forEach(chip => {
+            chip.addEventListener('dragstart', (e) => { dragFrom = Number(chip.dataset.i); chip.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+            chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+            chip.addEventListener('dragover', (e) => { e.preventDefault(); chip.classList.add('drop-target'); });
+            chip.addEventListener('dragleave', () => chip.classList.remove('drop-target'));
+            chip.addEventListener('drop', (e) => {
+                e.preventDefault();
+                chip.classList.remove('drop-target');
+                const to = Number(chip.dataset.i);
+                if (dragFrom === null || dragFrom === to) return;
+                const arr2 = this.session.builder;
+                const [moved] = arr2.splice(dragFrom, 1);
+                arr2.splice(to, 0, moved);
+                dragFrom = null;
+                this.renderBuilder();
+            });
+        });
+    },
+
+    builderSelfCheck() {
+        const text = this.builderText();
+        const chat = document.getElementById('builderChat');
+        if (text.replace(/\s/g, '').length < 2) { this.toast('先排幾個詞再檢查喔'); return; }
+        const conns = ['然後', '接著', '因為', '所以', '可是', '但是', '於是', '終於', '忽然', '後來', '而且', '雖然', '一邊', '正在'];
+        const hasConn = conns.some(c => text.includes(c));
+        const tips = [];
+        if (!hasConn) tips.push('你的句子裡好像沒有<b>連接詞</b>（像「然後、因為、所以」）。加一個會更通順！');
+        if (this.session.builder.length < 3) tips.push('句子有點短，試著再加一兩個詞，把<b>時間、地點、心情</b>補上去。');
+        if (!tips.length) tips.push('句子結構看起來不錯！可以再唸一遍，或交給 AI 老師潤色看看。');
+        chat.innerHTML = `<div class="bchat">
+            <div class="bubble bubble-self">${text}</div>
+            <div class="bubble bubble-tip"><b>自我檢查</b><ul>${tips.map(t => `<li>${t}</li>`).join('')}</ul></div>
+        </div>`;
+    },
+
+    async builderAIPolish() {
+        const text = this.builderText();
+        if (text.replace(/\s/g, '').length < 2) { this.toast('先排幾個詞，AI 才幫得上忙'); return; }
+        const chat = document.getElementById('builderChat');
+        chat.innerHTML = `<div class="bchat">
+            <div class="bubble bubble-self">${text}</div>
+            <div class="bubble bubble-ai"><span class="ai-loading">AI 老師思考中</span></div>
+        </div>`;
+        try {
+            const res = await window.AITeacher.polishSentence(text);
+            if (!res || !res.suggestion) throw new Error('no');
+            this.session.builderAI = res.suggestion;
+            chat.innerHTML = `<div class="bchat">
+                <div class="bubble bubble-self">${text}</div>
+                <div class="bubble bubble-ai">
+                    <div class="ai-name">👩‍🏫 AI 老師建議</div>
+                    <div class="ai-sugg">「${res.suggestion}」</div>
+                    ${res.reason ? `<div class="ai-reason">💡 ${res.reason}</div>` : ''}
+                    <div class="ai-choose">
+                        <button class="btn btn-primary" id="btnAdopt">採納這個寫法</button>
+                        <button class="btn btn-ghost" id="btnReject">用我自己的</button>
+                    </div>
+                </div></div>`;
+            document.getElementById('btnAdopt').onclick = () => this.builderAdopt(res.suggestion);
+            document.getElementById('btnReject').onclick = () => this.builderReject();
+        } catch (e) {
+            const offline = (e && e.message === 'llm_not_configured');
+            chat.innerHTML = `<div class="bchat"><div class="bubble bubble-self">${text}</div>
+                <div class="bubble bubble-ai">${offline ? 'AI 老師服務尚未開通，你可以先用自己的句子。' : 'AI 老師暫時連不上，待會再試。'}</div></div>`;
+        }
+    },
+
+    builderAdopt(suggestion) {
+        // 採納：把建構區換成 AI 的句子（拆成單一整句 chip，仍可再編輯刪改）
+        this.session.builder = [suggestion];
+        this.session.builderAI = null;
+        this.renderBuilder();
+        const chat = document.getElementById('builderChat');
+        chat.innerHTML = `<div class="bchat"><div class="bubble bubble-tip">✅ 已採納 AI 老師的寫法，按「加進故事」就完成這一句。</div></div>`;
+        this.toast('已採納，記得加進故事');
+    },
+
+    builderReject() {
+        this.session.builderAI = null;
+        const chat = document.getElementById('builderChat');
+        chat.innerHTML = `<div class="bchat"><div class="bubble bubble-tip">👍 保留你自己的句子，很有主見！按「加進故事」即可。</div></div>`;
+    },
+
+    builderCommit() {
+        let sentence = this.builderText().trim();
+        if (sentence.replace(/\s/g, '').length < 2) { this.toast('句子太短，再排幾個詞吧'); return; }
+        if (!/[。！？…]$/.test(sentence)) sentence += '。';
+        const ta = document.getElementById('writeArea');
+        ta.value = (ta.value ? ta.value + '' : '') + sentence;
+        // 清空建構區，準備下一句
+        this.session.builder = [];
+        this.session.builderAI = null;
+        this.renderBuilder();
+        document.getElementById('builderChat').innerHTML = '';
+        this.onTextInput();
+        this.toast('這一句加進故事了！');
+    },
+
     // ============ 看圖繪本：選場景 + 多頁 ============
     sceneChooserHTML() {
         return `<div id="sceneChooser"><h3 class="page-title" style="font-size:1.2rem">先選一張圖開始</h3>
@@ -484,8 +654,9 @@ const App = {
     async finishPage() {
         const text = document.getElementById('writeArea').value.trim();
         if (!text) { this.toast('先寫幾句話再生成插圖喔'); return; }
-        this.toast('正在生成插圖…');
+        this.showGenOverlay('正在為這一頁畫插圖…');
         const result = await window.ImageGen.generate(this.session.slots, this.session.scene, text);
+        this.hideGenOverlay();
         this.session.pages.push({ pageId: 'p_' + (this.session.pages.length + 1), text, imageUrl: result.imageUrl, imagePrompt: result.prompt, usedWords: this.collectUsedIds(text) });
         document.getElementById('writeArea').value = '';
         document.getElementById('pageInfo').textContent = `已完成 ${this.session.pages.length} 頁`;
@@ -503,39 +674,51 @@ const App = {
         return ids;
     },
 
+    // ---- 生圖等待動畫 ----
+    showGenOverlay(title) {
+        const t = document.getElementById('genTitle');
+        if (t) t.textContent = title || '正在為你的故事畫插圖…';
+        document.getElementById('genProgress').textContent = '';
+        this.overlay('genOverlay', true);
+    },
+    updateGen(done, total) {
+        const p = document.getElementById('genProgress');
+        if (p) p.textContent = `第 ${Math.min(done + 1, total)} / ${total} 句`;
+    },
+    hideGenOverlay() { this.overlay('genOverlay', false); },
+
     async finish() {
         const s = this.session;
         const title = (document.getElementById('workTitle').value || '').trim() || '我的故事';
-        let pages = s.pages.slice();
         const text = document.getElementById('writeArea').value.trim();
 
+        // ── 先驗證，避免白白呼叫生圖 ──
         if (s.mode === 'picturebook') {
             if (text) await this.finishPage();
-            pages = s.pages.slice();
-            if (!pages.length) { this.toast('至少完成一頁繪本'); return; }
+            if (!s.pages.length) { this.toast('至少完成一頁繪本'); return; }
         } else {
             if (text.replace(/\s/g, '').length < 10) { this.toast('再多寫幾句，故事會更精彩！'); return; }
-            // 逐句生成插圖：每一句對應一幅畫
-            const generated = await window.ImageGen.generatePages(text, s.slots, s.scene, (done, total) => {
-                this.toast(`正在為第 ${Math.min(done + 1, total)}/${total} 句畫插圖…`);
-            });
+            if (s.mode === 'constraint') {
+                const missing = s.challengeWords.filter(w => !text.includes(w.word));
+                if (missing.length) { this.toast('還差挑戰詞：' + missing.map(w => w.word).join('、')); return; }
+            }
+        }
+
+        // ── 生成插圖（每句一張，含等待動畫） ──
+        let pages;
+        if (s.mode === 'picturebook') {
+            pages = s.pages.slice();
+        } else {
+            this.showGenOverlay('正在為你的故事畫插圖…');
+            const generated = await window.ImageGen.generatePages(text, s.slots, s.scene, (done, total) => this.updateGen(done, total));
+            this.hideGenOverlay();
             pages = generated.map((p, i) => ({
-                pageId: 'p_' + (i + 1),
-                text: p.text,
-                imageUrl: p.imageUrl,
-                imagePrompt: p.imagePrompt,
-                usedWords: this.collectUsedIds(p.text),
+                pageId: 'p_' + (i + 1), text: p.text, imageUrl: p.imageUrl,
+                imagePrompt: p.imagePrompt, usedWords: this.collectUsedIds(p.text),
             }));
         }
 
-        // 限制式：檢查必用挑戰詞
-        if (s.mode === 'constraint') {
-            const allText = pages.map(p => p.text).join('');
-            const missing = s.challengeWords.filter(w => !allText.includes(w.word));
-            if (missing.length) { this.toast('還差挑戰詞：' + missing.map(w => w.word).join('、')); return; }
-        }
-
-        // 統計使用的詞、推進 SRS
+        // ── 計分（唯讀，收藏時才真正寫入 SRS / 統計） ──
         const usedIds = [...new Set(pages.flatMap(p => p.usedWords))];
         let score = 0, stretchUsed = 0;
         usedIds.forEach(id => {
@@ -543,34 +726,47 @@ const App = {
             const stage = item ? item.stage : 'recognize';
             score += window.Adaptive.scoreWord(stage);
             if (stage === 'new') stretchUsed++;
-            window.Adaptive.recordUse(id, { usedInWriting: true });
         });
-
         const totalChars = pages.reduce((a, p) => a + p.text.replace(/\s/g, '').length, 0);
         const stars = this.calcStars(stretchUsed, totalChars, score);
         const success = stretchUsed >= (s.requiredStretch || 0) && totalChars >= 15;
 
-        // 儲存作品
         const work = {
-            id: 'story_' + Date.now(),
-            mode: s.mode, title, pages,
-            createdAt: new Date().toISOString(),
-            wordCount: totalChars,
-            usedWordIds: usedIds,
-            starsEarned: stars,
+            id: 'story_' + Date.now(), mode: s.mode, title, pages,
+            createdAt: new Date().toISOString(), wordCount: totalChars,
+            usedWordIds: usedIds, starsEarned: stars,
         };
+
+        this.showResultPreview(work, { usedIds, stretchUsed, totalChars, success, stars });
+    },
+
+    // ── 成果預覽：先給看圖，再讓學生「收藏到寫作簿」 ──
+    showResultPreview(work, meta) {
+        const body = document.getElementById('resultBody');
+        body.innerHTML = work.pages.map(p => `
+            <div class="rp-card">
+                <img src="${p.imageUrl}" alt="插圖">
+                <div class="rp-text">${p.text}</div>
+            </div>`).join('');
+        document.getElementById('resultTitle').textContent = `🎨 「${work.title}」插畫完成！`;
+        this.overlay('resultOverlay', true);
+        document.getElementById('resultCollect').onclick = () => { this.overlay('resultOverlay', false); this.collectWork(work, meta); };
+        document.getElementById('resultBack').onclick = () => { this.overlay('resultOverlay', false); this.toast('可以再修改，改好按「完成」會重新生成插圖'); };
+    },
+
+    collectWork(work, meta) {
+        // 真正寫入：作品集 + SRS + 統計
+        meta.usedIds.forEach(id => window.Adaptive.recordUse(id, { usedInWriting: true }));
         window.Store.addWork(work);
-
         const stats = window.Store.loadStats();
-        stats.totalWordsUsed = (stats.totalWordsUsed || 0) + usedIds.length;
+        stats.totalWordsUsed = (stats.totalWordsUsed || 0) + meta.usedIds.length;
         window.Store.saveStats(stats);
-        window.Adaptive.recordOutcome({ success, stretchUsed, chars: totalChars, at: Date.now() });
+        window.Adaptive.recordOutcome({ success: meta.success, stretchUsed: meta.stretchUsed, chars: meta.totalChars, at: Date.now() });
 
-        // 慶祝
-        document.getElementById('celebrateTitle').textContent = title + ' · 完成！';
-        document.getElementById('celebrateStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
-        const fruit = stretchUsed > 0 ? `你摘到了 ${stretchUsed} 個新詞桃子 🍑` : '繼續嘗試新詞，可以摘到桃子喔！';
-        document.getElementById('celebrateDetail').innerHTML = `全文 ${totalChars} 字，用了 ${usedIds.length} 個詞。<br>${fruit}`;
+        document.getElementById('celebrateTitle').textContent = work.title + ' · 已收藏！';
+        document.getElementById('celebrateStars').textContent = '⭐'.repeat(meta.stars) + '☆'.repeat(3 - meta.stars);
+        const fruit = meta.stretchUsed > 0 ? `你摘到了 ${meta.stretchUsed} 個新詞桃子 🍑` : '繼續嘗試新詞，可以摘到桃子喔！';
+        document.getElementById('celebrateDetail').innerHTML = `全文 ${meta.totalChars} 字，用了 ${meta.usedIds.length} 個詞。<br>${fruit}<br>已收藏到「我的寫作簿」📒`;
         this.overlay('celebrateOverlay', true);
     },
 
@@ -609,13 +805,13 @@ const App = {
                 <div class="quiz-progress">第 ${q.idx + 1} / ${q.items.length} 題</div>
                 <div class="quiz-word">${w.word}</div>
                 <div class="meter-label">${w.pinyin || ''}</div>
-                <div class="quiz-options">
-                    <button data-k="yes">😎 我認識，還會用</button>
-                    <button data-k="maybe">🤔 好像見過</button>
-                    <button data-k="no">🙈 不認識</button>
+                <div class="quiz-faces">
+                    <button data-k="yes" class="face face-yes"><span class="face-emoji">😊</span><span class="face-label">認識</span></button>
+                    <button data-k="maybe" class="face face-maybe"><span class="face-emoji">😐</span><span class="face-label">好像見過</span></button>
+                    <button data-k="no" class="face face-no"><span class="face-emoji">☹️</span><span class="face-label">不認識</span></button>
                 </div>
             </div>`;
-        app.querySelectorAll('.quiz-options button').forEach(b => {
+        app.querySelectorAll('.quiz-faces button').forEach(b => {
             b.onclick = () => this.answerQuiz(w, b.dataset.k);
         });
     },

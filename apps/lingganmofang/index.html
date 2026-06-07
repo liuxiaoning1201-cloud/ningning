@@ -13,7 +13,7 @@
 
     <!-- Google Fonts 改為非阻塞載入，載不到時自動退回系統字型 -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@500;700&display=swap" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="css/main.css?v=3">
+    <link rel="stylesheet" href="css/main.css?v=4">
 </head>
 <body>
     <!-- 頂部導覽 -->
@@ -80,6 +80,31 @@
         </div>
     </div>
 
+    <!-- 生圖等待動畫 -->
+    <div class="overlay" id="genOverlay">
+        <div class="gen-card">
+            <div class="puzzle" id="puzzle">
+                <span class="ptile"></span><span class="ptile"></span>
+                <span class="ptile"></span><span class="ptile"></span>
+            </div>
+            <h3 id="genTitle">正在為你的故事畫插圖…</h3>
+            <div class="gen-progress" id="genProgress"></div>
+            <div class="gen-hint">小畫家正在一格一格地拼出畫面，請稍等 ✏️</div>
+        </div>
+    </div>
+
+    <!-- 成果預覽 + 收藏 -->
+    <div class="overlay" id="resultOverlay">
+        <div class="modal-box result-box">
+            <div class="modal-head"><h2 id="resultTitle">🎨 你的插畫故事完成了！</h2></div>
+            <div class="result-pages" id="resultBody"></div>
+            <div class="celebrate-actions" style="margin-top:18px">
+                <button class="btn btn-ghost" id="resultBack">再改改</button>
+                <button class="btn btn-primary" id="resultCollect">📒 收藏到我的寫作簿</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 完成慶祝 -->
     <div class="overlay" id="celebrateOverlay">
         <div class="celebrate-card">
@@ -94,13 +119,13 @@
         </div>
     </div>
 
-    <script src="js/srs.js?v=3"></script>
-    <script src="js/data.js?v=3"></script>
-    <script src="js/storage.js?v=3"></script>
-    <script src="js/adaptive.js?v=3"></script>
-    <script src="js/ai.js?v=3"></script>
-    <script src="js/cube.js?v=3"></script>
-    <script src="js/image.js?v=3"></script>
-    <script src="js/app.js?v=3"></script>
+    <script src="js/srs.js?v=4"></script>
+    <script src="js/data.js?v=4"></script>
+    <script src="js/storage.js?v=4"></script>
+    <script src="js/adaptive.js?v=4"></script>
+    <script src="js/ai.js?v=4"></script>
+    <script src="js/cube.js?v=4"></script>
+    <script src="js/image.js?v=4"></script>
+    <script src="js/app.js?v=4"></script>
 </body>
 </html>

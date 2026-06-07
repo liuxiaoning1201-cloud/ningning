@@ -138,17 +138,19 @@ class Cube3D {
             ctx.strokeRect(5, 5, 246, 246);
         }
 
-        // 詞（自動縮放 + 換行），加大字級
+        // 詞（依字數自動縮放 + 換行），讓每格都清楚好讀
         const word = item.word;
         ctx.fillStyle = '#1c2b27';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const lines = word.length > 4
-            ? [word.slice(0, Math.ceil(word.length / 2)), word.slice(Math.ceil(word.length / 2))]
-            : [word];
-        const fontSize = word.length <= 2 ? 112 : (word.length <= 4 ? 84 : 64);
+        let lines, fontSize;
+        const len = word.length;
+        if (len <= 2) { lines = [word]; fontSize = 112; }
+        else if (len === 3) { lines = [word]; fontSize = 78; }
+        else if (len === 4) { lines = [word.slice(0, 2), word.slice(2)]; fontSize = 86; } // 四字成語：上下兩行「小心／翼翼」
+        else { const h = Math.ceil(len / 2); lines = [word.slice(0, h), word.slice(h)]; fontSize = 58; }
         ctx.font = `bold ${fontSize}px "KaiTi","楷体","Noto Serif TC",serif`;
-        const lineH = fontSize * 1.04;
+        const lineH = fontSize * 1.05;
         const startY = 128 - (lines.length - 1) * lineH / 2;
         lines.forEach((ln, i) => ctx.fillText(ln, 128, startY + i * lineH));
 
@@ -218,16 +220,27 @@ class Cube3D {
         this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: -1 };
     }
 
-    // 「轉一轉」：整顆魔方繞直立軸平滑旋轉 90°，露出下一個要素面（始終端正、不打散）。
-    // 上下兩面可用手指/滑鼠拖曳魔方查看。
-    spin(onDone) {
+    // 用上/下/左/右把整顆魔方繞「世界軸」平滑旋轉 90°，露出對應的要素面。
+    // 採四元數球面插值，確保每次都軸對齊（始終端正、不打散），上下面也能轉到正面。
+    spin(direction = 'left', onDone) {
         if (this.spinning) return;
         this.spinning = true;
-        const targetY = this.cubeGroup.rotation.y - Math.PI / 2;
-        gsap.to(this.cubeGroup.rotation, {
-            y: targetY,
-            duration: 0.62, ease: 'power2.inOut',
-            onComplete: () => { this.spinning = false; if (onDone) onDone(); },
+        const half = Math.PI / 2;
+        const map = {
+            left:  [new THREE.Vector3(0, 1, 0), -half],
+            right: [new THREE.Vector3(0, 1, 0),  half],
+            up:    [new THREE.Vector3(1, 0, 0), -half],
+            down:  [new THREE.Vector3(1, 0, 0),  half],
+        };
+        const [axis, angle] = map[direction] || map.left;
+        const start = this.cubeGroup.quaternion.clone();
+        // 世界軸旋轉：delta 左乘目前姿態
+        const end = new THREE.Quaternion().setFromAxisAngle(axis, angle).multiply(start);
+        const proxy = { t: 0 };
+        gsap.to(proxy, {
+            t: 1, duration: 0.5, ease: 'power2.inOut',
+            onUpdate: () => { this.cubeGroup.quaternion.copy(start).slerp(end, proxy.t); },
+            onComplete: () => { this.cubeGroup.quaternion.copy(end); this.spinning = false; if (onDone) onDone(); },
         });
     }
 

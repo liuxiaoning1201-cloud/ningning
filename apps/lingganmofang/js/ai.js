@@ -63,6 +63,21 @@ const AITeacher = {
         return obj && Array.isArray(obj.prompts) ? obj.prompts : null;
     },
 
+    // 潤色單一句子（故事接龍用）。回傳 { suggestion, reason, ok }
+    async polishSentence(sentence) {
+        const sys = `你是親切的香港小學中文老師，正在和學生一起逐句把句子修得更通順。`
+            + `學生會給你一句他用詞語拼出來的句子。請：`
+            + `1) 判斷語序與語法是否正確、是否缺少連接詞或標點；`
+            + `2) 給出一個更通順自然的「改寫版本」（盡量保留學生原本的詞語與意思，只做小修補）；`
+            + `3) 用一句話說明你改了甚麼、為甚麼。`
+            + `只輸出 JSON：{"suggestion":"改寫後的句子","reason":"你改動的原因（一句話）","ok":學生原句是否已經很好(true/false)}。`;
+        const content = await this._chat(
+            [{ role: 'system', content: sys }, { role: 'user', content: `學生的句子：${sentence}` }],
+            { json: true, max_tokens: 400, temperature: 0.4 },
+        );
+        return this._parseJson(content);
+    },
+
     _parseJson(s) {
         if (!s) return null;
         try { return JSON.parse(s); } catch (e) {}
