@@ -67,6 +67,7 @@ export const useGameSessionStore = defineStore("gameSession", {
         size: template.boardSize,
         contentType: template.rule.content,
         customTexts: opts?.customTexts,
+        lineLength: this.resolvedLineLength,
       });
       this.board = board;
       this.placedTexts = texts;

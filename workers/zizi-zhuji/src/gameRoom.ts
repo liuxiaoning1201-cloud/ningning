@@ -164,6 +164,7 @@ export class GameRoom {
       size: boardSize,
       contentType: rule.content,
       customTexts: body.customTexts,
+      lineLength: resolveLineLength(rule),
       rng,
     });
 
@@ -635,6 +636,7 @@ export class GameRoom {
       size: this.meta.boardSize,
       contentType: this.game.rule.content,
       customTexts: this.meta.customTexts,
+      lineLength: this.game.resolvedLineLength,
       rng,
     });
     this.game.board = board;

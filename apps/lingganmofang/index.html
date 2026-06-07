@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>靈感魔方 · 創意寫作</title>
+
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <!-- 頂部導覽 -->
+    <header class="topbar">
+        <div class="brand" data-go="home">
+            <span class="brand-cube">🎲</span>
+            <span class="brand-name">靈感魔方</span>
+        </div>
+        <nav class="topnav" id="topnav"></nav>
+        <button class="icon-btn" id="settingsBtn" title="設定">⚙️</button>
+    </header>
+
+    <main id="app"></main>
+
+    <!-- 例句鷹架小卡 -->
+    <div class="modal" id="wordCard">
+        <div class="word-card">
+            <div class="wc-tag" id="wcTag"></div>
+            <div class="wc-word" id="wcWord"></div>
+            <div class="wc-pinyin" id="wcPinyin"></div>
+            <div class="wc-example" id="wcExample"></div>
+            <div class="wc-actions">
+                <button class="btn btn-ghost" id="wcCancel">先不用</button>
+                <button class="btn btn-primary" id="wcUse">就用這個 ✨</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 設定 -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-box">
+            <div class="modal-head"><h2>⚙️ 設定</h2><button class="close-btn" id="closeSettings">&times;</button></div>
+            <div class="setting"><label>挑戰強度（桃子高度）</label>
+                <select id="setIntensity">
+                    <option value="gentle">溫和 · 多熟詞，桃子較低</option>
+                    <option value="balanced">平衡 · 推薦</option>
+                    <option value="bold">大膽 · 多新詞，桃子較高</option>
+                </select>
+            </div>
+            <div class="setting"><label>每篇至少用幾個挑戰詞</label>
+                <input type="number" id="setRequired" min="0" max="6" value="2"></div>
+            <div class="setting"><label><input type="checkbox" id="setPinyin"> 顯示拼音輔助</label></div>
+            <div class="setting"><label><input type="checkbox" id="setAuto"> 自動調節難度（85% 法則）</label></div>
+            <div class="setting"><label>文字生圖代理端點（選填，Cloudflare Worker）</label>
+                <input type="text" id="setEndpoint" placeholder="https://your-worker.workers.dev"></div>
+            <hr>
+            <div class="setting"><label>詞庫管理</label>
+                <button class="btn btn-ghost full" id="btnExport">📥 匯出詞庫（Excel）</button>
+                <button class="btn btn-ghost full" id="btnImport">📤 匯入詞庫（Excel）</button>
+                <input type="file" id="fileImport" accept=".xlsx,.xls" hidden>
+                <button class="btn btn-ghost full" id="btnTemplate">📄 下載詞庫模板</button>
+            </div>
+            <div class="setting">
+                <button class="btn btn-ghost full" id="btnReset">🔄 重置所有進度</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 完成慶祝 -->
+    <div class="overlay" id="celebrateOverlay">
+        <div class="celebrate-card">
+            <div class="celebrate-emoji">🎉</div>
+            <h2 id="celebrateTitle">完成創作！</h2>
+            <div class="stars" id="celebrateStars">⭐⭐⭐</div>
+            <div class="celebrate-detail" id="celebrateDetail"></div>
+            <div class="celebrate-actions">
+                <button class="btn btn-ghost" id="celebrateAgain">再寫一篇</button>
+                <button class="btn btn-primary" id="celebrateBook">看我的作品集</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/srs.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/adaptive.js"></script>
+    <script src="js/cube.js"></script>
+    <script src="js/image.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

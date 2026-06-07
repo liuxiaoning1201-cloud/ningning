@@ -42,6 +42,28 @@ const trainWhistle = ref<HTMLAudioElement | null>(null);
 
 const seasonNames = ["春", "夏", "秋", "冬"];
 
+interface Vehicle {
+  id: string;
+  name: string;
+  engine: string;
+  trail: string;
+  ground: "rail" | "road" | "water" | "sky" | "grass";
+}
+
+/** 多種交通工具，每一關輪流出現，吸引小朋友 */
+const VEHICLES: Vehicle[] = [
+  { id: "train", name: "火車", engine: "🚂", trail: "💨", ground: "rail" },
+  { id: "bus", name: "巴士", engine: "🚌", trail: "💨", ground: "road" },
+  { id: "truck", name: "貨車", engine: "🚚", trail: "💨", ground: "road" },
+  { id: "race", name: "賽車", engine: "🏎️", trail: "💨", ground: "road" },
+  { id: "boat", name: "輪船", engine: "🚢", trail: "🌊", ground: "water" },
+  { id: "rocket", name: "火箭", engine: "🚀", trail: "🔥", ground: "sky" },
+  { id: "plane", name: "飛機", engine: "✈️", trail: "☁️", ground: "sky" },
+  { id: "caterpillar", name: "毛毛蟲車", engine: "🐛", trail: "🍃", ground: "grass" },
+];
+
+const currentVehicle = ref<Vehicle>(VEHICLES[0]);
+
 const currentLevelLabel = computed(
   () => `${currentIdx.value + 1} / ${levels.value.length}`
 );
@@ -92,6 +114,7 @@ function setupLevel(idx: number) {
   slots.value = words.map(() => null);
   departAnim.value = false;
   celebrate.value = false;
+  currentVehicle.value = VEHICLES[idx % VEHICLES.length];
 }
 
 function seasonName(i: number) {
@@ -302,10 +325,10 @@ onUnmounted(() => {
     </button>
 
     <main v-if="screen === 'start'" class="panel start-panel">
-      <div class="logo">🚂</div>
+      <div class="logo">🚂🚌🚀🚢</div>
       <h1>句子排序小火車</h1>
       <p class="lede">
-        詞語在上方，季節小車廂在火車上。用手指拖進正確順序，排對了火車就開往下一關！
+        詞語在上方，把它們拖進下面的車廂排成正確順序。排對了，車子就向前出發開往下一關！每一關還會換不同的交通工具喔～
       </p>
       <button type="button" class="btn primary" @click="startGame">
         開始遊戲
@@ -348,8 +371,8 @@ onUnmounted(() => {
       >
         <div class="train">
           <div class="engine" aria-hidden="true">
-            <span class="smoke">💨</span>
-            <span class="loco">🚂</span>
+            <span class="smoke">{{ currentVehicle.trail }}</span>
+            <span class="loco">{{ currentVehicle.engine }}</span>
           </div>
           <div
             v-for="(_, i) in slots"
@@ -375,10 +398,10 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-        <div class="rails" aria-hidden="true" />
+        <div class="rails" :class="`rails-${currentVehicle.ground}`" aria-hidden="true" />
       </div>
 
-      <p v-if="celebrate" class="toast">太棒了！火車出發！</p>
+      <p v-if="celebrate" class="toast">太棒了！{{ currentVehicle.name }}出發！</p>
     </main>
 
     <div
@@ -487,8 +510,9 @@ onUnmounted(() => {
 }
 
 .logo {
-  font-size: 4rem;
-  line-height: 1;
+  font-size: 2.8rem;
+  line-height: 1.1;
+  letter-spacing: 4px;
   margin-bottom: 8px;
   filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.06));
 }
@@ -633,7 +657,7 @@ h1 {
 }
 
 .track.depart {
-  transform: translateX(115%);
+  transform: translateX(-130%);
 }
 
 .track.celebrate .engine .smoke {
@@ -732,6 +756,11 @@ h1 {
   margin: 0 12px;
   margin-top: -6px;
   border-radius: 4px;
+  opacity: 0.55;
+}
+
+/* 鐵軌：枕木 */
+.rails-rail {
   background: repeating-linear-gradient(
     90deg,
     #789 0,
@@ -739,7 +768,63 @@ h1 {
     transparent 14px,
     transparent 22px
   );
-  opacity: 0.45;
+}
+
+/* 馬路：柏油 + 中線 */
+.rails-road {
+  height: 14px;
+  border-radius: 6px;
+  background: #555a60;
+  background-image: repeating-linear-gradient(
+    90deg,
+    #ffd54f 0,
+    #ffd54f 18px,
+    transparent 18px,
+    transparent 36px
+  );
+  background-size: 100% 3px;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.7;
+}
+
+/* 水面：波浪 */
+.rails-water {
+  height: 14px;
+  border-radius: 8px;
+  background: repeating-linear-gradient(
+    90deg,
+    #4fc3f7 0,
+    #29b6f6 12px,
+    #4fc3f7 24px
+  );
+  opacity: 0.6;
+}
+
+/* 天空：虛線雲帶 */
+.rails-sky {
+  height: 8px;
+  background: repeating-linear-gradient(
+    90deg,
+    #cfe8ff 0,
+    #cfe8ff 10px,
+    transparent 10px,
+    transparent 26px
+  );
+  opacity: 0.8;
+}
+
+/* 草地 */
+.rails-grass {
+  height: 12px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    #7bc96f 0,
+    #5fb35a 10px,
+    #7bc96f 20px
+  );
+  opacity: 0.7;
 }
 
 .toast {
