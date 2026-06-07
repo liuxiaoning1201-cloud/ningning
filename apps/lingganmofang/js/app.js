@@ -9,6 +9,15 @@ const MODULES = {
     picturebook: { emoji: '📖', title: '看圖繪本', badge: '成書', desc: '看圖寫話，生成插圖，做成自己的繪本。' },
 };
 
+// 「補充詞」抽屜：魔方六要素以外、組成完整句子需要的連接詞 / 介詞 / 助詞 / 標點。
+// 魔方負責「實詞」（人物、地點、事件…），抽屜負責這些「虛詞」與標點，兩者互補不重複。
+const HELPER_WORDS = [
+    { title: '連接詞', icon: '🔗', words: ['和', '跟', '然後', '接著', '因為', '所以', '可是', '但是', '於是', '終於', '忽然', '後來', '而且', '雖然', '一邊'] },
+    { title: '小幫手詞（在・把・的・了…）', icon: '🧩', words: ['在', '把', '被', '給', '對', '向', '到', '的', '地', '得', '了', '著', '過', '是', '有', '會', '想', '正在'] },
+    { title: '數量・指示', icon: '🔢', words: ['一個', '一隻', '一條', '一些', '這', '那', '這裡', '那裡', '自己', '一起', '很', '非常'] },
+    { title: '標點符號', icon: '✏️', words: ['，', '。', '！', '？', '、', '…'] },
+];
+
 const NAV = [
     { id: 'home', label: '首頁' },
     { id: 'inspire', label: '靈感魔方' },
@@ -169,21 +178,15 @@ const App = {
                     ${mode === 'relay' ? this.relayStepsHTML() : ''}
                     ${mode === 'constraint' ? '<div class="challenge-bar"><div class="cb-title">今日挑戰：把這些新詞用進你的故事</div><div class="challenge-words" id="challengeWords"></div></div>' : ''}
                     <div class="prompt-line" id="promptLine"></div>
-                    ${mode === 'relay' ? this.builderHTML() : ''}
+                    ${this.builderHTML()}
                     <div class="writing-panel">
                         <input class="write-title-input" id="workTitle" placeholder="幫你的故事取個題目…">
-                        <textarea class="write-area" id="writeArea" placeholder="開始寫吧！點魔方上的詞語可以放進故事裡。你也可以自由打字、調整詞語順序。"></textarea>
+                        <textarea class="write-area" id="writeArea" placeholder="按上面的「加進故事」把句子放進來，也可以直接打字修改。"></textarea>
                         <div class="write-meta"><span id="wordCount">0 字</span><span id="usedInfo"></span></div>
                         <div class="ai-bar">
-                            <button class="btn btn-primary" id="btnAIReview">👩‍🏫 請 AI 老師看看（語序・邏輯・建議）</button>
+                            <button class="btn btn-primary" id="btnAIReview">👩‍🏫 請 AI 老師看看整篇（語序・邏輯・建議）</button>
                         </div>
                         <div id="aiFeedback"></div>
-                        <div class="drawer" id="drawer"><h4>🎒 詞語抽屜（點一下放進故事）</h4><div id="drawerBody"></div>
-                            <div class="addword-row">
-                                <input type="text" id="customWord" placeholder="自己想到的詞？打進去按 ＋" maxlength="12">
-                                <button id="btnAddWord">＋ 加詞</button>
-                            </div>
-                        </div>
                         <div style="display:flex;gap:10px;margin-top:14px">
                             ${mode === 'picturebook'
                                 ? '<button class="btn btn-accent" id="btnPageDone">🖼️ 完成這頁並生成插圖</button><button class="btn btn-primary" id="btnFinish">📕 完成繪本</button>'
@@ -221,14 +224,12 @@ const App = {
         document.getElementById('btnAddWord').onclick = () => this.addCustomWord();
         document.getElementById('customWord').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.addCustomWord(); });
         if (s.mode === 'picturebook') document.getElementById('btnPageDone').onclick = () => this.finishPage();
-        if (s.mode === 'relay') {
-            document.getElementById('btnRelayNext').onclick = () => this.relayNext();
-            document.getElementById('btnSelfCheck').onclick = () => this.builderSelfCheck();
-            document.getElementById('btnAIPolish').onclick = () => this.builderAIPolish();
-            document.getElementById('btnCommit').onclick = () => this.builderCommit();
-            document.querySelectorAll('#connectives .ck').forEach(c => c.onclick = () => this.addBuilderChip(c.dataset.c));
-            this.renderBuilder();
-        }
+        if (s.mode === 'relay') document.getElementById('btnRelayNext').onclick = () => this.relayNext();
+        // 造句區（所有版塊共用）
+        document.getElementById('btnSelfCheck').onclick = () => this.builderSelfCheck();
+        document.getElementById('btnAIPolish').onclick = () => this.builderAIPolish();
+        document.getElementById('btnCommit').onclick = () => this.builderCommit();
+        this.renderBuilder();
         this.renderSlots();
         this.updatePromptLine();
         this.updateDrawer();
@@ -286,10 +287,9 @@ const App = {
         document.getElementById('wcCancel').onclick = () => this.modal('wordCard', false);
     },
 
-    // 放置一個詞：故事接龍 → 進入「句子建構區」；其他版塊 → 直接插入打字框
+    // 放置一個詞：一律進入「句子建構區」，讓學生拖拽排出正確語序後再加進故事
     placeWord(word) {
-        if (this.session.mode === 'relay') this.addBuilderChip(word);
-        else this.insertText(word);
+        this.addBuilderChip(word);
     },
 
     insertText(word) {
@@ -310,10 +310,6 @@ const App = {
                 el.classList.toggle('done', text.includes(el.dataset.w));
             });
         }
-        // 抽屜中已用的詞變淡
-        document.querySelectorAll('#drawerBody .chip').forEach(c => {
-            c.classList.toggle('used', text.includes(c.dataset.w));
-        });
     },
 
     renderSlots() {
@@ -344,41 +340,24 @@ const App = {
     updateDrawer() {
         const body = document.getElementById('drawerBody');
         if (!body) return;
-        const settings = window.Store.loadSettings();
-        const text = (document.getElementById('writeArea') || {}).value || '';
-        const decks = this.session._lastDecks || {};
         const custom = this.session.customWords || [];
         const customHTML = custom.length
             ? `<div class="drawer-group"><div class="dg-title">📝 我自己加的詞</div><div class="chips">${
-                custom.map(w => `<span class="chip custom ${text.includes(w) ? 'used' : ''}" data-w="${w}" data-custom="1">${w}<span class="chip-x" data-del="${w}">×</span></span>`).join('')
+                custom.map(w => `<span class="chip custom" data-w="${w}" data-custom="1">${w}<span class="chip-x" data-del="${w}">×</span></span>`).join('')
             }</div></div>` : '';
-        body.innerHTML = customHTML + ELEMENT_ORDER.map(el => {
-            const e = ELEMENTS[el];
-            const items = (decks[el] || []).slice(0, 6);
-            if (!items.length) return '';
-            return `<div class="drawer-group"><div class="dg-title">${e.emoji} ${e.label}</div><div class="chips">${
-                items.map(it => {
-                    const py = settings.showPinyin && it.word.pinyin ? `<span class="chip-py">${it.word.pinyin}</span>` : '';
-                    return `<span class="chip ${it.stage === 'new' ? 'stretch' : ''} ${text.includes(it.word.word) ? 'used' : ''}" data-w="${it.word.word}" data-id="${it.word.id}">${it.word.word}${py}</span>`;
-                }).join('')
-            }</div></div>`;
-        }).join('');
+        const helperHTML = HELPER_WORDS.map(g => `
+            <div class="drawer-group"><div class="dg-title">${g.icon} ${g.title}</div><div class="chips">${
+                g.words.map(w => `<span class="chip helper ${g.title === '標點符號' ? 'punc' : ''}" data-w="${w}">${w}</span>`).join('')
+            }</div></div>`).join('');
+        body.innerHTML = customHTML + helperHTML;
         body.querySelectorAll('.chip').forEach(chip => {
             chip.onclick = (e) => {
-                // 刪除自訂詞
                 if (e.target.dataset.del) {
                     this.session.customWords = (this.session.customWords || []).filter(w => w !== e.target.dataset.del);
                     this.updateDrawer();
                     return;
                 }
-                if (chip.dataset.custom) { this.placeWord(chip.dataset.w); return; }
-                const id = chip.dataset.id;
-                const item = this.findItem(id);
-                if (item && item.stage === 'new') {
-                    this.showWordCard(this.toCardItem(item), () => { this.recordCandidate(item); this.placeWord(item.word.word); });
-                } else {
-                    this.recordCandidate(item); this.placeWord(chip.dataset.w);
-                }
+                this.placeWord(chip.dataset.w);
             };
         });
     },
@@ -477,15 +456,18 @@ const App = {
 
     // ============ 故事接龍：拖拽造句 + 自我優化 + AI 採納互動 ============
     builderHTML() {
-        const conns = ['然後', '接著', '因為', '所以', '可是', '於是', '終於', '忽然', '後來', '而且'];
         return `<div class="builder-card">
             <div class="bc-title">🧩 把詞語排成一句通順的話</div>
-            <div class="bc-sub">點魔方或下面的詞語加進來，<b>按住詞語左右拖動</b>可以調整順序，點 × 可刪除。</div>
+            <div class="bc-sub">先點魔方挑六要素的詞，再從下面「補充詞」加上連接詞、小幫手詞，<b>按住詞語左右拖動</b>排出正確語序，點 × 可刪除。</div>
             <div class="builder" id="builder"></div>
             <div class="builder-preview" id="builderPreview"></div>
-            <div class="connectives" id="connectives">
-                <span class="ck-title">🔗 連接詞：</span>
-                ${conns.map(c => `<span class="ck" data-c="${c}">${c}</span>`).join('')}
+            <div class="helper-drawer">
+                <div class="hd-head">🔗 補充詞抽屜<span>魔方裡沒有的連接詞・小幫手詞，幫你把句子串通順</span></div>
+                <div id="drawerBody"></div>
+                <div class="addword-row">
+                    <input type="text" id="customWord" placeholder="自己想到的詞？打進去按 ＋" maxlength="12">
+                    <button id="btnAddWord">＋ 加詞</button>
+                </div>
             </div>
             <div class="builder-actions">
                 <button class="btn btn-ghost" id="btnSelfCheck">🔍 自我檢查</button>
