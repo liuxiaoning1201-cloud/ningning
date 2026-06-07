@@ -8,6 +8,11 @@
 //
 // element（魔方六面 = 記敘文六要素）：
 //   who 人物 / where 地點 / when 時間 / event 事件 / emotion 心情 / descriptor 好詞
+//
+// 以 IIFE 包裹，避免 ELEMENTS / ELEMENT_ORDER / SCENES 等識別字洩漏到全域，
+// 與 app.js 的同名解構宣告衝突（多個 classic script 共用全域語彙環境）。
+
+(function () {
 
 const ELEMENTS = {
     who:        { color: '#FF6B6B', label: '人物', emoji: '🧑', slotLabel: '誰' },
@@ -152,3 +157,5 @@ const SCENES = [
 ];
 
 window.LGMF_DATA = { ELEMENTS, ELEMENT_ORDER, BUILTIN_WORDS, SCENES, W };
+
+})();
