@@ -160,7 +160,11 @@ body {
 .stage { position: relative; flex: 1; min-height: 0; background:
     radial-gradient(circle at 50% 40%, #fff 0%, var(--silk-mist) 75%);
   border: 2px solid rgba(195,154,63,0.45); border-radius: 18px; overflow: hidden; box-shadow: inset 0 0 30px rgba(31,79,107,0.06); touch-action: none; }
-.stage-canvas { position: absolute; inset: 0; }
+.stage-strokes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+.stage-canvas { position: absolute; inset: 0; z-index: 2; }
+/* 畫筆模式：貼紙不擋畫筆，舞台顯示十字游標 */
+.stage.brush-mode { cursor: crosshair; }
+.stage.brush-mode .sticker { pointer-events: none; }
 .stage-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-soft); opacity: .55; font-size: 1.05rem; pointer-events: none; }
 .sticker { position: absolute; transform-origin: center center; cursor: grab; user-select: none; line-height: 1; will-change: transform; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.18)); }
 .sticker.selected { outline: 2px dashed var(--cinnabar); outline-offset: 4px; border-radius: 6px; }
@@ -170,11 +174,51 @@ body {
 .st-btn:hover { background: var(--silk-mist); }
 .st-btn.danger { color: var(--cinnabar); border-color: rgba(184,71,47,0.4); }
 
+/* 工具列 */
+.toolbar { background: var(--paper); border: 1px solid rgba(47,109,142,0.18); border-radius: 14px; padding: 10px; box-shadow: 0 8px 24px rgba(31,79,107,0.07); display: flex; flex-direction: column; gap: 8px; }
+.tool-tabs { display: flex; gap: 6px; align-items: center; }
+.tool-tab { flex: 0 0 auto; padding: 7px 16px; border-radius: 10px; border: 1px solid rgba(47,109,142,0.25); background: var(--silk-mist); color: var(--ink-soft); font-family: inherit; font-weight: 700; cursor: pointer; transition: all .15s; }
+.tool-tab.active { background: linear-gradient(135deg, var(--azure-light), var(--malachite)); color: #fff; border-color: transparent; }
+.tool-clear { margin-left: auto; padding: 7px 14px; border-radius: 10px; border: 1px solid rgba(184,71,47,0.35); background: #fff; color: var(--cinnabar); font-family: inherit; cursor: pointer; font-size: .88rem; }
+.tool-clear:hover { background: rgba(184,71,47,0.08); }
+
+/* 顏色列 */
+.tool-colors { display: flex; gap: 8px; align-items: center; padding: 2px; }
+.color-sw { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.85); box-shadow: 0 0 0 1px rgba(0,0,0,0.12); transition: transform .12s; }
+.color-sw:hover { transform: scale(1.12); }
+.color-sw.on { outline: 3px solid var(--gold-light); outline-offset: 1px; }
+
 /* 調色盤 */
-.palette { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; background: var(--paper); border: 1px solid rgba(47,109,142,0.18); border-radius: 14px; max-height: 132px; overflow-y: auto; box-shadow: 0 8px 24px rgba(31,79,107,0.07); }
-.palette-item { width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; background: var(--silk-mist); border: 1px solid rgba(47,109,142,0.15); border-radius: 11px; cursor: pointer; transition: transform .12s, background .2s; }
+.palette { display: flex; flex-wrap: wrap; gap: 6px; max-height: 124px; overflow-y: auto; }
+.palette-item { width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; background: var(--silk-mist); border: 1px solid rgba(47,109,142,0.15); border-radius: 11px; cursor: pointer; transition: transform .12s, background .2s; overflow: hidden; }
 .palette-item:hover { transform: translateY(-2px) scale(1.06); background: #fff; }
 .palette-item:active { transform: scale(.95); }
+.palette-item.shape .shape-node { transform: scale(0.62); }
+
+/* 幾何形狀零件 */
+.is-shape { display: flex; align-items: center; justify-content: center; }
+.shape-node { display: block; }
+.shape-circle { width: 46px; height: 46px; border-radius: 50%; }
+.shape-square { width: 40px; height: 40px; border-radius: 4px; }
+.shape-rect { width: 64px; height: 18px; border-radius: 5px; }
+.shape-line { width: 60px; height: 5px; border-radius: 3px; }
+.shape-semicircle { width: 46px; height: 23px; border-radius: 46px 46px 0 0; }
+.shape-ring { width: 44px; height: 44px; border-radius: 50%; border: 7px solid; background: transparent !important; box-sizing: border-box; }
+.shape-dot { width: 18px; height: 18px; border-radius: 50%; }
+.shape-triangle { width: 0; height: 0; border-left: 23px solid transparent; border-right: 23px solid transparent; border-bottom: 40px solid; background: transparent !important; }
+
+/* 畫筆面板 */
+.brush-panel { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.brush-label, .brush-hint { font-size: .82rem; color: var(--ink-soft); }
+.brush-hint { opacity: .75; }
+.brush-size { min-width: 40px; height: 36px; padding: 0 10px; border: 1px solid rgba(47,109,142,0.25); background: var(--silk-mist); border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-family: inherit; color: var(--ink-soft); }
+.brush-size.on { background: linear-gradient(135deg, var(--azure-light), var(--malachite)); color: #fff; border-color: transparent; }
+.brush-size .dot-s { display: block; border-radius: 50%; background: currentColor; }
+.brush-size .s1 { width: 4px; height: 4px; }
+.brush-size .s2 { width: 8px; height: 8px; }
+.brush-size .s3 { width: 13px; height: 13px; }
+.brush-size.eraser { color: var(--cinnabar); font-size: .85rem; }
+.brush-size.eraser.on { background: var(--cinnabar); color: #fff; border-color: transparent; }
 
 /* 右欄 */
 .answers-feed { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px; }

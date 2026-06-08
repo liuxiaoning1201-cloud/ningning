@@ -219,7 +219,7 @@ export class GameRoom {
       drawerIdx: -1,
       currentWord: null,
       usedWords: [],
-      canvasState: [],
+      canvasState: { stickers: [], strokes: [] },
       correctOrder: [], // [playerId] 本回合按猜中先後
       roundEndsAt: 0,
     };
@@ -364,7 +364,7 @@ export class GameRoom {
         wordLen: this.room.currentWord ? this.room.currentWord.length : 0,
         secondsLeft: Math.max(0, Math.round((this.room.roundEndsAt - Date.now()) / 1000)),
       });
-      this.send(ws, { type: 'canvas-update', stickers: this.room.canvasState });
+      this.send(ws, { type: 'canvas-update', stickers: this.room.canvasState.stickers, strokes: this.room.canvasState.strokes });
     }
   }
 
@@ -442,7 +442,7 @@ export class GameRoom {
     this.room.usedWords.push(this.room.currentWord);
 
     this.room.phase = 'playing';
-    this.room.canvasState = [];
+    this.room.canvasState = { stickers: [], strokes: [] };
     this.room.correctOrder = [];
     this.room.roundEndsAt = Date.now() + this.room.settings.roundTimeSec * 1000;
 
@@ -462,7 +462,7 @@ export class GameRoom {
         secondsLeft: this.room.settings.roundTimeSec,
       });
     }
-    this.broadcast({ type: 'canvas-update', stickers: [] });
+    this.broadcast({ type: 'canvas-update', stickers: [], strokes: [] });
     this.startRoundTimer();
   }
 
@@ -480,10 +480,16 @@ export class GameRoom {
     if (this.room.phase !== 'playing') return;
     const drawerId = this.room.drawerOrder[this.room.drawerIdx];
     if (pid !== drawerId) return; // 只有出題者能操作
-    if (!Array.isArray(msg.stickers)) return;
     // 限制數量，避免濫用
-    this.room.canvasState = msg.stickers.slice(0, 60);
-    this.broadcast({ type: 'canvas-update', stickers: this.room.canvasState }, pid);
+    const stickers = Array.isArray(msg.stickers) ? msg.stickers.slice(0, 80) : [];
+    const strokes = Array.isArray(msg.strokes)
+      ? msg.strokes.slice(0, 80).map((s) => ({
+          id: s.id, color: s.color, width: s.width, z: s.z,
+          points: Array.isArray(s.points) ? s.points.slice(0, 400) : [],
+        }))
+      : [];
+    this.room.canvasState = { stickers, strokes };
+    this.broadcast({ type: 'canvas-update', stickers, strokes }, pid);
   }
 
   // ─── 搶猜 ───
@@ -594,7 +600,7 @@ export class GameRoom {
     this.room.drawerIdx = -1;
     this.room.currentWord = null;
     this.room.usedWords = [];
-    this.room.canvasState = [];
+    this.room.canvasState = { stickers: [], strokes: [] };
     this.room.correctOrder = [];
     this.broadcast({ type: 'new-game-reset', room: this.getPublicRoomState() });
     this.broadcastPlayerList();

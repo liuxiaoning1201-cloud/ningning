@@ -12,9 +12,18 @@ const WS_BASE = SERVER.replace(/^http/, 'ws');
 const STORAGE_NAME = 'caihua_name';
 const STORAGE_WORDBOOK = 'caihua_wordbook';
 
-// 實物貼紙調色盤
-const PALETTE = ['✏️','🖊️','🖍️','📏','📐','✂️','📚','📓','🧹','🪣','🧴','☕','🥄','🍴','🥢','🔑','📎','🧦','🧤','🎒','⚽','🏀','🔔','🕯️','🍎','🍌','🥕','🌂','🧵','📌','💡','🪥','🧼','🥖','🍩','🌙','⭐','❤️','🔺','⚫'];
+// 調色盤：只放中性「工具/日用品」，不放會直接等於答案的具象物（水果、動物、球、天體…），
+// 讓出題者必須用工具與形狀「創意拼組」，而不是直接拿出答案本身。
+const TOOLS = ['✏️','🖊️','🖍️','🖌️','📏','📐','✂️','🧹','🪣','🧴','🔑','📎','📌','🧵','🪡','🧶','🩹','🪢','🥄','🍴','🥢','🧦','🧤','🎒','📚','📓','🔔','🕯️','💡','🌂','🪥','🧼','📦','🧲','⏰','🔧','🔨'];
+
+// 幾何形狀零件：像七巧板/積木一樣可上色、拼組成任何東西。
+const SHAPES = ['circle','square','triangle','rect','line','semicircle','ring','dot'];
+
+// 站台色（石青/石綠/泥金/硃砂/墨/中性灰）
+const COLORS = ['#2f6d8e', '#2f7d5b', '#c39a3f', '#b8472f', '#243530', '#8a8f8c'];
+
 const STICKER_BASE = 46; // px
+const MAX_STROKE_POINTS = 300;
 
 // ─── 狀態 ───
 const S = {
@@ -29,6 +38,7 @@ const S = {
   word: null,
   wordLen: 0,
   stickers: [],
+  strokes: [],           // 自由畫筆筆觸
   selectedId: null,
   timerInt: null,
   secondsLeft: 0,
@@ -36,6 +46,13 @@ const S = {
   selected: new Set(),   // 已勾選詞語
   intentionalLeave: false,
   reconnectTimer: null,
+  // 畫布工具
+  activeTab: 'tools',    // tools | shapes | brush
+  mode: 'move',          // move | brush
+  shapeColor: COLORS[0],
+  brushColor: COLORS[4],
+  brushWidth: 6,
+  eraser: false,
 };
 
 // ─── DOM ───
@@ -324,7 +341,11 @@ function onRoundStart(msg) {
   S.word = msg.word;
   S.wordLen = msg.wordLen;
   S.stickers = [];
+  S.strokes = [];
   S.selectedId = null;
+  S.activeTab = 'tools';
+  S.mode = 'move';
+  S.eraser = false;
 
   $('round-now').textContent = msg.round;
   $('round-total').textContent = msg.totalRounds;
@@ -332,7 +353,7 @@ function onRoundStart(msg) {
   $('btn-skip').hidden = !S.isHost;
 
   // 角色 UI
-  $('palette').hidden = !S.isDrawer;
+  $('toolbar').hidden = !S.isDrawer;
   $('guess-box').style.display = S.isDrawer ? 'none' : 'flex';
   $('drawer-note').hidden = !S.isDrawer;
   $('stage-hint').style.display = 'flex';
@@ -340,13 +361,16 @@ function onRoundStart(msg) {
 
   if (S.isDrawer) {
     $('word-status').textContent = `你的題目：${msg.word}`;
-    $('stage-hint').textContent = '從下方選實物，拖到舞台上拼出題目吧！';
+    $('stage-hint').textContent = '用工具、形狀或畫筆，把題目拼出來吧！';
+    renderToolbar();
   } else {
     $('word-status').textContent = `題目 ${'＿'.repeat(msg.wordLen)}（${msg.wordLen} 個字）`;
-    $('stage-hint').textContent = `${msg.drawerName} 正在用小物拼字…`;
+    $('stage-hint').textContent = `${msg.drawerName} 正在動手拼字…`;
   }
 
+  applyBrushModeClass();
   renderCanvas();
+  renderStrokes();
   renderScoreboard();
   $('answers-feed').innerHTML = '';
   addSystemAnswer(`第 ${msg.round} 回合開始！`);
@@ -357,8 +381,10 @@ function onCanvasUpdate(msg) {
   // 出題者本機自行維護畫布，不接收回播
   if (S.isDrawer) return;
   S.stickers = msg.stickers || [];
-  if (S.stickers.length) $('stage-hint').style.display = 'none';
+  S.strokes = msg.strokes || [];
+  if (S.stickers.length || S.strokes.length) $('stage-hint').style.display = 'none';
   renderCanvas();
+  renderStrokes();
 }
 
 function onGuess(msg) {
@@ -393,7 +419,9 @@ function submitGuess() {
 function onRoundEnd(msg) {
   stopTimer();
   S.isDrawer = false;
-  $('palette').hidden = true;
+  S.mode = 'move';
+  applyBrushModeClass();
+  $('toolbar').hidden = true;
   $('sticker-tools').hidden = true;
   renderScoreboardFromRanking(msg.ranking);
   showRoundEndOverlay(msg);
@@ -452,34 +480,109 @@ function updateTimer() {
 }
 function stopTimer() { if (S.timerInt) { clearInterval(S.timerInt); S.timerInt = null; } }
 
-// ═══════════════ 共享畫布（實物貼紙） ═══════════════
-function renderPalette() {
-  const box = $('palette');
+// ═══════════════ 共享畫布（工具貼紙 + 幾何形狀 + 畫筆） ═══════════════
+
+// ---- 工具列（出題者） ----
+function renderToolbar() {
+  document.querySelectorAll('.tool-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === S.activeTab));
+  renderColorRow();
+  renderPaletteItems();
+  const showColors = S.activeTab === 'shapes' || S.activeTab === 'brush';
+  $('tool-colors').hidden = !showColors;
+  $('palette').hidden = S.activeTab === 'brush';
+  $('brush-panel').hidden = S.activeTab !== 'brush';
+  renderBrushPanel();
+}
+
+function setTab(tab) {
+  S.activeTab = tab;
+  S.mode = tab === 'brush' ? 'brush' : 'move';
+  S.eraser = false;
+  if (S.mode === 'brush') S.selectedId = null;
+  applyBrushModeClass();
+  renderToolbar();
+  renderCanvas();
+}
+
+function renderColorRow() {
+  const box = $('tool-colors');
   box.innerHTML = '';
-  for (const emoji of PALETTE) {
-    const it = document.createElement('div');
-    it.className = 'palette-item';
-    it.textContent = emoji;
-    it.addEventListener('click', () => addSticker(emoji));
-    box.appendChild(it);
+  const active = S.activeTab === 'brush' ? S.brushColor : S.shapeColor;
+  for (const c of COLORS) {
+    const sw = document.createElement('div');
+    sw.className = 'color-sw' + (c === active ? ' on' : '');
+    sw.style.background = c;
+    sw.addEventListener('click', () => {
+      if (S.activeTab === 'brush') S.brushColor = c; else S.shapeColor = c;
+      renderColorRow();
+      renderPaletteItems();
+    });
+    box.appendChild(sw);
   }
 }
 
-function addSticker(emoji) {
-  if (!S.isDrawer) return;
-  const z = S.stickers.reduce((m, s) => Math.max(m, s.z || 0), 0) + 1;
-  const st = { id: 's' + Date.now() + Math.random().toString(36).slice(2, 6), emoji, x: 0.5, y: 0.45, scale: 1, rotate: 0, z };
-  S.stickers.push(st);
-  S.selectedId = st.id;
-  $('stage-hint').style.display = 'none';
-  renderCanvas();
-  pushCanvas();
+function renderPaletteItems() {
+  const box = $('palette');
+  box.innerHTML = '';
+  if (S.activeTab === 'tools') {
+    for (const emoji of TOOLS) {
+      const it = document.createElement('div');
+      it.className = 'palette-item';
+      it.textContent = emoji;
+      it.addEventListener('click', () => addEmojiSticker(emoji));
+      box.appendChild(it);
+    }
+  } else if (S.activeTab === 'shapes') {
+    for (const shape of SHAPES) {
+      const it = document.createElement('div');
+      it.className = 'palette-item shape';
+      it.appendChild(buildShapeNode(shape, S.shapeColor));
+      it.addEventListener('click', () => addShapeSticker(shape));
+      box.appendChild(it);
+    }
+  }
 }
 
+function renderBrushPanel() {
+  const eraserBtn = $('btn-eraser');
+  if (eraserBtn) eraserBtn.classList.toggle('on', S.eraser);
+  document.querySelectorAll('.brush-size').forEach((b) => b.classList.toggle('on', Number(b.dataset.size) === S.brushWidth));
+}
+
+// ---- 新增貼紙 ----
+function nextZ() { return S.stickers.reduce((m, s) => Math.max(m, s.z || 0), 0) + 1; }
+function sid() { return 's' + Date.now() + Math.random().toString(36).slice(2, 6); }
+
+function addEmojiSticker(emoji) {
+  if (!S.isDrawer) return;
+  const st = { id: sid(), kind: 'emoji', emoji, x: 0.5, y: 0.45, scale: 1, rotate: 0, z: nextZ() };
+  S.stickers.push(st); S.selectedId = st.id;
+  $('stage-hint').style.display = 'none';
+  renderCanvas(); pushCanvas();
+}
+
+function addShapeSticker(shape) {
+  if (!S.isDrawer) return;
+  const st = { id: sid(), kind: 'shape', shape, color: S.shapeColor, x: 0.5, y: 0.45, scale: 1, rotate: 0, z: nextZ() };
+  S.stickers.push(st); S.selectedId = st.id;
+  $('stage-hint').style.display = 'none';
+  renderCanvas(); pushCanvas();
+}
+
+// ---- 幾何形狀節點 ----
+function buildShapeNode(shape, color) {
+  const d = document.createElement('div');
+  d.className = 'shape-node shape-' + shape;
+  if (shape === 'ring') d.style.borderColor = color;
+  else if (shape === 'triangle') d.style.borderBottomColor = color;
+  else d.style.background = color;
+  return d;
+}
+
+// ---- 位置 ----
 function positionSticker(el, st, W, H) {
   el.style.left = (st.x * W) + 'px';
   el.style.top = (st.y * H) + 'px';
-  el.style.fontSize = STICKER_BASE + 'px';
   el.style.transform = `translate(-50%, -50%) rotate(${st.rotate}deg) scale(${st.scale})`;
   el.style.zIndex = st.z || 1;
 }
@@ -494,8 +597,14 @@ function renderCanvas() {
   for (const st of sorted) {
     const el = document.createElement('div');
     el.className = 'sticker' + (S.isDrawer ? '' : ' readonly') + (st.id === S.selectedId ? ' selected' : '');
-    el.textContent = st.emoji;
     el.dataset.id = st.id;
+    if (st.kind === 'shape') {
+      el.classList.add('is-shape');
+      el.appendChild(buildShapeNode(st.shape, st.color));
+    } else {
+      el.textContent = st.emoji;
+      el.style.fontSize = STICKER_BASE + 'px';
+    }
     positionSticker(el, st, W, H);
     if (S.isDrawer) attachDrag(el, st);
     canvas.appendChild(el);
@@ -563,8 +672,110 @@ function pushCanvas() {
   if (!S.isDrawer) return;
   clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
-    send({ type: 'canvas', stickers: S.stickers });
+    send({ type: 'canvas', stickers: S.stickers, strokes: S.strokes });
   }, 60);
+}
+
+// ═══════════════ 自由畫筆 ═══════════════
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+function renderStrokes() {
+  const svg = $('stage-strokes');
+  if (!svg) return;
+  const rect = $('stage').getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  const sorted = [...S.strokes].sort((a, b) => (a.z || 0) - (b.z || 0));
+  for (const stk of sorted) {
+    if (!stk.points || stk.points.length === 0) continue;
+    const poly = document.createElementNS(SVGNS, stk.points.length === 1 ? 'circle' : 'polyline');
+    if (stk.points.length === 1) {
+      poly.setAttribute('cx', (stk.points[0].x * W).toFixed(1));
+      poly.setAttribute('cy', (stk.points[0].y * H).toFixed(1));
+      poly.setAttribute('r', (stk.width / 2).toFixed(1));
+      poly.setAttribute('fill', stk.color);
+    } else {
+      poly.setAttribute('points', stk.points.map((p) => `${(p.x * W).toFixed(1)},${(p.y * H).toFixed(1)}`).join(' '));
+      poly.setAttribute('fill', 'none');
+      poly.setAttribute('stroke', stk.color);
+      poly.setAttribute('stroke-width', stk.width);
+      poly.setAttribute('stroke-linecap', 'round');
+      poly.setAttribute('stroke-linejoin', 'round');
+    }
+    svg.appendChild(poly);
+  }
+}
+
+function applyBrushModeClass() {
+  const stage = $('stage');
+  if (stage) stage.classList.toggle('brush-mode', S.isDrawer && S.mode === 'brush');
+}
+
+function relPoint(ev, rect) {
+  return { x: clamp((ev.clientX - rect.left) / rect.width, 0, 1), y: clamp((ev.clientY - rect.top) / rect.height, 0, 1) };
+}
+
+function stageBrushDown(e) {
+  if (!S.isDrawer || S.mode !== 'brush') return;
+  e.preventDefault();
+  const rect = $('stage').getBoundingClientRect();
+
+  if (S.eraser) {
+    eraseStrokeAt(relPoint(e, rect), rect);
+    const onMoveE = (ev) => eraseStrokeAt(relPoint(ev, rect), rect);
+    const onUpE = () => {
+      window.removeEventListener('pointermove', onMoveE);
+      window.removeEventListener('pointerup', onUpE);
+      pushCanvas();
+    };
+    window.addEventListener('pointermove', onMoveE);
+    window.addEventListener('pointerup', onUpE);
+    return;
+  }
+
+  $('stage-hint').style.display = 'none';
+  const stroke = { id: sid(), color: S.brushColor, width: S.brushWidth, points: [relPoint(e, rect)], z: nextZ() };
+  S.strokes.push(stroke);
+  renderStrokes();
+  const onMove = (ev) => {
+    const p = relPoint(ev, rect);
+    const last = stroke.points[stroke.points.length - 1];
+    if (Math.hypot((p.x - last.x) * rect.width, (p.y - last.y) * rect.height) < 3) return;
+    if (stroke.points.length < MAX_STROKE_POINTS) stroke.points.push(p);
+    renderStrokes();
+    pushCanvas();
+  };
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    pushCanvas();
+  };
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+}
+
+function eraseStrokeAt(p, rect) {
+  const thresh = 16;
+  let hitId = null;
+  for (let i = S.strokes.length - 1; i >= 0; i--) {
+    const stk = S.strokes[i];
+    for (const q of stk.points) {
+      if (Math.hypot((q.x - p.x) * rect.width, (q.y - p.y) * rect.height) < thresh) { hitId = stk.id; break; }
+    }
+    if (hitId) break;
+  }
+  if (hitId) {
+    S.strokes = S.strokes.filter((s) => s.id !== hitId);
+    renderStrokes();
+  }
+}
+
+function clearCanvas() {
+  if (!S.isDrawer) return;
+  S.stickers = []; S.strokes = []; S.selectedId = null;
+  renderCanvas(); renderStrokes(); positionTools(); pushCanvas();
+  $('stage-hint').style.display = 'flex';
 }
 
 // ═══════════════ 浮層：回合結算 + 學習卡 ═══════════════
@@ -681,20 +892,30 @@ function bind() {
     const btn = e.target.closest('.st-btn');
     if (btn) stickerToolAction(btn.dataset.act);
   });
-  // 點空白處取消選取
+
+  // 工具列分頁
+  document.querySelectorAll('.tool-tab').forEach((t) => t.addEventListener('click', () => setTab(t.dataset.tab)));
+  // 畫筆面板
+  $('btn-eraser').addEventListener('click', () => { S.eraser = !S.eraser; renderBrushPanel(); });
+  document.querySelectorAll('.brush-size').forEach((b) => b.addEventListener('click', () => { S.brushWidth = Number(b.dataset.size); S.eraser = false; renderBrushPanel(); }));
+  $('btn-clear-canvas').addEventListener('click', clearCanvas);
+
+  // 舞台：畫筆模式繪製，移動模式點空白取消選取
   $('stage').addEventListener('pointerdown', (e) => {
-    if (S.isDrawer && (e.target.id === 'stage' || e.target.id === 'stage-canvas')) {
+    if (!S.isDrawer) return;
+    if (S.mode === 'brush') { stageBrushDown(e); return; }
+    if (e.target.id === 'stage' || e.target.id === 'stage-canvas' || e.target.id === 'stage-strokes') {
       S.selectedId = null; renderCanvas(); positionTools();
     }
   });
 
-  window.addEventListener('resize', () => { if (screens.game.classList.contains('active')) renderCanvas(); });
+  window.addEventListener('resize', () => {
+    if (screens.game.classList.contains('active')) { renderCanvas(); renderStrokes(); }
+  });
 
   // 預填暱稱
   const saved = localStorage.getItem(STORAGE_NAME);
   if (saved) $('input-name').value = saved;
-
-  renderPalette();
 }
 
 bind();

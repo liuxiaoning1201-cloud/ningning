@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css?v=2" />
+  <link rel="stylesheet" href="./style.css?v=3" />
 </head>
 <body>
 
@@ -138,8 +138,9 @@
       <div id="word-status" class="word-status"></div>
     </div>
     <div id="stage" class="stage">
+      <svg id="stage-strokes" class="stage-strokes" preserveAspectRatio="none"></svg>
       <div id="stage-canvas" class="stage-canvas"></div>
-      <div id="stage-hint" class="stage-hint">出題者正在用小物拼字…</div>
+      <div id="stage-hint" class="stage-hint">出題者正在動手拼字…</div>
       <!-- 選中貼紙的工具列 -->
       <div id="sticker-tools" class="sticker-tools" hidden>
         <button data-act="bigger" class="st-btn" title="放大">＋</button>
@@ -150,8 +151,25 @@
         <button data-act="delete" class="st-btn danger" title="刪除">🗑</button>
       </div>
     </div>
-    <!-- 出題者貼紙調色盤 -->
-    <div id="palette" class="palette" hidden></div>
+    <!-- 出題者工具列 -->
+    <div id="toolbar" class="toolbar" hidden>
+      <div class="tool-tabs">
+        <button class="tool-tab active" data-tab="tools">工具</button>
+        <button class="tool-tab" data-tab="shapes">形狀</button>
+        <button class="tool-tab" data-tab="brush">畫筆</button>
+        <button id="btn-clear-canvas" class="tool-clear" title="清空畫布">清空</button>
+      </div>
+      <div id="tool-colors" class="tool-colors" hidden></div>
+      <div id="palette" class="palette"></div>
+      <div id="brush-panel" class="brush-panel" hidden>
+        <span class="brush-label">筆粗</span>
+        <button class="brush-size" data-size="3"><span class="dot-s s1"></span></button>
+        <button class="brush-size on" data-size="6"><span class="dot-s s2"></span></button>
+        <button class="brush-size" data-size="12"><span class="dot-s s3"></span></button>
+        <button id="btn-eraser" class="brush-size eraser">橡皮</button>
+        <span class="brush-hint">在舞台上按住拖曳即可畫線</span>
+      </div>
+    </div>
   </main>
 
   <!-- 右欄：搶猜 + 即時答案 -->
@@ -177,6 +195,6 @@
 <!-- 提示 toast -->
 <div id="toast" class="toast" hidden></div>
 
-<script src="./app.js?v=2"></script>
+<script src="./app.js?v=3"></script>
 </body>
 </html>
