@@ -7,7 +7,6 @@
   "assets": {
     "directory": ".worker-dist",
     "not_found_handling": "single-page-application"
-  }
-  // ── 隔離驗證通過後再解開，切生產流量 ──
-  // "routes": [{ "pattern": "qingyiu.com/zizi/*", "zone_name": "qingyiu.com" }]
+  },
+  "routes": [{ "pattern": "qingyiu.com/zizi/*", "zone_name": "qingyiu.com" }]
 }

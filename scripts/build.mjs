@@ -112,13 +112,6 @@ buildVueApp('yueyu-learn/web', {
   env: { VITE_BASE_PATH: '/yueyu/' },
 });
 
-// 字字珠璣 中文連字棋 — 掛在 /zizi/ 子路徑
-buildVueApp('字字珠璣', {
-  outDir: 'zizi',
-  env: {
-    VITE_BASE_PATH: '/zizi/',
-    VITE_ZIZI_API: 'https://zizi-zhuji.liuxiaoning1201.workers.dev',
-  },
-});
+// 字字珠璣（已畢業為獨立 Worker qy-zizi，掛 qingyiu.com/zizi/*）— 不再全量建構
 
 console.log('Done. Output:', OUT);
