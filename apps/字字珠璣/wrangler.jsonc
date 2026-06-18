@@ -1,4 +1,5 @@
 {
+  // 已畢業為獨立 Worker（2026-06）：qingyiu.com/zizi/* 由本 worker 接管，不再走 Pages 全量建構。
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "qy-zizi",
   "compatibility_date": "2025-06-01",
