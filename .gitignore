@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.worker-dist/
 .wrangler/
 # wrangler pages download config 產生的檔案，勿提交（僅根目錄）
 /wrangler.toml

@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "npx vite --host",
     "build": "npx vue-tsc -b --force && npx vite build",
+    "build:worker": "VITE_ZIZI_API=https://zizi-zhuji.liuxiaoning1201.workers.dev node ../../scripts/build-app-worker.mjs --prefix zizi --mode vue",
+    "deploy": "wrangler deploy",
     "preview": "npx vite preview --host"
   },
   "dependencies": {
@@ -17,6 +19,7 @@
     "@vitejs/plugin-vue": "^5.2.1",
     "typescript": "~5.6.2",
     "vite": "^6.0.1",
-    "vue-tsc": "^2.1.10"
+    "vue-tsc": "^2.1.10",
+    "wrangler": "^4"
   }
 }
