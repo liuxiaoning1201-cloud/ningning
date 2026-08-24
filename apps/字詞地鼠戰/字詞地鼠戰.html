@@ -168,17 +168,19 @@ body {
 .cloud-band-back {
     top: 4%;
     opacity: 0.78;
-    animation: cloud-ltr 92s linear infinite;
+    animation: cloud-ltr 38s linear infinite;
 }
 .cloud-band-mid {
     top: 16%;
     opacity: 0.9;
-    animation: cloud-ltr 64s linear infinite;
+    animation: cloud-ltr 26s linear infinite;
+    animation-delay: -8s;
 }
 .cloud-band-front {
     top: 28%;
     opacity: 1;
-    animation: cloud-ltr 42s linear infinite;
+    animation: cloud-ltr 18s linear infinite;
+    animation-delay: -4s;
 }
 .cloud-group {
     display: flex;
@@ -198,8 +200,8 @@ body {
 .cloud-group .cloud:nth-child(3n) { margin-top: 26px; }
 .cloud-group .cloud:nth-child(4n) { margin-top: 4px; }
 @keyframes cloud-ltr {
-    from { transform: translateX(-50%); }
-    to { transform: translateX(0); }
+    from { transform: translate3d(-66.666%, 0, 0); }
+    to { transform: translate3d(0, 0, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
     .cloud-band {
@@ -277,20 +279,28 @@ body::after {
     width: 100%;
     height: 100%;
     filter: drop-shadow(0 3px 2px rgba(62, 39, 35, 0.28));
+    pointer-events: none;
 }
 .mole-glyph-text {
-    position: relative;
+    position: absolute;
+    left: 50%;
+    top: 63%;
     z-index: 2;
-    font-size: 30px;
+    font-size: 32px;
     font-weight: bold;
-    color: #3E2723;
-    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
-    transform: translateY(6px) scale(0.86);
-    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    color: #2b1810;
     line-height: 1;
+    width: 1.15em;
+    height: 1.15em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+    transform: translate(-50%, -50%) scale(0.88);
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .animal-container.up .mole-glyph-text {
-    transform: translateY(6px) scale(1);
+    transform: translate(-50%, -50%) scale(1);
 }
 .mole-glyph-lg {
     width: 78px;
@@ -298,8 +308,8 @@ body::after {
     margin: 0 auto;
 }
 .mole-glyph-lg .mole-glyph-text {
-    font-size: 32px;
-    transform: translateY(6px) scale(1);
+    font-size: 30px;
+    transform: translate(-50%, -50%) scale(1);
 }
 
 .hud-voice {
@@ -576,12 +586,15 @@ body::after {
     <div class="cloud-band cloud-band-back">
         <div class="cloud-group"></div>
         <div class="cloud-group"></div>
+        <div class="cloud-group"></div>
     </div>
     <div class="cloud-band cloud-band-mid">
         <div class="cloud-group"></div>
         <div class="cloud-group"></div>
+        <div class="cloud-group"></div>
     </div>
     <div class="cloud-band cloud-band-front">
+        <div class="cloud-group"></div>
         <div class="cloud-group"></div>
         <div class="cloud-group"></div>
     </div>
@@ -602,19 +615,17 @@ body::after {
     <div class="hud-target">
         <p class="text-lg text-slate-600">目標字</p>
         <div class="mole-glyph mole-glyph-lg" aria-live="polite">
-            <svg class="mole-glyph-svg" viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <ellipse cx="28" cy="24" rx="12" ry="14" fill="#6D4C41"/>
-                <ellipse cx="72" cy="24" rx="12" ry="14" fill="#6D4C41"/>
-                <ellipse cx="28" cy="26" rx="7" ry="8" fill="#E8A598"/>
-                <ellipse cx="72" cy="26" rx="7" ry="8" fill="#E8A598"/>
-                <ellipse cx="50" cy="62" rx="40" ry="42" fill="#8D6E63"/>
-                <ellipse cx="50" cy="70" rx="26" ry="28" fill="#D7CCC8"/>
-                <circle cx="36" cy="50" r="5.5" fill="#3E2723"/>
-                <circle cx="64" cy="50" r="5.5" fill="#3E2723"/>
-                <circle cx="37.5" cy="48.5" r="1.8" fill="#EFEBE9"/>
-                <circle cx="65.5" cy="48.5" r="1.8" fill="#EFEBE9"/>
-                <ellipse cx="50" cy="86" rx="11" ry="8" fill="#E8A598"/>
-                <ellipse cx="50" cy="83" rx="4.5" ry="3.2" fill="#A75D5D"/>
+            <svg class="mole-glyph-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <ellipse cx="28" cy="16" rx="12" ry="14" fill="#6D4C41"/>
+                <ellipse cx="72" cy="16" rx="12" ry="14" fill="#6D4C41"/>
+                <ellipse cx="28" cy="18" rx="7" ry="8" fill="#E8A598"/>
+                <ellipse cx="72" cy="18" rx="7" ry="8" fill="#E8A598"/>
+                <ellipse cx="50" cy="56" rx="40" ry="40" fill="#8D6E63"/>
+                <ellipse cx="50" cy="64" rx="26" ry="24" fill="#D7CCC8"/>
+                <circle cx="36" cy="28" r="5" fill="#3E2723"/>
+                <circle cx="64" cy="28" r="5" fill="#3E2723"/>
+                <circle cx="37.5" cy="26.5" r="1.6" fill="#EFEBE9"/>
+                <circle cx="65.5" cy="26.5" r="1.6" fill="#EFEBE9"/>
             </svg>
             <span id="target-char" class="mole-glyph-text">太</span>
         </div>
@@ -871,7 +882,7 @@ body::after {
             { target: '供', distractors: ['哄', '洪', '拱'] }, { target: '哄', distractors: ['供', '洪', '拱'] }
         ];
         
-        const MOLE_GLYPH_SVG = `<svg class="mole-glyph-svg" viewBox="0 0 100 112" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="28" cy="24" rx="12" ry="14" fill="#6D4C41"/><ellipse cx="72" cy="24" rx="12" ry="14" fill="#6D4C41"/><ellipse cx="28" cy="26" rx="7" ry="8" fill="#E8A598"/><ellipse cx="72" cy="26" rx="7" ry="8" fill="#E8A598"/><ellipse cx="50" cy="62" rx="40" ry="42" fill="#8D6E63"/><ellipse cx="50" cy="70" rx="26" ry="28" fill="#D7CCC8"/><circle cx="36" cy="50" r="5.5" fill="#3E2723"/><circle cx="64" cy="50" r="5.5" fill="#3E2723"/><circle cx="37.5" cy="48.5" r="1.8" fill="#EFEBE9"/><circle cx="65.5" cy="48.5" r="1.8" fill="#EFEBE9"/><ellipse cx="50" cy="86" rx="11" ry="8" fill="#E8A598"/><ellipse cx="50" cy="83" rx="4.5" ry="3.2" fill="#A75D5D"/></svg>`;
+        const MOLE_GLYPH_SVG = `<svg class="mole-glyph-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="28" cy="16" rx="12" ry="14" fill="#6D4C41"/><ellipse cx="72" cy="16" rx="12" ry="14" fill="#6D4C41"/><ellipse cx="28" cy="18" rx="7" ry="8" fill="#E8A598"/><ellipse cx="72" cy="18" rx="7" ry="8" fill="#E8A598"/><ellipse cx="50" cy="56" rx="40" ry="40" fill="#8D6E63"/><ellipse cx="50" cy="64" rx="26" ry="24" fill="#D7CCC8"/><circle cx="36" cy="28" r="5" fill="#3E2723"/><circle cx="64" cy="28" r="5" fill="#3E2723"/><circle cx="37.5" cy="26.5" r="1.6" fill="#EFEBE9"/><circle cx="65.5" cy="26.5" r="1.6" fill="#EFEBE9"/></svg>`;
 
         const CLOUD_SVG = `<svg class="cloud" viewBox="0 0 240 90" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="CLOUD_ID" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="55%" stop-color="#f4f8fc"/><stop offset="100%" stop-color="#d7e4f2"/></linearGradient></defs><g fill="url(#CLOUD_ID)"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></g></svg>`;
 
