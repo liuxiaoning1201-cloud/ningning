@@ -1,3 +1,7 @@
+# 首頁河水影片／poster：長快取。若替換檔案請改檔名，否則瀏覽器可能仍用舊檔。
+/assets/hero/*
+  Cache-Control: public, max-age=31536000
+
 # 讓瀏覽器較常重新驗證填字 SPA 入口，減少舊版 JS 快取導致 Google Client ID 錯誤
 /crossword/index.html
   Cache-Control: public, max-age=0, must-revalidate

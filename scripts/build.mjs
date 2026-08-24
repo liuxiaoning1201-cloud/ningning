@@ -52,6 +52,15 @@ for (const file of ROOT_FILES) {
   }
 }
 
+const ROOT_DIRS = ['assets'];
+for (const dir of ROOT_DIRS) {
+  const src = join(ROOT, dir);
+  if (existsSync(src)) {
+    cpSync(src, join(OUT, dir), { recursive: true });
+    console.log(`  + ${dir}/`);
+  }
+}
+
 // ── 靜態應用（直接複製） ──
 
 const STATIC_APPS = [
