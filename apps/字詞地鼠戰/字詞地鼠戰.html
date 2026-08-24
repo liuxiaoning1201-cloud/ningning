@@ -163,33 +163,37 @@ body {
     left: 0;
     display: flex;
     width: max-content;
+    /* 開頁就停在「第二段已鋪滿畫面」的位置，再向右循環，不會從空白處突然湧入 */
+    transform: translate3d(-50%, 0, 0);
     will-change: transform;
 }
 .cloud-band-back {
     top: 4%;
     opacity: 0.78;
-    animation: cloud-ltr 38s linear infinite;
+    animation: cloud-ltr 36s linear infinite;
 }
 .cloud-band-mid {
     top: 16%;
     opacity: 0.9;
-    animation: cloud-ltr 26s linear infinite;
-    animation-delay: -8s;
+    animation: cloud-ltr 24s linear infinite;
 }
 .cloud-band-front {
     top: 28%;
     opacity: 1;
-    animation: cloud-ltr 18s linear infinite;
-    animation-delay: -4s;
+    animation: cloud-ltr 16s linear infinite;
 }
 .cloud-group {
     display: flex;
     align-items: flex-start;
-    gap: 4vw;
-    padding: 0 3vw;
+    justify-content: space-around;
+    box-sizing: border-box;
+    min-width: 100vw;
+    padding: 0 2vw;
+    gap: 1.5vw;
 }
 .cloud {
     flex: 0 0 auto;
+    fill: url(#sky-cloud-fill);
     filter: drop-shadow(0 10px 10px rgba(90, 130, 170, 0.18));
 }
 .cloud-sm { width: 120px; }
@@ -200,13 +204,13 @@ body {
 .cloud-group .cloud:nth-child(3n) { margin-top: 26px; }
 .cloud-group .cloud:nth-child(4n) { margin-top: 4px; }
 @keyframes cloud-ltr {
-    from { transform: translate3d(-66.666%, 0, 0); }
+    from { transform: translate3d(-50%, 0, 0); }
     to { transform: translate3d(0, 0, 0); }
 }
 @media (prefers-reduced-motion: reduce) {
     .cloud-band {
         animation: none;
-        transform: translateX(-18%);
+        transform: translate3d(-50%, 0, 0);
     }
 }
 body::after {
@@ -583,20 +587,68 @@ body::after {
 </head>
 <body class="flex items-center justify-center min-h-screen">
 <div class="sky-layer" aria-hidden="true">
+    <svg width="0" height="0" style="position:absolute">
+        <defs>
+            <linearGradient id="sky-cloud-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="55%" stop-color="#f4f8fc"/>
+                <stop offset="100%" stop-color="#d7e4f2"/>
+            </linearGradient>
+        </defs>
+    </svg>
     <div class="cloud-band cloud-band-back">
-        <div class="cloud-group"></div>
-        <div class="cloud-group"></div>
-        <div class="cloud-group"></div>
+        <div class="cloud-group">
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
+        <div class="cloud-group">
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
     </div>
     <div class="cloud-band cloud-band-mid">
-        <div class="cloud-group"></div>
-        <div class="cloud-group"></div>
-        <div class="cloud-group"></div>
+        <div class="cloud-group">
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
+        <div class="cloud-group">
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
     </div>
     <div class="cloud-band cloud-band-front">
-        <div class="cloud-group"></div>
-        <div class="cloud-group"></div>
-        <div class="cloud-group"></div>
+        <div class="cloud-group">
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
+        <div class="cloud-group">
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
     </div>
 </div>
 
@@ -883,27 +935,6 @@ body::after {
         ];
         
         const MOLE_GLYPH_SVG = `<svg class="mole-glyph-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="28" cy="16" rx="12" ry="14" fill="#6D4C41"/><ellipse cx="72" cy="16" rx="12" ry="14" fill="#6D4C41"/><ellipse cx="28" cy="18" rx="7" ry="8" fill="#E8A598"/><ellipse cx="72" cy="18" rx="7" ry="8" fill="#E8A598"/><ellipse cx="50" cy="56" rx="40" ry="40" fill="#8D6E63"/><ellipse cx="50" cy="64" rx="26" ry="24" fill="#D7CCC8"/><circle cx="36" cy="28" r="5" fill="#3E2723"/><circle cx="64" cy="28" r="5" fill="#3E2723"/><circle cx="37.5" cy="26.5" r="1.6" fill="#EFEBE9"/><circle cx="65.5" cy="26.5" r="1.6" fill="#EFEBE9"/></svg>`;
-
-        const CLOUD_SVG = `<svg class="cloud" viewBox="0 0 240 90" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="CLOUD_ID" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="55%" stop-color="#f4f8fc"/><stop offset="100%" stop-color="#d7e4f2"/></linearGradient></defs><g fill="url(#CLOUD_ID)"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></g></svg>`;
-
-        function paintClouds() {
-            const layouts = [
-                ['cloud-lg', 'cloud-sm', 'cloud-xl', 'cloud-md', 'cloud-lg', 'cloud-sm'],
-                ['cloud-md', 'cloud-xl', 'cloud-sm', 'cloud-lg', 'cloud-md', 'cloud-xl'],
-                ['cloud-sm', 'cloud-lg', 'cloud-md', 'cloud-xl', 'cloud-sm', 'cloud-lg'],
-            ];
-            document.querySelectorAll('.cloud-band').forEach((band, bandIndex) => {
-                const sizes = layouts[bandIndex] || layouts[0];
-                band.querySelectorAll('.cloud-group').forEach((group, groupIndex) => {
-                    group.innerHTML = sizes.map((size, i) => {
-                        const id = `c${bandIndex}${groupIndex}${i}`;
-                        return CLOUD_SVG
-                            .replace('class="cloud"', `class="cloud ${size}"`)
-                            .replace(/CLOUD_ID/g, id);
-                    }).join('');
-                });
-            });
-        }
 
         // 音效
         let correctSound, incorrectSound, levelUpSound;
@@ -1758,7 +1789,6 @@ body::after {
             if (typeof window.pdfjsLib !== 'undefined') {
                 window.pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
             }
-            paintClouds();
             createBoard();
             holes = Array.from(document.querySelectorAll('.hole'));
             loadGameData();
