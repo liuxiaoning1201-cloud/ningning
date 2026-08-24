@@ -92,7 +92,7 @@
             position: absolute;
             inset: 0;
             z-index: 0;
-            background: url('/assets/hero/qingyi-river-hd.jpg') center 60% / cover no-repeat;
+            background: url('/assets/hero/qingyi-river-loop.jpg') center 60% / cover no-repeat;
             /* 只羽化下緣，讓水溶進頁面；上、左、右保持滿版實邊 */
             -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%);
             mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%);
@@ -108,6 +108,10 @@
             object-fit: cover;
             object-position: center 60%;
             display: block;
+            /* 極慢的推近漂移。週期與 4.8s 循環互質，眼睛抓不到重複點，
+               看起來像會動的畫而不是在播一段片。放大 4% 才不會露邊。 */
+            animation: heroDrift 53s ease-in-out infinite alternate;
+            will-change: transform;
         }
 
         /* 只在中央光路加一層極淡暖暈；下緣淡出交給 mask，body 背景是唯一銜接色 */
@@ -121,10 +125,18 @@
                 transparent 74%);
         }
 
-        /* ===== 站名：叠在中央光路 ===== */
-        .brand {
+        /* ===== 站名：叠在金色光路 ===== */
+        /* 光路中心量測在影片寬度的 40%，不在正中。位移獨立一層，
+           免得和 .brand 的入場、.brand-float 的懸浮共用 transform 打架。
+           預設 -8.2vw 對應桌面（影片左右未被裁切）；窄視窗由 JS 校正。 */
+        .brand-anchor {
             position: relative;
             z-index: 3;
+            transform: translateX(var(--brand-shift, -8.2vw));
+        }
+
+        .brand {
+            position: relative;
             animation: fadeInDown 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
@@ -159,8 +171,12 @@
             font-weight: 700;
             display: grid;
             grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            /* 依印章讀序排：右上→右下→左上→左下，DOM 仍是「劉曉寧製」 */
+            grid-auto-flow: column;
+            direction: rtl;
             place-items: center;
-            font-size: 1rem;
+            font-size: 0.94rem;
             line-height: 1;
             box-shadow:
                 0 4px 14px rgba(184, 71, 47, 0.35),
@@ -380,6 +396,10 @@
             0%, 100% { transform: translateY(0); }
             50%      { transform: translateY(-11px); }
         }
+        @keyframes heroDrift {
+            from { transform: scale(1.005); }
+            to   { transform: scale(1.045); }
+        }
 
         @media (max-width: 768px) {
             .hero { height: 46vh; min-height: 340px; max-height: 480px; }
@@ -412,19 +432,21 @@
 <body>
     <header class="hero">
         <div class="hero-media" aria-hidden="true">
-            <video autoplay muted loop playsinline preload="none" poster="/assets/hero/qingyi-river-hd.jpg">
-                <source src="/assets/hero/qingyi-river-hd.mp4" type="video/mp4">
+            <video autoplay muted loop playsinline preload="auto" poster="/assets/hero/qingyi-river-loop.jpg">
+                <source src="/assets/hero/qingyi-river-loop.mp4" type="video/mp4">
             </video>
         </div>
         <div class="hero-feather" aria-hidden="true"></div>
 
-        <div class="brand">
-            <div class="brand-float">
-                <div class="brand-name">
-                    <span class="qing">清</span><span class="yi">沂</span><span class="you">遊</span>
-                </div>
-                <div class="seal" title="清沂遊">
-                    <span>清</span><span>沂</span><span>遊</span><span>印</span>
+        <div class="brand-anchor">
+            <div class="brand">
+                <div class="brand-float">
+                    <div class="brand-name">
+                        <span class="qing">清</span><span class="yi">沂</span><span class="you">遊</span>
+                    </div>
+                    <div class="seal" title="劉曉寧製">
+                        <span>劉</span><span>曉</span><span>寧</span><span>製</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -612,10 +634,62 @@
         });
 
         const heroVideo = document.querySelector('.hero-media video');
-        if (heroVideo && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            heroVideo.pause();
-            heroVideo.removeAttribute('autoplay');
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (heroVideo) {
+            if (reduceMotion) {
+                heroVideo.pause();
+                heroVideo.removeAttribute('autoplay');
+            } else {
+                // 放慢：水面成為緩緩流動的背景，而不是一段正在播放的影片
+                const slow = () => { heroVideo.playbackRate = 0.6; };
+                slow();
+                heroVideo.addEventListener('loadedmetadata', slow);
+                heroVideo.addEventListener('play', slow);
+            }
         }
+
+        // 站名要壓在金色光路上。光路中心量測在影片寬度的 40%，
+        // 但 object-fit: cover 在窄視窗會裁掉左右，所以照實際繪製幾何換算，
+        // 不能直接用固定百分比。
+        const LIGHT_PATH_X = 0.40;
+        const heroMedia = document.querySelector('.hero-media');
+        const brandAnchor = document.querySelector('.brand-anchor');
+        const brandName = document.querySelector('.brand-name');
+
+        function alignBrandToLightPath() {
+            if (!heroMedia || !brandAnchor || !brandName) return;
+            const box = heroMedia.getBoundingClientRect();
+            if (!box.width || !box.height) return;
+
+            const vw = (heroVideo && heroVideo.videoWidth) || 1920;
+            const vh = (heroVideo && heroVideo.videoHeight) || 1044;
+            const drawnW = vw * Math.max(box.width / vw, box.height / vh);
+            const pathX = (box.width - drawnW) / 2 + LIGHT_PATH_X * drawnW;
+
+            // 要對齊的是三個字，不是「字＋印章」的整體中心，
+            // 否則右邊的印章會把字推離光路。
+            let dx = 0;
+            for (let el = brandName; el && el !== brandAnchor; el = el.offsetParent) dx += el.offsetLeft;
+            const nameCenterInAnchor = dx + brandName.offsetWidth / 2;
+            const anchorLeft = (box.width - brandAnchor.offsetWidth) / 2;
+
+            let shift = pathX - anchorLeft - nameCenterInAnchor;
+            const limit = Math.max(0, anchorLeft - 12);
+            shift = Math.max(-limit, Math.min(limit, shift));
+            brandAnchor.style.setProperty('--brand-shift', shift.toFixed(1) + 'px');
+        }
+
+        let alignQueued = false;
+        function queueAlign() {
+            if (alignQueued) return;
+            alignQueued = true;
+            requestAnimationFrame(() => { alignQueued = false; alignBrandToLightPath(); });
+        }
+
+        alignBrandToLightPath();
+        if (heroVideo) heroVideo.addEventListener('loadedmetadata', queueAlign);
+        window.addEventListener('resize', queueAlign);
     </script>
     <script src="/auth-widget.js"></script>
 </body>
