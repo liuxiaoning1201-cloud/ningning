@@ -92,15 +92,10 @@
             position: absolute;
             inset: 0;
             z-index: 0;
-            background: url('/assets/hero/qingyi-river.jpg') center 60% / cover no-repeat;
-            -webkit-mask-image:
-                linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
-                linear-gradient(to bottom, transparent 0%, #000 8%, #000 52%, transparent 100%);
-            -webkit-mask-composite: destination-in;
-            mask-image:
-                linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%),
-                linear-gradient(to bottom, transparent 0%, #000 8%, #000 52%, transparent 100%);
-            mask-composite: intersect;
+            background: url('/assets/hero/qingyi-river-hd.jpg') center 60% / cover no-repeat;
+            /* 只羽化下緣，讓水溶進頁面；上、左、右保持滿版實邊 */
+            -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%);
+            mask-image: linear-gradient(to bottom, #000 0%, #000 52%, transparent 100%);
             -webkit-mask-repeat: no-repeat;
             mask-repeat: no-repeat;
             -webkit-mask-size: 100% 100%;
@@ -115,47 +110,30 @@
             display: block;
         }
 
-        /* 羽化只做輕霧與光暈；淡出交給 mask，讓 body 背景成為唯一銜接色，避免接縫 */
+        /* 只在中央光路加一層極淡暖暈；下緣淡出交給 mask，body 背景是唯一銜接色 */
         .hero-feather {
             position: absolute;
             inset: 0;
             z-index: 1;
             pointer-events: none;
-            background:
-                linear-gradient(180deg, rgba(246, 239, 222, 0.34) 0%, transparent 18%),
-                radial-gradient(ellipse 48% 42% at 50% 56%,
-                    rgba(243, 230, 196, 0.3) 0%,
-                    transparent 74%);
+            background: radial-gradient(ellipse 48% 42% at 50% 56%,
+                rgba(243, 230, 196, 0.26) 0%,
+                transparent 74%);
         }
 
         /* ===== 站名：叠在中央光路 ===== */
         .brand {
             position: relative;
             z-index: 3;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 32px 40px;
             animation: fadeInDown 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
-        .brand-mist {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: 210px;
-            height: 300px;
-            transform: translate(-58%, -50%);
-            background: radial-gradient(ellipse at center,
-                rgba(26, 58, 56, 0.22) 0%,
-                rgba(26, 58, 56, 0.10) 42%,
-                transparent 72%);
-            backdrop-filter: blur(8px) saturate(1.05);
-            -webkit-backdrop-filter: blur(8px) saturate(1.05);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: -1;
-            box-shadow: 0 0 48px 12px rgba(243, 230, 196, 0.22);
+        /* 懸浮：緩慢上下漂移，不用陰影堆疊高度 */
+        .brand-float {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            animation: brandFloat 7s ease-in-out 1.05s infinite;
         }
 
         .brand-name {
@@ -166,22 +144,10 @@
             font-weight: 600;
             letter-spacing: 0.18em;
             line-height: 1.05;
-            text-shadow:
-                0 1px 0 rgba(243, 230, 196, 0.7),
-                0 0 22px rgba(243, 230, 196, 0.85),
-                0 4px 18px rgba(26, 58, 56, 0.28);
         }
         .brand-name .qing { color: #143848; }
         .brand-name .yi   { color: #1a4a44; }
         .brand-name .you  { color: #5c4718; }
-
-        .brand-side {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 14px;
-            padding-top: 10px;
-        }
 
         .seal {
             width: 54px;
@@ -202,15 +168,6 @@
             transform: rotate(-2deg);
         }
         .seal span { display: block; }
-
-        .brand-sub {
-            writing-mode: vertical-rl;
-            font-family: 'Noto Serif TC', serif;
-            font-size: 0.88rem;
-            letter-spacing: 0.32em;
-            color: var(--ink-soft);
-            text-shadow: 0 1px 8px rgba(243, 230, 196, 0.9);
-        }
 
         /* ===== 河水延伸區 ===== */
         .river-extend {
@@ -419,14 +376,16 @@
             from { opacity: 0; transform: translateY(24px); }
             to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes brandFloat {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-11px); }
+        }
 
         @media (max-width: 768px) {
             .hero { height: 46vh; min-height: 340px; max-height: 480px; }
-            .brand { padding: 20px 22px; gap: 14px; }
-            .brand-mist { width: 150px; height: 220px; }
+            .brand-float { gap: 11px; }
             .brand-name { font-size: 2.85rem; letter-spacing: 0.14em; }
-            .seal { width: 44px; height: 44px; font-size: 0.8rem; }
-            .brand-sub { font-size: 0.78rem; }
+            .seal { width: 42px; height: 42px; font-size: 0.76rem; }
             .river-extend { padding: 4px 20px 22px; margin-top: -16px; }
             .river-extend .verse {
                 font-size: 0.92rem;
@@ -453,22 +412,20 @@
 <body>
     <header class="hero">
         <div class="hero-media" aria-hidden="true">
-            <video autoplay muted loop playsinline preload="none" poster="/assets/hero/qingyi-river.jpg">
-                <source src="/assets/hero/qingyi-river.mp4" type="video/mp4">
+            <video autoplay muted loop playsinline preload="none" poster="/assets/hero/qingyi-river-hd.jpg">
+                <source src="/assets/hero/qingyi-river-hd.mp4" type="video/mp4">
             </video>
         </div>
         <div class="hero-feather" aria-hidden="true"></div>
 
         <div class="brand">
-            <div class="brand-mist" aria-hidden="true"></div>
-            <div class="brand-name">
-                <span class="qing">清</span><span class="yi">沂</span><span class="you">遊</span>
-            </div>
-            <div class="brand-side">
+            <div class="brand-float">
+                <div class="brand-name">
+                    <span class="qing">清</span><span class="yi">沂</span><span class="you">遊</span>
+                </div>
                 <div class="seal" title="清沂遊">
                     <span>清</span><span>沂</span><span>遊</span><span>印</span>
                 </div>
-                <div class="brand-sub">悠想清沂・優遊詠歸</div>
             </div>
         </div>
     </header>
