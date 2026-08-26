@@ -264,6 +264,9 @@ body::after {
 .animal-container.up {
     transform: translateX(-50%) translateY(0);
 }
+.animal-container.is-slow {
+    transition: transform 0.7s ease-out;
+}
 /* 地鼠形狀字牌 */
 .mole-glyph {
     position: relative;
@@ -457,6 +460,10 @@ body::after {
     transform: translateY(2px);
     box-shadow: 0 2px #059669;
 }
+.skill-btn.is-slowing {
+    background-color: #0d9488;
+    box-shadow: 0 4px #0f766e;
+}
 /* 讀取中的 spinner */
 .loader {
     border: 4px solid #f3f3f3;
@@ -472,12 +479,86 @@ body::after {
 }
 /* 自定義題庫樣式 */
 #custom-library-list {
-    max-height: 150px;
+    max-height: 240px;
     overflow-y: auto;
     border: 1px solid #e2e8f0;
     border-radius: 0.375rem;
     padding: 0.5rem;
     text-align: left;
+}
+.lib-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #eef2f7;
+}
+.lib-row:last-child { border-bottom: 0; }
+.lib-target {
+    flex: 0 0 auto;
+    min-width: 36px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f766e;
+    background: #ccfbf1;
+    border-radius: 8px;
+    padding: 0 8px;
+}
+.lib-chips {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+.lib-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    height: 32px;
+    padding: 0 4px 0 8px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #334155;
+}
+.lib-chip-x {
+    width: 22px;
+    height: 22px;
+    border: 0;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.lib-chip-x:hover { color: #dc2626; }
+.lib-add-input {
+    width: 36px;
+    height: 32px;
+    border: 1px dashed #94a3b8;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.05rem;
+    background: #fff;
+}
+.lib-del-group {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 8px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
 }
 /* 地鼠探頭動畫樣式 - 首頁置中完整顯示 */
 .mole-animation {
@@ -631,7 +712,6 @@ body::after {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    padding-left: 26px;
 }
 
 .practice-hint {
@@ -1097,11 +1177,12 @@ body::after {
         let aiGeneratedGroups = [];
         let aiSeedComposing = false;
         let practiceHintTimer = null;
+        let slowSkillTimer = null;
         const TIMED_DURATION_MIN = 15;
         const TIMED_DURATION_MAX = 180;
         const TIMED_DURATION_DEFAULT = 60;
         const TIMED_HIT_POINTS = 15;
-        const TIMED_MISS_POINTS = 10;
+        const TIMED_MISS_POINTS = 4;
         const SLOW_TOKEN_SCORE = 30;
 
         // --- 內建四年級關卡 ---
@@ -1471,6 +1552,12 @@ body::after {
             animalIntervalId = setInterval(peep, gameState.gameSpeed);
         }
 
+        function setMolePopSpeed(slow) {
+            document.querySelectorAll('.animal-container').forEach((el) => {
+                el.classList.toggle('is-slow', !!slow);
+            });
+        }
+
         function applyTimedPace() {
             if (gameState.mode !== 'timed') return;
             const total = gameState.timedDuration || TIMED_DURATION_DEFAULT;
@@ -1481,11 +1568,12 @@ body::after {
             const targetPeep = Math.round(1480 - 540 * eased);
             gameState.baseGameSpeed = targetSpeed;
             gameState.basePeepDuration = targetPeep;
-            const nextSpeed = gameState.slowActive ? targetSpeed + 450 : targetSpeed;
-            const nextPeep = gameState.slowActive ? targetPeep + 600 : targetPeep;
-            const speedChanged = Math.abs((gameState.gameSpeed || 0) - nextSpeed) >= 30;
+            const nextSpeed = gameState.slowActive ? Math.round(targetSpeed * 2.4) : targetSpeed;
+            const nextPeep = gameState.slowActive ? Math.round(targetPeep * 1.8) : targetPeep;
+            const speedChanged = Math.abs((gameState.gameSpeed || 0) - nextSpeed) >= 20;
             gameState.gameSpeed = nextSpeed;
             gameState.peepDuration = nextPeep;
+            setMolePopSpeed(gameState.slowActive);
             if (speedChanged && animalIntervalId) restartPeepLoop();
         }
 
@@ -1554,6 +1642,11 @@ body::after {
                 clearTimeout(practiceHintTimer);
                 practiceHintTimer = null;
             }
+            if (slowSkillTimer) {
+                clearTimeout(slowSkillTimer);
+                slowSkillTimer = null;
+            }
+            setMolePopSpeed(false);
 
             gameScreen.classList.add('hidden');
             levelEndScreen.classList.add('hidden');
@@ -1593,6 +1686,7 @@ body::after {
             comboEl.textContent = gameState.combo;
             skillSlowTokensEl.textContent = gameState.slowSkillTokens;
             skillSlowBtn.disabled = gameState.mode !== 'timed' || gameState.slowSkillTokens <= 0 || gameState.slowActive;
+            skillSlowBtn.classList.toggle('is-slowing', !!gameState.slowActive);
             
             if (gameState.mode === 'practice') {
                 hitsEl.textContent = `${gameState.correctHitsThisLevel} / 3`;
@@ -1616,12 +1710,15 @@ body::after {
                 restartPeepLoop();
                 updateUI();
 
-                setTimeout(() => {
+                if (slowSkillTimer) clearTimeout(slowSkillTimer);
+                slowSkillTimer = setTimeout(() => {
+                    slowSkillTimer = null;
+                    if (!gameState.isRunning) return;
                     gameState.slowActive = false;
                     applyTimedPace();
                     if (animalIntervalId) restartPeepLoop();
                     updateUI();
-                }, 5000);
+                }, 8000);
             }
         }
 
@@ -1885,14 +1982,104 @@ body::after {
                 playLibraryBtn.disabled = true;
                 return;
             }
-            keys.forEach(key => {
+            keys.forEach((key) => {
                 const level = library[key];
-                const div = document.createElement('div');
-                div.classList.add('flex', 'items-center');
-                div.innerHTML = `<input type="checkbox" id="lib-${level.target}" data-level='${JSON.stringify(level)}' class="mr-2"><label for="lib-${level.target}">${level.target}: ${level.distractors.join(',')}</label>`;
-                customLibraryList.appendChild(div);
+                const row = document.createElement('div');
+                row.className = 'lib-row';
+
+                const targetBadge = document.createElement('span');
+                targetBadge.className = 'lib-target';
+                targetBadge.textContent = level.target;
+
+                const chips = document.createElement('div');
+                chips.className = 'lib-chips';
+                (level.distractors || []).forEach((ch) => {
+                    const chip = document.createElement('span');
+                    chip.className = 'lib-chip';
+                    const label = document.createElement('span');
+                    label.textContent = ch;
+                    const xBtn = document.createElement('button');
+                    xBtn.type = 'button';
+                    xBtn.className = 'lib-chip-x';
+                    xBtn.setAttribute('aria-label', `刪除 ${ch}`);
+                    xBtn.textContent = '×';
+                    xBtn.addEventListener('click', () => removeLibraryChar(level.target, ch));
+                    chip.appendChild(label);
+                    chip.appendChild(xBtn);
+                    chips.appendChild(chip);
+                });
+
+                const addInput = document.createElement('input');
+                addInput.className = 'lib-add-input';
+                addInput.placeholder = '+';
+                addInput.setAttribute('lang', 'zh-Hant');
+                addInput.setAttribute('aria-label', `為「${level.target}」新增形近字`);
+                addInput.autocomplete = 'off';
+                addInput.spellcheck = false;
+                let composing = false;
+                const commitAdd = () => {
+                    const hans = uniqueHanChars(addInput.value).filter((c) => c !== level.target);
+                    if (hans.length === 0) return;
+                    addLibraryChars(level.target, hans);
+                    addInput.value = '';
+                };
+                addInput.addEventListener('compositionstart', () => { composing = true; });
+                addInput.addEventListener('compositionend', () => {
+                    composing = false;
+                    commitAdd();
+                });
+                addInput.addEventListener('input', () => {
+                    if (!composing) commitAdd();
+                });
+
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'lib-del-group';
+                delBtn.textContent = '刪除';
+                delBtn.addEventListener('click', () => deleteLibraryGroup(level.target));
+
+                row.appendChild(targetBadge);
+                row.appendChild(chips);
+                chips.appendChild(addInput);
+                row.appendChild(delBtn);
+                customLibraryList.appendChild(row);
             });
             playLibraryBtn.disabled = false;
+        }
+
+        function getLibrary() {
+            if (!gameData.users[currentUser].customLibrary) {
+                gameData.users[currentUser].customLibrary = {};
+            }
+            return gameData.users[currentUser].customLibrary;
+        }
+
+        function addLibraryChars(target, chars) {
+            const library = getLibrary();
+            const existing = library[target] || { target, distractors: [] };
+            const next = [...new Set([...existing.distractors, ...chars])].filter((c) => c && c !== target);
+            if (next.length === 0) return;
+            library[target] = { target, distractors: next };
+            saveGameData();
+            loadCustomLibrary();
+        }
+
+        function removeLibraryChar(target, ch) {
+            const library = getLibrary();
+            const existing = library[target];
+            if (!existing) return;
+            const next = existing.distractors.filter((c) => c !== ch);
+            if (next.length === 0) delete library[target];
+            else library[target] = { target, distractors: next };
+            saveGameData();
+            loadCustomLibrary();
+        }
+
+        function deleteLibraryGroup(target) {
+            const library = getLibrary();
+            delete library[target];
+            saveGameData();
+            loadCustomLibrary();
         }
 
         function saveLevelsToLibrary(levels, options = {}) {
@@ -1938,7 +2125,6 @@ body::after {
 
         function getSelectedAiLevels() {
             return aiGeneratedGroups
-                .filter((g) => g.included)
                 .map((g) => ({
                     target: g.target,
                     distractors: g.chars.filter((ch) => g.selected[ch])
@@ -1958,13 +2144,11 @@ body::after {
             if (existing) {
                 existing.chars = chars;
                 existing.selected = selected;
-                existing.included = true;
             } else {
                 aiGeneratedGroups.push({
                     target,
                     chars,
-                    selected,
-                    included: true
+                    selected
                 });
             }
         }
@@ -1975,18 +2159,10 @@ body::after {
                 const wrap = document.createElement('div');
                 wrap.className = 'ai-group';
 
-                const head = document.createElement('label');
+                const head = document.createElement('div');
                 head.className = 'ai-group-head';
-                const box = document.createElement('input');
-                box.type = 'checkbox';
-                box.checked = g.included;
-                box.addEventListener('change', () => {
-                    g.included = box.checked;
-                    updateAiAddBtn();
-                });
                 const title = document.createElement('span');
                 title.textContent = `目標「${g.target}」`;
-                head.appendChild(box);
                 head.appendChild(title);
 
                 const chips = document.createElement('div');
@@ -1999,9 +2175,6 @@ body::after {
                     btn.addEventListener('click', () => {
                         g.selected[ch] = !g.selected[ch];
                         btn.classList.toggle('is-selected', g.selected[ch]);
-                        const anyOn = g.chars.some((c) => g.selected[c]);
-                        g.included = anyOn;
-                        box.checked = g.included;
                         updateAiAddBtn();
                     });
                     chips.appendChild(btn);
@@ -2063,8 +2236,8 @@ body::after {
                 if (added === 0) throw new Error('empty');
                 renderAiGroups();
                 aiSimilarHint.textContent = seeds.length > 12
-                    ? '一次最多 12 個字。請勾選要加入題庫的字組，也可再輸入新字繼續生成。'
-                    : '請勾選要加入題庫的字組與形近字，可再輸入新字繼續生成。';
+                    ? '一次最多 12 個字。點選形近字後加入題庫，也可再輸入新字繼續生成。'
+                    : '點選要用的形近字後加入題庫，也可再輸入新字繼續生成。';
             } catch (err) {
                 const leftover = document.getElementById('ai-similar-loading');
                 if (leftover) leftover.remove();
@@ -2254,6 +2427,11 @@ body::after {
                 clearTimeout(practiceHintTimer);
                 practiceHintTimer = null;
             }
+            if (slowSkillTimer) {
+                clearTimeout(slowSkillTimer);
+                slowSkillTimer = null;
+            }
+            setMolePopSpeed(false);
             clearInterval(timerId);
             timerId = null;
             clearInterval(animalIntervalId);
@@ -2346,16 +2524,15 @@ body::after {
             }
         });
         playLibraryBtn.addEventListener('click', () => {
-            const selectedLevels = [];
-            customLibraryList.querySelectorAll('input:checked').forEach(cb => {
-                selectedLevels.push(JSON.parse(cb.dataset.level));
-            });
+            const library = gameData.users[currentUser]?.customLibrary || {};
+            const selectedLevels = Object.values(library).filter((level) =>
+                level && level.target && Array.isArray(level.distractors) && level.distractors.length > 0
+            );
             if (selectedLevels.length > 0) {
                 settingsScreen.classList.add('hidden');
-                // 從題庫開始預設為練習模式
                 startGame('practice', selectedLevels);
             } else {
-                alert('請至少選擇一個題目');
+                alert('題庫裡還沒有可用的題目');
             }
         });
         
