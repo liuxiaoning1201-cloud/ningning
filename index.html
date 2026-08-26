@@ -129,6 +129,20 @@
             contain: paint;
         }
 
+        /* 水波層：以同一張底圖為材質，只對水面像素做位移取樣。
+           天空、山巒、人物是原圖直取，因此完全靜止且不損畫質。
+           初始化前先透明，讓 .hero-media 的底圖當作 fallback。 */
+        .hero-canvas {
+            position: absolute;
+            inset: 0;
+            display: block;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .hero-canvas.is-ready { opacity: 1; }
+
         /* 只在中央光路加一層極淡暖暈；下緣淡出交給 mask，body 背景是唯一銜接色 */
         .hero-feather {
             position: absolute;
@@ -355,6 +369,16 @@
             box-shadow: 0 6px 16px rgba(26, 58, 56, 0.18), inset 0 -3px 8px rgba(0,0,0,0.1);
             transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
         }
+        .app-icon.image-icon {
+            overflow: hidden;
+            background: var(--gold-soft);
+        }
+        .app-icon img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
         .app-card:hover .app-icon {
             transform: rotate(-4deg) scale(1.08);
         }
@@ -435,6 +459,8 @@
             .app-card { opacity: 1; }
             .brand,
             .river-extend { animation: none; }
+            /* 水波層不啟動，直接顯示 .hero-media 的靜態底圖 */
+            .hero-canvas { display: none; }
         }
     </style>
 </head>
@@ -495,7 +521,9 @@
             </div>
             <div class="apps-grid">
                 <div class="app-card" onclick="window.location.href='字詞地鼠戰/字詞地鼠戰.html'">
-                    <div class="app-icon">🎯</div>
+                    <div class="app-icon image-icon" aria-hidden="true">
+                        <img src="/assets/games/word-mole-logo.png" alt="">
+                    </div>
                     <h3 class="app-title">字詞地鼠戰</h3>
                     <p class="app-description">趣味字詞學習遊戲<br>通過打地鼠的方式練習字詞</p>
                 </div>
@@ -640,12 +668,14 @@
 
         const heroMedia = document.querySelector('.hero-media');
 
-        // 站名要壓在金色光路上。光路中心量測在影片寬度的 40%，
-        // 但 object-fit: cover 在窄視窗會裁掉左右，所以照實際繪製幾何換算，
+        // 站名要壓在金色光路上。光路中心量測在底圖寬度的 40.6%，
+        // 但 cover 在窄視窗會裁掉左右，所以照實際繪製幾何換算，
         // 不能直接用固定百分比。
-        const LIGHT_PATH_X = 0.40;
+        const LIGHT_PATH_X = 0.406;
         const HERO_IMAGE_WIDTH = 1672;
         const HERO_IMAGE_HEIGHT = 941;
+        // .hero-media 的 background-position 縱向偏壓，水波層必須沿用同一值
+        const HERO_FOCUS_Y = 0.6;
         const brandAnchor = document.querySelector('.brand-anchor');
         const brandName = document.querySelector('.brand-name');
 
@@ -681,6 +711,195 @@
 
         alignBrandToLightPath();
         window.addEventListener('resize', queueAlign);
+
+        /* ===== 水波蕩漾 =====
+           整張 hero 由同一張底圖繪製：水面以上的像素原座標直取，所以天空、
+           山巒、樹與三位人物是逐像素靜止且保有底圖原本的銳利度；只有遮罩
+           標記的水面才做位移取樣，讓已畫好的波紋與金色光路自己起伏。
+           位移量沿透視收斂，越近岸越小，故岸邊不會被拉扯。 */
+        (function water() {
+            if (!heroMedia) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'hero-canvas';
+            const gl = canvas.getContext('webgl', {
+                alpha: false, antialias: false, depth: false,
+                stencil: false, powerPreference: 'low-power'
+            });
+            if (!gl) return;
+
+            const VERT = `
+                attribute vec2 aPos;
+                varying vec2 vUnit;
+                void main() {
+                    vUnit = vec2(aPos.x, 1.0 - aPos.y);
+                    gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
+                }`;
+
+            const FRAG = `
+                precision highp float;
+                varying vec2 vUnit;
+                uniform sampler2D uImage;
+                uniform sampler2D uMask;
+                uniform vec2 uUvScale;
+                uniform vec2 uUvOffset;
+                uniform float uTime;
+                uniform float uAmp;
+
+                // 波峰在畫面上呈水平帶狀，愈近地平線愈密，故取此參考水線
+                const float Y0 = 0.575;
+
+                void main() {
+                    vec2 uv = vUnit * uUvScale + uUvOffset;
+                    float gate = texture2D(uMask, uv).r;
+                    if (gate <= 0.002) {
+                        gl_FragColor = vec4(texture2D(uImage, uv).rgb, 1.0);
+                        return;
+                    }
+
+                    float d = max(uv.y - Y0, 0.0);
+                    float pers = 1.0 / (d + 0.10);
+                    // 遠處波紋細於一個像素，若照實畫會變成雜訊，故抑制高頻
+                    float hf = smoothstep(0.02, 0.18, d);
+
+                    float w1 = sin(pers * 18.0 + uv.x * 2.6 + uTime * 1.05);
+                    float w2 = sin(pers * 30.0 - uv.x * 4.4 + uTime * 1.55);
+                    float w3 = sin(pers *  9.0 + uv.x * 1.7 - uTime * 0.68);
+                    float wave = w3 * 0.32
+                               + w1 * 0.44 * mix(0.45, 1.0, hf)
+                               + w2 * 0.24 * hf;
+
+                    float a = uAmp * gate * (0.12 + d);
+                    vec3 col = texture2D(uImage, clamp(uv + vec2(wave * a * 0.35, wave * a), 0.0, 1.0)).rgb;
+
+                    // 粼粼波光：只讓本來就亮的金色光路閃動，暗部不受影響
+                    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+                    float glint = smoothstep(0.72, 0.98, lum) * gate * mix(0.35, 1.0, hf);
+                    col *= 1.0 + glint * 0.09 * (w2 * 0.6 + w1 * 0.4);
+
+                    gl_FragColor = vec4(col, 1.0);
+                }`;
+
+            function compile(type, src) {
+                const sh = gl.createShader(type);
+                gl.shaderSource(sh, src);
+                gl.compileShader(sh);
+                if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) return null;
+                return sh;
+            }
+            const vs = compile(gl.VERTEX_SHADER, VERT);
+            const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+            if (!vs || !fs) return;
+            const prog = gl.createProgram();
+            gl.attachShader(prog, vs);
+            gl.attachShader(prog, fs);
+            gl.linkProgram(prog);
+            if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+            gl.useProgram(prog);
+
+            const buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 0,1, 1,1]), gl.STATIC_DRAW);
+            const aPos = gl.getAttribLocation(prog, 'aPos');
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+            const uUvScale = gl.getUniformLocation(prog, 'uUvScale');
+            const uUvOffset = gl.getUniformLocation(prog, 'uUvOffset');
+            const uTime = gl.getUniformLocation(prog, 'uTime');
+            gl.uniform1f(gl.getUniformLocation(prog, 'uAmp'), 0.013);
+
+            function upload(unit, img, uniformName) {
+                const tex = gl.createTexture();
+                gl.activeTexture(gl.TEXTURE0 + unit);
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                gl.uniform1i(gl.getUniformLocation(prog, uniformName), unit);
+            }
+
+            let needLayout = true;
+            function layout() {
+                const box = heroMedia.getBoundingClientRect();
+                if (!box.width || !box.height) return false;
+                needLayout = false;
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                const cw = Math.max(1, Math.round(box.width * dpr));
+                const ch = Math.max(1, Math.round(box.height * dpr));
+                if (canvas.width !== cw || canvas.height !== ch) {
+                    canvas.width = cw;
+                    canvas.height = ch;
+                }
+                gl.viewport(0, 0, cw, ch);
+                // 完全複製 background-size: cover + background-position: center 60%
+                const s = Math.max(cw / HERO_IMAGE_WIDTH, ch / HERO_IMAGE_HEIGHT);
+                const dw = HERO_IMAGE_WIDTH * s, dh = HERO_IMAGE_HEIGHT * s;
+                gl.uniform2f(uUvScale, cw / dw, ch / dh);
+                gl.uniform2f(uUvOffset, -((cw - dw) / 2) / dw, -((ch - dh) * HERO_FOCUS_Y) / dh);
+                return true;
+            }
+
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const src = window.innerWidth * dpr > HERO_IMAGE_WIDTH
+                ? '/assets/hero/qingyi-river-still-2x.webp'
+                : '/assets/hero/qingyi-river-still.webp';
+
+            function load(url) {
+                return new Promise((res, rej) => {
+                    const im = new Image();
+                    im.decoding = 'sync';
+                    im.onload = () => res(im);
+                    im.onerror = rej;
+                    im.src = url;
+                });
+            }
+
+            Promise.all([load(src), load('/assets/hero/qingyi-water-mask.png')]).then(([img, mask]) => {
+                upload(0, img, 'uImage');
+                upload(1, mask, 'uMask');
+                heroMedia.appendChild(canvas);
+                if (!layout()) return;
+
+                let onScreen = true, awake = true, running = false, shown = false, raf = 0;
+                const t0 = performance.now();
+
+                function frame(now) {
+                    raf = requestAnimationFrame(frame);
+                    if (needLayout) layout();
+                    gl.uniform1f(uTime, (now - t0) / 1000);
+                    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                    if (!shown) {
+                        shown = true;
+                        requestAnimationFrame(() => canvas.classList.add('is-ready'));
+                    }
+                }
+                function sync() {
+                    const want = onScreen && awake;
+                    if (want === running) return;
+                    running = want;
+                    if (want) raf = requestAnimationFrame(frame);
+                    else cancelAnimationFrame(raf);
+                }
+                sync();
+
+                // 捲離視窗或切到別的分頁就停畫，不必白耗電
+                if ('IntersectionObserver' in window) {
+                    new IntersectionObserver(es => {
+                        onScreen = es[0].isIntersecting;
+                        sync();
+                    }).observe(heroMedia);
+                }
+                document.addEventListener('visibilitychange', () => {
+                    awake = !document.hidden;
+                    sync();
+                });
+                window.addEventListener('resize', () => { needLayout = true; });
+            }).catch(() => {});
+        })();
     </script>
     <script src="/auth-widget.js"></script>
 </body>
