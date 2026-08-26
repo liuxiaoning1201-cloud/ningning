@@ -6,6 +6,7 @@
     <title>清沂遊</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="image" href="/assets/hero/qingyi-river-still.webp" imagesrcset="/assets/hero/qingyi-river-still.webp 1672w, /assets/hero/qingyi-river-still-2x.webp 3344w" imagesizes="100vw">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -31,6 +32,10 @@
             --malachite:     #2f7d5b;
             --cinnabar:      #b8472f;
             --silk:          #efe6cf;
+            --hero-poster: image-set(
+                url('/assets/hero/qingyi-river-still.webp') type('image/webp') 1x,
+                url('/assets/hero/qingyi-river-still-2x.webp') type('image/webp') 2x
+            );
 
             /* 水面淡出曲線。緩起後加速，讓羽化沒有明顯起始邊；
                詩句落在 76%–89% 之間，仍看得見波浪，再往下才淡盡。 */
@@ -107,7 +112,11 @@
             inset: 0 0 -22% 0;
             z-index: 0;
             overflow: hidden;
-            background: url('/assets/hero/qingyi-river-loop.jpg') center 60% / cover no-repeat;
+            background-color: #b9dde1;
+            background-image: var(--hero-poster);
+            background-position: center 60%;
+            background-size: cover;
+            background-repeat: no-repeat;
             /* 只羽化下緣。多階漸層讓起點幾乎看不出來：前 10% 只掉 6%，
                之後才逐漸加快，避免出現一條明顯的羽化邊。 */
             -webkit-mask-image: var(--water-fade);
@@ -116,19 +125,46 @@
             mask-repeat: no-repeat;
             -webkit-mask-size: 100% 100%;
             mask-size: 100% 100%;
+            transform: translateZ(0);
+            contain: paint;
         }
 
-        .hero-media video {
+        .hero-water-video {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
+            z-index: 1;
+            display: block;
+            pointer-events: none;
             object-fit: cover;
             object-position: center 60%;
-            display: block;
-            /* 極慢的推近漂移。週期與 4.8s 循環互質，眼睛抓不到重複點，
-               看起來像會動的畫而不是在播一段片。放大 4% 才不會露邊。 */
-            animation: heroDrift 53s ease-in-out infinite alternate;
-            will-change: transform;
+            opacity: 0;
+            transition: opacity 220ms cubic-bezier(0.25, 1, 0.5, 1);
+            filter: saturate(0.98) contrast(1.015);
+            -webkit-clip-path: inset(61% 0 0 0);
+            clip-path: inset(61% 0 0 0);
+            -webkit-mask-image: linear-gradient(to bottom,
+                transparent 0%,
+                transparent 61%,
+                rgba(0, 0, 0, 0.08) 64%,
+                rgba(0, 0, 0, 0.46) 68%,
+                #000 74%,
+                #000 100%);
+            mask-image: linear-gradient(to bottom,
+                transparent 0%,
+                transparent 61%,
+                rgba(0, 0, 0, 0.08) 64%,
+                rgba(0, 0, 0, 0.46) 68%,
+                #000 74%,
+                #000 100%);
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            transform: translateZ(0);
+            will-change: opacity;
         }
+
+        .hero-water-video.is-ready { opacity: 0.88; }
 
         /* 只在中央光路加一層極淡暖暈；下緣淡出交給 mask，body 背景是唯一銜接色 */
         .hero-feather {
@@ -156,12 +192,11 @@
             animation: fadeInDown 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
-        /* 懸浮：緩慢上下漂移，不用陰影堆疊高度 */
+        /* 站名保持靜止，讓 Hero 中唯一持續運動的元素是水面。 */
         .brand-float {
             display: flex;
             align-items: flex-end;
             gap: 16px;
-            animation: brandFloat 7s ease-in-out 1.05s infinite;
         }
 
         .brand-name {
@@ -407,17 +442,9 @@
             from { opacity: 0; transform: translateY(24px); }
             to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes brandFloat {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(-11px); }
-        }
-        @keyframes heroDrift {
-            from { transform: scale(1.005); }
-            to   { transform: scale(1.045); }
-        }
-
         @media (max-width: 768px) {
             .hero { height: 46vh; min-height: 340px; max-height: 480px; }
+            .hero-media { inset: 0; }
             .brand-float { gap: 11px; }
             .brand-name { font-size: 2.85rem; letter-spacing: 0.14em; }
             .seal { width: 42px; height: 42px; font-size: 0.76rem; }
@@ -437,7 +464,7 @@
 
         @media (prefers-reduced-motion: reduce) {
             * { animation: none !important; transition: none !important; }
-            .hero-media video { display: none; }
+            .hero-water-video { display: none; }
             .app-card { opacity: 1; }
             .brand,
             .river-extend { animation: none; }
@@ -447,8 +474,8 @@
 <body>
     <header class="hero">
         <div class="hero-media" aria-hidden="true">
-            <video autoplay muted loop playsinline preload="auto" poster="/assets/hero/qingyi-river-loop.jpg">
-                <source src="/assets/hero/qingyi-river-loop.mp4" type="video/mp4">
+            <video class="hero-water-video" autoplay muted loop playsinline preload="auto">
+                <source src="/assets/hero/qingyi-river-water.mp4" type="video/mp4">
             </video>
         </div>
         <div class="hero-feather" aria-hidden="true"></div>
@@ -648,37 +675,54 @@
             card.style.animationDelay = (0.06 * i + 0.12) + 's';
         });
 
-        const heroVideo = document.querySelector('.hero-media video');
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        if (heroVideo) {
-            if (reduceMotion) {
-                heroVideo.pause();
-                heroVideo.removeAttribute('autoplay');
-            } else {
-                // 放慢：水面成為緩緩流動的背景，而不是一段正在播放的影片
-                const slow = () => { heroVideo.playbackRate = 0.6; };
-                slow();
-                heroVideo.addEventListener('loadedmetadata', slow);
-                heroVideo.addEventListener('play', slow);
-            }
-        }
+        const heroMedia = document.querySelector('.hero-media');
+        const heroWaterVideo = document.querySelector('.hero-water-video');
 
         // 站名要壓在金色光路上。光路中心量測在影片寬度的 40%，
         // 但 object-fit: cover 在窄視窗會裁掉左右，所以照實際繪製幾何換算，
         // 不能直接用固定百分比。
         const LIGHT_PATH_X = 0.40;
-        const heroMedia = document.querySelector('.hero-media');
+        const HERO_IMAGE_WIDTH = 1672;
+        const HERO_IMAGE_HEIGHT = 941;
         const brandAnchor = document.querySelector('.brand-anchor');
         const brandName = document.querySelector('.brand-name');
+
+        function initWaterVideo() {
+            if (!heroWaterVideo) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                heroWaterVideo.pause();
+                heroWaterVideo.removeAttribute('autoplay');
+                return;
+            }
+
+            const revealWater = () => {
+                heroWaterVideo.playbackRate = 0.78;
+                heroWaterVideo.classList.add('is-ready');
+            };
+
+            const playWater = () => {
+                heroWaterVideo.playbackRate = 0.78;
+                heroWaterVideo.play().catch(() => {});
+            };
+
+            heroWaterVideo.addEventListener('playing', revealWater);
+            if (heroWaterVideo.readyState >= 2) playWater();
+            else heroWaterVideo.addEventListener('loadeddata', playWater, { once: true });
+
+            const waterObserver = new IntersectionObserver(([entry]) => {
+                if (entry.isIntersecting) playWater();
+                else heroWaterVideo.pause();
+            }, { rootMargin: '120px 0px' });
+            waterObserver.observe(heroWaterVideo);
+        }
 
         function alignBrandToLightPath() {
             if (!heroMedia || !brandAnchor || !brandName) return;
             const box = heroMedia.getBoundingClientRect();
             if (!box.width || !box.height) return;
 
-            const vw = (heroVideo && heroVideo.videoWidth) || 1920;
-            const vh = (heroVideo && heroVideo.videoHeight) || 1044;
+            const vw = HERO_IMAGE_WIDTH;
+            const vh = HERO_IMAGE_HEIGHT;
             const drawnW = vw * Math.max(box.width / vw, box.height / vh);
             const pathX = (box.width - drawnW) / 2 + LIGHT_PATH_X * drawnW;
 
@@ -703,7 +747,7 @@
         }
 
         alignBrandToLightPath();
-        if (heroVideo) heroVideo.addEventListener('loadedmetadata', queueAlign);
+        initWaterVideo();
         window.addEventListener('resize', queueAlign);
     </script>
     <script src="/auth-widget.js"></script>
