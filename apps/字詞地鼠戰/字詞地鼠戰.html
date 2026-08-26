@@ -90,7 +90,8 @@ svg, video { display: block; vertical-align: middle; }
 .text-red-500 { color: #ef4444; }
 .text-red-600 { color: #dc2626; }
 .text-orange-500 { color: #f97316; }
-.text-yellow-500 { color: #eab308; }
+.text-yellow-400 { color: #facc15; }
+.text-gray-300 { color: #d1d5db; }
 .text-green-500 { color: #22c55e; }
 .text-green-600 { color: #16a34a; }
 .text-blue-600 { color: #2563eb; }
@@ -554,6 +555,62 @@ body::after {
     box-shadow: 0 5px 12px rgba(15, 23, 42, 0.15);
 }
 
+.similar-chip {
+    min-width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: 2px solid #cbd5e1;
+    background: #f8fafc;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    cursor: pointer;
+}
+.similar-chip.is-selected {
+    border-color: #0d9488;
+    background: #ccfbf1;
+    color: #115e59;
+}
+.ai-icon-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 10px;
+    border: 1px solid #c4b5fd;
+    background: linear-gradient(180deg, #ede9fe 0%, #ddd6fe 100%);
+    color: #5b21b6;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.ai-icon-btn:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+.ai-seed-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ai-seed-input {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    padding: 0 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.375rem;
+    text-align: center;
+    font-size: 1.5rem;
+}
+#ai-similar-results {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+}
+
 /* 響應式調整 */
 .game-hud {
     flex-wrap: wrap;
@@ -740,6 +797,16 @@ body::after {
 <div id="review-screen" class="modal-overlay hidden">
      <div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-md text-left overflow-y-auto max-h-[80vh]">
         <h2 class="text-2xl font-bold text-slate-800 mb-4 text-center">錯字回憶</h2>
+        <div id="review-score-block" class="hidden text-center mb-4">
+            <p class="text-slate-600">最終得分</p>
+            <p id="review-final-score" class="text-5xl font-extrabold text-yellow-500 mb-2">0</p>
+            <p id="review-high-score-msg" class="hidden text-green-500 font-bold text-lg mb-2">恭喜！刷新最高紀錄！</p>
+            <p class="text-slate-600 mb-2">最高紀錄：<span id="review-high-score">0</span></p>
+            <div id="review-stars" class="flex justify-center text-4xl mb-3"></div>
+        </div>
+        <div id="review-ai-feedback" class="hidden my-3 p-3 bg-blue-50 rounded-lg border border-blue-200 text-blue-800">
+            <p id="ai-feedback-text">AI 夥伴正在為您準備鼓勵的話...</p>
+        </div>
         <div id="mistakes-list" class="space-y-3"></div>
         <button id="close-review-btn" class="w-full mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">關閉</button>
     </div>
@@ -752,9 +819,6 @@ body::after {
         <p class="text-xl text-slate-600 mb-4">你的最終得分是：</p>
         <p id="final-score" class="text-6xl font-extrabold text-yellow-500 mb-6">0</p>
         <p id="new-high-score-msg" class="hidden text-green-500 font-bold text-lg mb-4">恭喜！刷新最高紀錄！</p>
-        <div id="ai-feedback-container" class="my-4 p-3 bg-blue-50 rounded-lg border border-blue-200 text-blue-800">
-            <p id="ai-feedback-text">AI 夥伴正在為您準備鼓勵的話...</p>
-        </div>
         <p class="text-slate-600 mb-4">最高紀錄：<span id="high-score-end">0</span></p>
         <div id="stars" class="flex justify-center text-5xl mb-6"></div>
         <button id="restart-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition">返回主選單</button>
@@ -778,6 +842,19 @@ body::after {
     <h3 class="text-lg font-semibold text-slate-700 mb-3">自定義題庫</h3>
     <div id="custom-library-list"><p class="text-slate-400">尚無自定義題目</p></div>
     <button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>開始題庫挑戰</button>
+</div>
+<hr class="my-4 border-slate-200">
+<div class="mb-4">
+<h3 class="text-lg font-semibold text-slate-700 mb-3">AI 輔助生成形近字</h3>
+<div class="ai-seed-row mb-3">
+    <input id="ai-seed-char" class="ai-seed-input" maxlength="1" placeholder="字" aria-label="輸入一個漢字">
+    <button type="button" id="ai-similar-btn" class="ai-icon-btn" aria-label="AI 生成形近字" title="AI 生成形近字">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
+    </button>
+</div>
+<div id="ai-similar-results"></div>
+<p id="ai-similar-hint" class="text-slate-500 text-sm mt-2">輸入一個漢字，點紫色圖示生成約 5 個形近字，再點選要用的字。</p>
+<button id="ai-start-selected-btn" class="w-full mt-3 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>用已選字開始遊戲</button>
 </div>
 <hr class="my-4 border-slate-200">
 <div class="mb-4">
@@ -846,11 +923,22 @@ body::after {
         const endGameBtn = document.getElementById('end-game-btn');
         const mistakesListEl = document.getElementById('mistakes-list');
         const closeReviewBtn = document.getElementById('close-review-btn');
+        const reviewScoreBlock = document.getElementById('review-score-block');
+        const reviewFinalScoreEl = document.getElementById('review-final-score');
+        const reviewHighScoreMsgEl = document.getElementById('review-high-score-msg');
+        const reviewHighScoreEl = document.getElementById('review-high-score');
+        const reviewStarsEl = document.getElementById('review-stars');
+        const reviewAiFeedback = document.getElementById('review-ai-feedback');
         const finalScoreEl = document.getElementById('final-score');
         const newHighScoreMsgEl = document.getElementById('new-high-score-msg');
         const highScoreEndEl = document.getElementById('high-score-end');
         const starsEl = document.getElementById('stars');
         const aiFeedbackText = document.getElementById('ai-feedback-text');
+        const aiSeedCharInput = document.getElementById('ai-seed-char');
+        const aiSimilarBtn = document.getElementById('ai-similar-btn');
+        const aiSimilarResults = document.getElementById('ai-similar-results');
+        const aiSimilarHint = document.getElementById('ai-similar-hint');
+        const aiStartSelectedBtn = document.getElementById('ai-start-selected-btn');
         
         // 設定畫面
         const customLibraryList = document.getElementById('custom-library-list');
@@ -870,6 +958,8 @@ body::after {
         let gameData = {};
         let timerId = null, animalIntervalId = null;
         let allMistakesInGame = [];
+        let reviewClosesToMenu = false;
+        let selectedSimilarChars = [];
 
         // --- 內建四年級關卡 ---
         const gradeFourLevels = [
@@ -1113,7 +1203,7 @@ body::after {
             if (gameState.timeLeft <= 0) {
                 clearInterval(timerId);
                 timerId = null;
-                showLevelEndScreen(true); // 時間到，強制結束
+                endGame(false);
             }
             updateUI();
         }
@@ -1225,6 +1315,7 @@ body::after {
             animalIntervalId = null;
 
             gameScreen.classList.add('hidden');
+            levelEndScreen.classList.add('hidden');
             
             // Save skills before exiting
             if (currentUser && gameData.users[currentUser]) {
@@ -1235,20 +1326,12 @@ body::after {
                 if (currentUser && gameData.users[currentUser]) {
                     gameData.users[currentUser].savedTimedGame = null; // Clear saved game on normal finish
                 }
-                gameOverScreen.classList.remove('hidden');
-                finalScoreEl.textContent = gameState.score;
                 updateHighScore(gameState.score);
-                displayStars(gameState.score);
-                // 在練習模式完成所有關卡時播放獲勝音效
                 if (gameState.mode === 'practice') {
-                    winnerSound.currentTime = 0; // 重置到開頭
+                    winnerSound.currentTime = 0;
                     winnerSound.play().catch(e => console.warn("播放獲勝音效失敗:", e));
                 }
-                if (gameState.mode === 'timed') {
-                    getAIFeedback();
-                } else {
-                    aiFeedbackText.parentElement.classList.add('hidden');
-                }
+                openEndReview();
             }
             
             saveGameData();
@@ -1321,8 +1404,10 @@ body::after {
             popup.addEventListener('animationend', () => popup.remove());
         }
         
-        function displayStars(finalScore) {
-            starsEl.innerHTML = '';
+        function displayStars(finalScore, container) {
+            const host = container || starsEl;
+            if (!host) return;
+            host.innerHTML = '';
             let starCount = 0;
             if (finalScore >= 300) starCount = 3;
             else if (finalScore >= 150) starCount = 2;
@@ -1331,7 +1416,7 @@ body::after {
                 const star = document.createElement('span');
                 star.textContent = i < starCount ? '★' : '☆';
                 star.className = i < starCount ? 'text-yellow-400' : 'text-gray-300';
-                starsEl.appendChild(star);
+                host.appendChild(star);
             }
         }
         
@@ -1365,6 +1450,8 @@ body::after {
             modeSelectionView.classList.add('hidden');
             gameScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
+            levelEndScreen.classList.add('hidden');
+            reviewScreen.classList.add('hidden');
             updateHighScoreDisplay();
 
             // Check for a saved timed game
@@ -1380,13 +1467,13 @@ body::after {
         }
 
         function updateHighScore(currentScore) {
-            if (currentScore > gameData.users[currentUser].highScore) {
+            const isNew = currentScore > (gameData.users[currentUser].highScore || 0);
+            if (isNew) {
                 gameData.users[currentUser].highScore = currentScore;
                 saveGameData();
-                newHighScoreMsgEl.classList.remove('hidden');
-            } else {
-                newHighScoreMsgEl.classList.add('hidden');
             }
+            newHighScoreMsgEl.classList.toggle('hidden', !isNew);
+            reviewHighScoreMsgEl.classList.toggle('hidden', !isNew);
             updateHighScoreDisplay();
         }
 
@@ -1394,6 +1481,7 @@ body::after {
              const userHighScore = gameData.users[currentUser]?.highScore || 0;
              highScoreStartEl.textContent = userHighScore;
              highScoreEndEl.textContent = userHighScore;
+             if (reviewHighScoreEl) reviewHighScoreEl.textContent = userHighScore;
         }
         
         // --- AI 識別與題庫（經 Cloudflare 後端安全代理） ---
@@ -1443,7 +1531,7 @@ body::after {
         }
         
         async function getAIFeedback() {
-            aiFeedbackText.parentElement.classList.remove('hidden');
+            reviewAiFeedback.classList.remove('hidden');
             aiFeedbackText.textContent = 'AI 夥伴正在為您準備鼓勵的話...';
             try {
                 const mistakeString = allMistakesInGame.length > 0
@@ -1455,6 +1543,39 @@ body::after {
             } catch (error) {
                 aiFeedbackText.textContent = '哇！你真是太棒了，繼續努力喔！';
             }
+        }
+
+        async function renderMistakeList(mistakes) {
+            mistakesListEl.innerHTML = '<div class="loader mx-auto"></div>';
+            if (!mistakes || mistakes.length === 0) {
+                mistakesListEl.innerHTML = '<p class="text-center text-slate-600">沒有錯誤，表現很棒！</p>';
+                return;
+            }
+            const charsToDefine = new Set();
+            mistakes.forEach((m) => {
+                charsToDefine.add(m.target);
+                charsToDefine.add(m.wrong);
+            });
+            const definitions = await getCharDefinitions(Array.from(charsToDefine));
+            mistakesListEl.innerHTML = '';
+            mistakes.forEach((m) => {
+                const div = document.createElement('div');
+                div.innerHTML = `<p class="font-bold">目標「${m.target}」，錯打成「${m.wrong}」</p>
+                                 <p class="text-sm text-slate-600 pl-4">${m.target}: ${definitions[m.target] || '...'}</p>
+                                 <p class="text-sm text-slate-600 pl-4">${m.wrong}: ${definitions[m.wrong] || '...'}</p>`;
+                mistakesListEl.appendChild(div);
+            });
+        }
+
+        async function openEndReview() {
+            reviewClosesToMenu = true;
+            reviewScoreBlock.classList.remove('hidden');
+            reviewFinalScoreEl.textContent = gameState.score;
+            displayStars(gameState.score, reviewStarsEl);
+            closeReviewBtn.textContent = '返回主選單';
+            reviewScreen.classList.remove('hidden');
+            getAIFeedback();
+            await renderMistakeList(allMistakesInGame);
         }
 
         function getLevelsFromText(text) {
@@ -1503,6 +1624,79 @@ body::after {
             });
             saveGameData();
             return true;
+        }
+
+        function updateAiStartBtn() {
+            const seed = (aiSeedCharInput.value || '').trim();
+            aiStartSelectedBtn.disabled = selectedSimilarChars.length === 0 || seed.length !== 1;
+        }
+
+        function renderSimilarChips(chars) {
+            aiSimilarResults.innerHTML = '';
+            chars.forEach((ch) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'similar-chip';
+                btn.textContent = ch;
+                btn.addEventListener('click', () => {
+                    if (selectedSimilarChars.includes(ch)) {
+                        selectedSimilarChars = selectedSimilarChars.filter((x) => x !== ch);
+                        btn.classList.remove('is-selected');
+                    } else {
+                        selectedSimilarChars.push(ch);
+                        btn.classList.add('is-selected');
+                    }
+                    updateAiStartBtn();
+                });
+                aiSimilarResults.appendChild(btn);
+            });
+        }
+
+        async function generateSimilarChars() {
+            const seed = (aiSeedCharInput.value || '').trim();
+            if (seed.length !== 1) {
+                aiSimilarHint.textContent = '請先輸入一個漢字。';
+                return;
+            }
+            aiSimilarBtn.disabled = true;
+            selectedSimilarChars = [];
+            updateAiStartBtn();
+            aiSimilarResults.innerHTML = '<div class="loader"></div>';
+            aiSimilarHint.textContent = '正在生成形近字...';
+            const prompt = `你是小學識字教師。請為繁體漢字「${seed}」列出 5 個字形相近、容易認錯或寫錯的常用繁體字，不要包含「${seed}」本身。只回傳 JSON 物件，格式：{"chars":["字1","字2","字3","字4","字5"]}`;
+            try {
+                const jsonText = await callDeepSeekAPI(prompt, true);
+                const cleaned = String(jsonText).replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+                const data = JSON.parse(cleaned);
+                const chars = [...new Set((data.chars || [])
+                    .map((c) => String(c).trim())
+                    .filter((c) => c.length === 1 && c !== seed))];
+                if (chars.length === 0) throw new Error('empty');
+                renderSimilarChips(chars);
+                aiSimilarHint.textContent = '點選要用的形近字，再按「用已選字開始遊戲」。';
+            } catch (err) {
+                aiSimilarResults.innerHTML = '';
+                aiSimilarHint.textContent = '生成失敗，請稍後再試。';
+            } finally {
+                aiSimilarBtn.disabled = false;
+            }
+        }
+
+        function startGameFromSimilarSelection() {
+            const target = (aiSeedCharInput.value || '').trim();
+            if (target.length !== 1 || selectedSimilarChars.length === 0) {
+                aiSimilarHint.textContent = '請輸入一個漢字，並至少點選一個形近字。';
+                return;
+            }
+            const level = { target, distractors: [...selectedSimilarChars] };
+            if (!gameData.users[currentUser].customLibrary) {
+                gameData.users[currentUser].customLibrary = {};
+            }
+            gameData.users[currentUser].customLibrary[target] = level;
+            saveGameData();
+            loadCustomLibrary();
+            settingsScreen.classList.add('hidden');
+            startGame('practice', [level]);
         }
         
         function populateLevelSelectionGrid() {
@@ -1685,31 +1879,20 @@ body::after {
             endGame(false);
         });
         reviewMistakesBtn.addEventListener('click', async () => {
-            mistakesListEl.innerHTML = '<div class="loader mx-auto"></div>';
+            reviewClosesToMenu = false;
+            reviewScoreBlock.classList.add('hidden');
+            reviewAiFeedback.classList.add('hidden');
+            closeReviewBtn.textContent = '關閉';
             reviewScreen.classList.remove('hidden');
-
-            const charsToDefine = new Set();
-            gameState.mistakesThisLevel.forEach(m => {
-                charsToDefine.add(m.target);
-                charsToDefine.add(m.wrong);
-            });
-            
-            const definitions = await getCharDefinitions(Array.from(charsToDefine));
-
-            mistakesListEl.innerHTML = '';
-            if (gameState.mistakesThisLevel.length > 0) {
-                 gameState.mistakesThisLevel.forEach(m => {
-                    const div = document.createElement('div');
-                    div.innerHTML = `<p class="font-bold">目標「${m.target}」，錯打成「${m.wrong}」</p>
-                                     <p class="text-sm text-slate-600 pl-4">${m.target}: ${definitions[m.target] || '...'}</p>
-                                     <p class="text-sm text-slate-600 pl-4">${m.wrong}: ${definitions[m.wrong] || '...'}</p>`;
-                    mistakesListEl.appendChild(div);
-                 });
-            } else {
-                 mistakesListEl.innerHTML = '<p>沒有錯誤！</p>';
+            await renderMistakeList(gameState.mistakesThisLevel);
+        });
+        closeReviewBtn.addEventListener('click', () => {
+            reviewScreen.classList.add('hidden');
+            if (reviewClosesToMenu) {
+                reviewClosesToMenu = false;
+                showMainMenu();
             }
         });
-        closeReviewBtn.addEventListener('click', () => reviewScreen.classList.add('hidden'));
 
         // 關卡選擇
         closeLevelSelectionBtn.addEventListener('click', () => levelSelectionScreen.classList.add('hidden'));
@@ -1723,6 +1906,13 @@ body::after {
             settingsScreen.classList.add('hidden');
             customErrorMsg.textContent = '';
         });
+        aiSimilarBtn.addEventListener('click', generateSimilarChars);
+        aiSeedCharInput.addEventListener('input', () => {
+            const raw = aiSeedCharInput.value.trim();
+            if (raw.length > 1) aiSeedCharInput.value = [...raw][0] || '';
+            updateAiStartBtn();
+        });
+        aiStartSelectedBtn.addEventListener('click', startGameFromSimilarSelection);
         
         
         addCustomBtn.addEventListener('click', () => {
