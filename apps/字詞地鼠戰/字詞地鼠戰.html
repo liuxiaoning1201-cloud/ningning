@@ -548,15 +548,94 @@ body::after {
     font-size: 1.05rem;
     background: #fff;
 }
-.lib-del-group {
-    flex: 0 0 auto;
+.lib-row-new {
+    background: #f8fafc;
+    margin: 4px -4px 0;
+    padding: 8px 4px;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+}
+.lib-target-input {
+    width: 40px;
     height: 32px;
+    border: 1px dashed #0d9488;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f766e;
+    background: #fff;
+}
+.bank-toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 10px;
+}
+.bank-select {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    padding: 0 0.5rem;
+    background: #fff;
+    color: #334155;
+    font-weight: 600;
+}
+.bank-tabs {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+}
+.bank-tab {
+    flex: 1;
+    height: 36px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    cursor: pointer;
+}
+.bank-tab.is-active {
+    background: #ccfbf1;
+    border-color: #14b8a6;
+    color: #0f766e;
+}
+.bank-preview {
+    max-height: 180px;
+    overflow-y: auto;
+    margin-top: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    text-align: left;
+    background: #fff;
+}
+.bank-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.95rem;
+    color: #334155;
+}
+.bank-preview-row:last-child { border-bottom: 0; }
+.bank-preview-target {
+    font-weight: 800;
+    color: #0f766e;
+}
+.bank-preview-add {
+    margin-left: auto;
+    height: 26px;
     padding: 0 8px;
     border: 0;
-    border-radius: 8px;
-    background: #fee2e2;
-    color: #b91c1c;
-    font-size: 0.8rem;
+    border-radius: 6px;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
 }
@@ -1042,7 +1121,19 @@ body::after {
         <button id="import-excel-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">導入題庫 (Excel)</button>
         <button id="export-excel-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">導出題庫 (Excel)</button>
     </div>
+    <div class="bank-toolbar">
+        <label class="text-sm text-slate-600 font-bold" for="export-bank-select">導出哪個詞庫</label>
+        <select id="export-bank-select" class="bank-select" aria-label="選擇要導出的詞庫">
+            <option value="system">系統詞庫（四年級）</option>
+            <option value="custom">自定義題庫</option>
+        </select>
+    </div>
     <input type="file" id="excel-upload-input" class="hidden" accept=".xlsx, .xls">
+    <div class="bank-tabs" role="tablist">
+        <button type="button" id="bank-tab-system" class="bank-tab is-active" data-bank="system">系統詞庫</button>
+        <button type="button" id="bank-tab-custom" class="bank-tab" data-bank="custom">自定義題庫</button>
+    </div>
+    <div id="bank-preview" class="bank-preview"></div>
 </div>
 <hr class="my-4 border-slate-200">
 <div class="mb-4">
@@ -1060,15 +1151,10 @@ body::after {
 <hr class="my-4 border-slate-200">
 <div class="mb-4">
     <h3 class="text-lg font-semibold text-slate-700 mb-3">自定義題庫</h3>
-    <div id="custom-library-list"><p class="text-slate-400">尚無自定義題目</p></div>
+    <div id="custom-library-list"></div>
+    <p id="library-hint" class="text-slate-500 text-sm mt-2">最後一行可手動輸入目標字與形近字。</p>
+    <button id="commit-new-row-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition">將上述字添加到詞庫中</button>
     <button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>開始題庫挑戰</button>
-</div>
-<hr class="my-4 border-slate-200">
-<div class="mb-4">
-<h3 class="text-lg font-semibold text-slate-700 mb-3">手動新增題目</h3>
-<textarea id="custom-levels-input" rows="3" class="w-full p-2 border border-slate-300 rounded-md text-left" placeholder="新增題目到題庫...&#10;日:目,曰&#10;免:兔,魚"></textarea>
-<p id="custom-error-msg" class="text-red-500 text-sm mt-2 h-4"></p>
-<button id="add-custom-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition">新增到題庫</button>
 </div>
 <button id="close-settings-btn" class="mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition">關閉</button>
 </div>
@@ -1158,12 +1244,15 @@ body::after {
         // 設定畫面
         const customLibraryList = document.getElementById('custom-library-list');
         const playLibraryBtn = document.getElementById('play-library-btn');
-        const customLevelsInput = document.getElementById('custom-levels-input');
-        const customErrorMsg = document.getElementById('custom-error-msg');
-        const addCustomBtn = document.getElementById('add-custom-btn');
+        const commitNewRowBtn = document.getElementById('commit-new-row-btn');
+        const libraryHint = document.getElementById('library-hint');
         const importExcelBtn = document.getElementById('import-excel-btn');
         const exportExcelBtn = document.getElementById('export-excel-btn');
+        const exportBankSelect = document.getElementById('export-bank-select');
         const excelUploadInput = document.getElementById('excel-upload-input');
+        const bankPreview = document.getElementById('bank-preview');
+        const bankTabSystem = document.getElementById('bank-tab-system');
+        const bankTabCustom = document.getElementById('bank-tab-custom');
 
         let holes = [];
 
@@ -1176,6 +1265,8 @@ body::after {
         let reviewClosesToMenu = false;
         let aiGeneratedGroups = [];
         let aiSeedComposing = false;
+        let newRowDraft = { target: '', distractors: [] };
+        let previewBank = 'system';
         let practiceHintTimer = null;
         let slowSkillTimer = null;
         const TIMED_DURATION_MIN = 15;
@@ -1973,78 +2064,188 @@ body::after {
             }).filter(Boolean);
         }
 
+        function bindHanCommit(input, onCommit) {
+            let composing = false;
+            input.addEventListener('compositionstart', () => { composing = true; });
+            input.addEventListener('compositionend', () => {
+                composing = false;
+                onCommit();
+            });
+            input.addEventListener('input', () => {
+                if (!composing) onCommit();
+            });
+        }
+
+        function setLibraryHint(text, isError) {
+            if (!libraryHint) return;
+            libraryHint.textContent = text;
+            libraryHint.className = (isError ? 'text-red-500' : 'text-slate-500') + ' text-sm mt-2';
+        }
+
         function loadCustomLibrary() {
             const library = gameData.users[currentUser]?.customLibrary || {};
             customLibraryList.innerHTML = '';
             const keys = Object.keys(library);
-            if(keys.length === 0) {
-                customLibraryList.innerHTML = '<p class="text-slate-400">尚無自定義題目</p>';
-                playLibraryBtn.disabled = true;
-                return;
-            }
             keys.forEach((key) => {
                 const level = library[key];
-                const row = document.createElement('div');
-                row.className = 'lib-row';
+                customLibraryList.appendChild(buildLibraryRow(level, false));
+            });
+            customLibraryList.appendChild(buildLibraryRow({
+                target: newRowDraft.target,
+                distractors: [...newRowDraft.distractors]
+            }, true));
+            const playable = keys.some((key) => (library[key].distractors || []).length > 0);
+            playLibraryBtn.disabled = !playable;
+            renderBankPreview();
+        }
 
+        function buildLibraryRow(level, isNew) {
+            const row = document.createElement('div');
+            row.className = 'lib-row' + (isNew ? ' lib-row-new' : '');
+
+            const chips = document.createElement('div');
+            chips.className = 'lib-chips';
+
+            if (isNew && !level.target) {
+                const targetInput = document.createElement('input');
+                targetInput.className = 'lib-target-input';
+                targetInput.placeholder = '字';
+                targetInput.setAttribute('lang', 'zh-Hant');
+                targetInput.setAttribute('aria-label', '輸入目標字');
+                targetInput.autocomplete = 'off';
+                targetInput.spellcheck = false;
+                bindHanCommit(targetInput, () => {
+                    const hans = uniqueHanChars(targetInput.value);
+                    if (hans.length === 0) return;
+                    newRowDraft.target = hans[0];
+                    if (hans.length > 1) {
+                        newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans.slice(1)])]
+                            .filter((c) => c !== newRowDraft.target);
+                    }
+                    loadCustomLibrary();
+                    const next = customLibraryList.querySelector('.lib-row-new .lib-add-input');
+                    if (next) next.focus();
+                });
+                row.appendChild(targetInput);
+            } else {
                 const targetBadge = document.createElement('span');
                 targetBadge.className = 'lib-target';
                 targetBadge.textContent = level.target;
+                row.appendChild(targetBadge);
+            }
 
-                const chips = document.createElement('div');
-                chips.className = 'lib-chips';
-                (level.distractors || []).forEach((ch) => {
-                    const chip = document.createElement('span');
-                    chip.className = 'lib-chip';
-                    const label = document.createElement('span');
-                    label.textContent = ch;
-                    const xBtn = document.createElement('button');
-                    xBtn.type = 'button';
-                    xBtn.className = 'lib-chip-x';
-                    xBtn.setAttribute('aria-label', `刪除 ${ch}`);
-                    xBtn.textContent = '×';
-                    xBtn.addEventListener('click', () => removeLibraryChar(level.target, ch));
-                    chip.appendChild(label);
-                    chip.appendChild(xBtn);
-                    chips.appendChild(chip);
+            (level.distractors || []).forEach((ch) => {
+                const chip = document.createElement('span');
+                chip.className = 'lib-chip';
+                const label = document.createElement('span');
+                label.textContent = ch;
+                const xBtn = document.createElement('button');
+                xBtn.type = 'button';
+                xBtn.className = 'lib-chip-x';
+                xBtn.setAttribute('aria-label', `刪除 ${ch}`);
+                xBtn.textContent = '×';
+                xBtn.addEventListener('click', () => {
+                    if (isNew) {
+                        newRowDraft.distractors = newRowDraft.distractors.filter((c) => c !== ch);
+                        loadCustomLibrary();
+                    } else {
+                        removeLibraryChar(level.target, ch);
+                    }
                 });
+                chip.appendChild(label);
+                chip.appendChild(xBtn);
+                chips.appendChild(chip);
+            });
 
-                const addInput = document.createElement('input');
-                addInput.className = 'lib-add-input';
-                addInput.placeholder = '+';
-                addInput.setAttribute('lang', 'zh-Hant');
-                addInput.setAttribute('aria-label', `為「${level.target}」新增形近字`);
-                addInput.autocomplete = 'off';
-                addInput.spellcheck = false;
-                let composing = false;
-                const commitAdd = () => {
-                    const hans = uniqueHanChars(addInput.value).filter((c) => c !== level.target);
-                    if (hans.length === 0) return;
-                    addLibraryChars(level.target, hans);
-                    addInput.value = '';
-                };
-                addInput.addEventListener('compositionstart', () => { composing = true; });
-                addInput.addEventListener('compositionend', () => {
-                    composing = false;
-                    commitAdd();
-                });
-                addInput.addEventListener('input', () => {
-                    if (!composing) commitAdd();
-                });
+            const addInput = document.createElement('input');
+            addInput.className = 'lib-add-input';
+            addInput.placeholder = '+';
+            addInput.setAttribute('lang', 'zh-Hant');
+            addInput.setAttribute('aria-label', isNew ? '為新目標字新增形近字' : `為「${level.target}」新增形近字`);
+            addInput.autocomplete = 'off';
+            addInput.spellcheck = false;
+            bindHanCommit(addInput, () => {
+                const hans = uniqueHanChars(addInput.value);
+                if (hans.length === 0) return;
+                if (isNew) {
+                    if (!newRowDraft.target) {
+                        newRowDraft.target = hans[0];
+                        newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans.slice(1)])]
+                            .filter((c) => c !== newRowDraft.target);
+                    } else {
+                        newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans])]
+                            .filter((c) => c !== newRowDraft.target);
+                    }
+                    loadCustomLibrary();
+                    const next = customLibraryList.querySelector('.lib-row-new .lib-add-input');
+                    if (next) next.focus();
+                } else {
+                    addLibraryChars(level.target, hans.filter((c) => c !== level.target));
+                }
+            });
+            chips.appendChild(addInput);
+            row.appendChild(chips);
 
+            if (!isNew) {
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
                 delBtn.className = 'lib-del-group';
                 delBtn.textContent = '刪除';
                 delBtn.addEventListener('click', () => deleteLibraryGroup(level.target));
-
-                row.appendChild(targetBadge);
-                row.appendChild(chips);
-                chips.appendChild(addInput);
                 row.appendChild(delBtn);
-                customLibraryList.appendChild(row);
+            }
+            return row;
+        }
+
+        function commitNewRowToLibrary() {
+            const target = newRowDraft.target;
+            const distractors = [...new Set(newRowDraft.distractors)].filter((c) => c && c !== target);
+            if (!target || distractors.length === 0) {
+                setLibraryHint('請在最後一行輸入目標字，並至少加一個形近字。', true);
+                return;
+            }
+            saveLevelsToLibrary([{ target, distractors }], { merge: true });
+            newRowDraft = { target: '', distractors: [] };
+            loadCustomLibrary();
+            setPreviewBank('custom');
+            setLibraryHint('已加入自定義題庫。', false);
+            setTimeout(() => setLibraryHint('最後一行可手動輸入目標字與形近字。', false), 1800);
+        }
+
+        function getBankLevels(which) {
+            if (which === 'system') return gradeFourLevels.slice();
+            return Object.values(gameData.users[currentUser]?.customLibrary || {}).filter((level) =>
+                level && level.target && Array.isArray(level.distractors) && level.distractors.length > 0
+            );
+        }
+
+        function renderBankPreview() {
+            if (!bankPreview) return;
+            const levels = getBankLevels(previewBank);
+            bankPreview.innerHTML = '';
+            if (levels.length === 0) {
+                bankPreview.innerHTML = '<p class="text-slate-400">這個詞庫目前沒有題目</p>';
+                return;
+            }
+            levels.forEach((level) => {
+                const row = document.createElement('div');
+                row.className = 'bank-preview-row';
+                const t = document.createElement('span');
+                t.className = 'bank-preview-target';
+                t.textContent = level.target;
+                const d = document.createElement('span');
+                d.textContent = (level.distractors || []).join('、');
+                row.appendChild(t);
+                row.appendChild(d);
+                bankPreview.appendChild(row);
             });
-            playLibraryBtn.disabled = false;
+        }
+
+        function setPreviewBank(which) {
+            previewBank = which;
+            if (bankTabSystem) bankTabSystem.classList.toggle('is-active', which === 'system');
+            if (bankTabCustom) bankTabCustom.classList.toggle('is-active', which === 'custom');
+            renderBankPreview();
         }
 
         function getLibrary() {
@@ -2335,7 +2536,6 @@ body::after {
 
         function handleImport(file) {
             if (!file) return;
-            customErrorMsg.textContent = '';
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
@@ -2374,9 +2574,10 @@ body::after {
         }
 
         async function handleExport() {
-            const library = gameData.users[currentUser].customLibrary;
-            if (Object.keys(library).length === 0) {
-                alert("自定義題庫是空的！");
+            const which = (exportBankSelect && exportBankSelect.value) || 'custom';
+            const levels = getBankLevels(which);
+            if (levels.length === 0) {
+                alert(which === 'system' ? '系統詞庫是空的！' : '自定義題庫是空的！');
                 return;
             }
             try {
@@ -2387,14 +2588,16 @@ body::after {
             }
 
             const dataForSheet = [['目標字', '干擾字1', '干擾字2', '干擾字3']];
-            Object.values(library).forEach(level => {
+            levels.forEach((level) => {
                 dataForSheet.push([level.target, ...level.distractors]);
             });
 
             const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "題庫");
-            XLSX.writeFile(workbook, `${currentUser}_題庫.xlsx`);
+            const sheetName = which === 'system' ? '系統詞庫' : '自定義題庫';
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+            const filename = which === 'system' ? '系統詞庫_四年級.xlsx' : `${currentUser}_自定義題庫.xlsx`;
+            XLSX.writeFile(workbook, filename);
         }
         
         // --- 事件監聽器 ---
@@ -2490,7 +2693,6 @@ body::after {
         closeSettingsBtn.addEventListener('click', () => {
             saveTimedDurationFromInput();
             settingsScreen.classList.add('hidden');
-            customErrorMsg.textContent = '';
         });
         aiSimilarBtn.addEventListener('click', generateSimilarChars);
         aiSeedCharInput.addEventListener('compositionstart', () => {
@@ -2508,21 +2710,10 @@ body::after {
             normalizeAiSeedInput();
         });
         aiAddLibraryBtn.addEventListener('click', addSelectedAiGroupsToLibrary);
-        
-        
-        addCustomBtn.addEventListener('click', () => {
-            const text = customLevelsInput.value.trim();
-            if (!text) return;
-            const newLevels = getLevelsFromText(text);
-            if (newLevels && newLevels.length > 0) {
-                if (saveLevelsToLibrary(newLevels)) {
-                    loadCustomLibrary();
-                    customLevelsInput.value = '';
-                    customErrorMsg.textContent = '成功新增！';
-                    setTimeout(() => customErrorMsg.textContent = '', 2000);
-                }
-            }
-        });
+        if (commitNewRowBtn) commitNewRowBtn.addEventListener('click', commitNewRowToLibrary);
+        if (bankTabSystem) bankTabSystem.addEventListener('click', () => setPreviewBank('system'));
+        if (bankTabCustom) bankTabCustom.addEventListener('click', () => setPreviewBank('custom'));
+
         playLibraryBtn.addEventListener('click', () => {
             const library = gameData.users[currentUser]?.customLibrary || {};
             const selectedLevels = Object.values(library).filter((level) =>
