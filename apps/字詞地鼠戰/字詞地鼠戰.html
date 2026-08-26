@@ -601,9 +601,37 @@ body::after {
     padding: 0 0.75rem;
     border: 1px solid #cbd5e1;
     border-radius: 0.375rem;
-    text-align: center;
-    font-size: 1.5rem;
+    text-align: left;
+    font-size: 1.25rem;
+    letter-spacing: 0.12em;
     ime-mode: active;
+}
+.ai-group {
+    text-align: left;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: #f8fafc;
+}
+.ai-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 6px;
+}
+.ai-group-head input {
+    width: 18px;
+    height: 18px;
+    accent-color: #0d9488;
+}
+.ai-group-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-left: 26px;
 }
 
 .practice-hint {
@@ -938,22 +966,22 @@ body::after {
 </div>
 <hr class="my-4 border-slate-200">
 <div class="mb-4">
-    <h3 class="text-lg font-semibold text-slate-700 mb-3">自定義題庫</h3>
-    <div id="custom-library-list"><p class="text-slate-400">尚無自定義題目</p></div>
-    <button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>開始題庫挑戰</button>
-</div>
-<hr class="my-4 border-slate-200">
-<div class="mb-4">
 <h3 class="text-lg font-semibold text-slate-700 mb-3">AI 輔助生成形近字</h3>
 <div class="ai-seed-row mb-3">
-    <input id="ai-seed-char" class="ai-seed-input" lang="zh-Hant" placeholder="輸入漢字" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="輸入一個漢字">
+    <input id="ai-seed-char" class="ai-seed-input" lang="zh-Hant" placeholder="可輸入多個，如：抄池日" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="輸入一個或多個漢字">
     <button type="button" id="ai-similar-btn" class="ai-icon-btn" aria-label="AI 生成形近字" title="AI 生成形近字">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
     </button>
 </div>
 <div id="ai-similar-results"></div>
-<p id="ai-similar-hint" class="text-slate-500 text-sm mt-2">輸入一個漢字，點紫色圖示生成約 5 個形近字，再點選要用的字。</p>
-<button id="ai-start-selected-btn" class="w-full mt-3 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>用已選字開始遊戲</button>
+<p id="ai-similar-hint" class="text-slate-500 text-sm mt-2">輸入一個或多個漢字，可多次生成。形近字可為偏旁或部首相近。</p>
+<button id="ai-add-library-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>加入自定義題庫</button>
+</div>
+<hr class="my-4 border-slate-200">
+<div class="mb-4">
+    <h3 class="text-lg font-semibold text-slate-700 mb-3">自定義題庫</h3>
+    <div id="custom-library-list"><p class="text-slate-400">尚無自定義題目</p></div>
+    <button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>開始題庫挑戰</button>
 </div>
 <hr class="my-4 border-slate-200">
 <div class="mb-4">
@@ -1045,7 +1073,7 @@ body::after {
         const aiSimilarBtn = document.getElementById('ai-similar-btn');
         const aiSimilarResults = document.getElementById('ai-similar-results');
         const aiSimilarHint = document.getElementById('ai-similar-hint');
-        const aiStartSelectedBtn = document.getElementById('ai-start-selected-btn');
+        const aiAddLibraryBtn = document.getElementById('ai-add-library-btn');
         
         // 設定畫面
         const customLibraryList = document.getElementById('custom-library-list');
@@ -1066,7 +1094,7 @@ body::after {
         let timerId = null, animalIntervalId = null;
         let allMistakesInGame = [];
         let reviewClosesToMenu = false;
-        let selectedSimilarChars = [];
+        let aiGeneratedGroups = [];
         let aiSeedComposing = false;
         let practiceHintTimer = null;
         const TIMED_DURATION_MIN = 15;
@@ -1867,7 +1895,7 @@ body::after {
             playLibraryBtn.disabled = false;
         }
 
-        function saveLevelsToLibrary(levels) {
+        function saveLevelsToLibrary(levels, options = {}) {
             if (!currentUser || !gameData.users[currentUser]) {
                 console.error("錯誤：沒有選擇目前使用者，無法儲存題庫。");
                 return false;
@@ -1875,98 +1903,193 @@ body::after {
             if (!gameData.users[currentUser].customLibrary) {
                  gameData.users[currentUser].customLibrary = {};
             }
+            const merge = !!options.merge;
             levels.forEach(level => {
-                if (!gameData.users[currentUser].customLibrary[level.target]) {
-                    gameData.users[currentUser].customLibrary[level.target] = level;
+                const existing = gameData.users[currentUser].customLibrary[level.target];
+                if (!existing) {
+                    gameData.users[currentUser].customLibrary[level.target] = {
+                        target: level.target,
+                        distractors: [...level.distractors]
+                    };
+                } else if (merge) {
+                    gameData.users[currentUser].customLibrary[level.target] = {
+                        target: level.target,
+                        distractors: [...new Set([...existing.distractors, ...level.distractors])]
+                    };
                 }
             });
             saveGameData();
             return true;
         }
 
-        function firstHanChar(value) {
-            const chars = [...String(value || '')];
-            return chars.find((ch) => /\p{Script=Han}/u.test(ch)) || '';
+        function allHanChars(value) {
+            return [...String(value || '')].filter((ch) => /\p{Script=Han}/u.test(ch));
+        }
+
+        function uniqueHanChars(value) {
+            return [...new Set(allHanChars(value))];
         }
 
         function normalizeAiSeedInput() {
-            const han = firstHanChar(aiSeedCharInput.value);
-            if (han && aiSeedCharInput.value !== han) aiSeedCharInput.value = han;
-            updateAiStartBtn();
+            const next = uniqueHanChars(aiSeedCharInput.value).join('');
+            if (aiSeedCharInput.value !== next) aiSeedCharInput.value = next;
+            updateAiAddBtn();
         }
 
-        function updateAiStartBtn() {
-            const seed = firstHanChar(aiSeedCharInput.value);
-            aiStartSelectedBtn.disabled = selectedSimilarChars.length === 0 || seed.length !== 1;
+        function getSelectedAiLevels() {
+            return aiGeneratedGroups
+                .filter((g) => g.included)
+                .map((g) => ({
+                    target: g.target,
+                    distractors: g.chars.filter((ch) => g.selected[ch])
+                }))
+                .filter((level) => level.distractors.length > 0);
         }
 
-        function renderSimilarChips(chars) {
-            aiSimilarResults.innerHTML = '';
-            chars.forEach((ch) => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'similar-chip';
-                btn.textContent = ch;
-                btn.addEventListener('click', () => {
-                    if (selectedSimilarChars.includes(ch)) {
-                        selectedSimilarChars = selectedSimilarChars.filter((x) => x !== ch);
-                        btn.classList.remove('is-selected');
-                    } else {
-                        selectedSimilarChars.push(ch);
-                        btn.classList.add('is-selected');
-                    }
-                    updateAiStartBtn();
+        function updateAiAddBtn() {
+            if (!aiAddLibraryBtn) return;
+            aiAddLibraryBtn.disabled = getSelectedAiLevels().length === 0;
+        }
+
+        function upsertAiGroup(target, chars) {
+            const selected = {};
+            chars.forEach((ch) => { selected[ch] = true; });
+            const existing = aiGeneratedGroups.find((g) => g.target === target);
+            if (existing) {
+                existing.chars = chars;
+                existing.selected = selected;
+                existing.included = true;
+            } else {
+                aiGeneratedGroups.push({
+                    target,
+                    chars,
+                    selected,
+                    included: true
                 });
-                aiSimilarResults.appendChild(btn);
+            }
+        }
+
+        function renderAiGroups() {
+            aiSimilarResults.innerHTML = '';
+            aiGeneratedGroups.forEach((g) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'ai-group';
+
+                const head = document.createElement('label');
+                head.className = 'ai-group-head';
+                const box = document.createElement('input');
+                box.type = 'checkbox';
+                box.checked = g.included;
+                box.addEventListener('change', () => {
+                    g.included = box.checked;
+                    updateAiAddBtn();
+                });
+                const title = document.createElement('span');
+                title.textContent = `目標「${g.target}」`;
+                head.appendChild(box);
+                head.appendChild(title);
+
+                const chips = document.createElement('div');
+                chips.className = 'ai-group-chips';
+                g.chars.forEach((ch) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'similar-chip' + (g.selected[ch] ? ' is-selected' : '');
+                    btn.textContent = ch;
+                    btn.addEventListener('click', () => {
+                        g.selected[ch] = !g.selected[ch];
+                        btn.classList.toggle('is-selected', g.selected[ch]);
+                        const anyOn = g.chars.some((c) => g.selected[c]);
+                        g.included = anyOn;
+                        box.checked = g.included;
+                        updateAiAddBtn();
+                    });
+                    chips.appendChild(btn);
+                });
+
+                wrap.appendChild(head);
+                wrap.appendChild(chips);
+                aiSimilarResults.appendChild(wrap);
             });
+            updateAiAddBtn();
         }
 
         async function generateSimilarChars() {
-            const seed = firstHanChar(aiSeedCharInput.value);
-            if (seed.length !== 1) {
-                aiSimilarHint.textContent = '請先輸入一個漢字。';
+            const seeds = uniqueHanChars(aiSeedCharInput.value);
+            if (seeds.length === 0) {
+                aiSimilarHint.textContent = '請先輸入一個或多個漢字。';
                 return;
             }
-            aiSeedCharInput.value = seed;
+            const limited = seeds.slice(0, 12);
+            aiSeedCharInput.value = limited.join('');
             aiSimilarBtn.disabled = true;
-            selectedSimilarChars = [];
-            updateAiStartBtn();
-            aiSimilarResults.innerHTML = '<div class="loader"></div>';
-            aiSimilarHint.textContent = '正在生成形近字...';
-            const prompt = `你是小學識字教師。請為繁體漢字「${seed}」列出 5 個字形相近、容易認錯或寫錯的常用繁體字，不要包含「${seed}」本身。只回傳 JSON 物件，格式：{"chars":["字1","字2","字3","字4","字5"]}`;
+            aiSimilarHint.textContent = limited.length > 1
+                ? `正在為 ${limited.length} 個字生成形近字組…`
+                : '正在生成形近字…';
+            const loading = document.createElement('div');
+            loading.className = 'loader mx-auto';
+            loading.id = 'ai-similar-loading';
+            const oldLoading = document.getElementById('ai-similar-loading');
+            if (oldLoading) oldLoading.remove();
+            aiSimilarResults.appendChild(loading);
+
+            const listed = limited.map((ch) => `「${ch}」`).join('、');
+            const prompt = `你是小學識字教師。請為下列每個繁體漢字各列出 4 到 6 個容易認錯或寫錯的常用繁體形近字。形近字可以是：偏旁相同、部首相同，或部首相同但偏旁不同。不要包含該目標字本身，不要簡體字，不要重複。漢字：${listed}。只回傳 JSON 物件，格式：{"groups":[{"target":"抄","chars":["沙","妙","紗","炒"]}]}`;
             try {
                 const jsonText = await callDeepSeekAPI(prompt, true);
                 const cleaned = String(jsonText).replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
                 const data = JSON.parse(cleaned);
-                const chars = [...new Set((data.chars || [])
-                    .map((c) => String(c).trim())
-                    .filter((c) => c.length === 1 && c !== seed))];
-                if (chars.length === 0) throw new Error('empty');
-                renderSimilarChips(chars);
-                aiSimilarHint.textContent = '點選要用的形近字，再按「用已選字開始遊戲」。';
+                let groups = Array.isArray(data.groups) ? data.groups : [];
+                if (groups.length === 0 && Array.isArray(data.chars) && limited.length === 1) {
+                    groups = [{ target: limited[0], chars: data.chars }];
+                }
+                if (groups.length === 0 && data && typeof data === 'object') {
+                    groups = limited.map((t) => ({
+                        target: t,
+                        chars: Array.isArray(data[t]) ? data[t] : []
+                    }));
+                }
+                let added = 0;
+                groups.forEach((item) => {
+                    const target = String(item.target || '').trim();
+                    if (!limited.includes(target)) return;
+                    const chars = [...new Set((item.chars || [])
+                        .map((c) => String(c).trim())
+                        .filter((c) => c.length === 1 && c !== target && /\p{Script=Han}/u.test(c)))];
+                    if (chars.length === 0) return;
+                    upsertAiGroup(target, chars);
+                    added += 1;
+                });
+                if (added === 0) throw new Error('empty');
+                renderAiGroups();
+                aiSimilarHint.textContent = seeds.length > 12
+                    ? '一次最多 12 個字。請勾選要加入題庫的字組，也可再輸入新字繼續生成。'
+                    : '請勾選要加入題庫的字組與形近字，可再輸入新字繼續生成。';
             } catch (err) {
-                aiSimilarResults.innerHTML = '';
-                aiSimilarHint.textContent = '生成失敗，請稍後再試。';
+                const leftover = document.getElementById('ai-similar-loading');
+                if (leftover) leftover.remove();
+                if (aiGeneratedGroups.length === 0) aiSimilarResults.innerHTML = '';
+                else renderAiGroups();
+                aiSimilarHint.textContent = '生成失敗，請稍後再試。可再次點擊紫色圖示重新生成。';
             } finally {
+                const leftover = document.getElementById('ai-similar-loading');
+                if (leftover) leftover.remove();
                 aiSimilarBtn.disabled = false;
             }
         }
 
-        function startGameFromSimilarSelection() {
-            const target = firstHanChar(aiSeedCharInput.value);
-            if (target.length !== 1 || selectedSimilarChars.length === 0) {
-                aiSimilarHint.textContent = '請輸入一個漢字，並至少點選一個形近字。';
+        function addSelectedAiGroupsToLibrary() {
+            const levels = getSelectedAiLevels();
+            if (levels.length === 0) {
+                aiSimilarHint.textContent = '請先勾選至少一組形近字。';
                 return;
             }
-            const level = { target, distractors: [...selectedSimilarChars] };
-            if (!gameData.users[currentUser].customLibrary) {
-                gameData.users[currentUser].customLibrary = {};
+            if (!saveLevelsToLibrary(levels, { merge: true })) {
+                aiSimilarHint.textContent = '加入題庫失敗，請稍後再試。';
+                return;
             }
-            gameData.users[currentUser].customLibrary[target] = level;
-            saveGameData();
             loadCustomLibrary();
-            settingsScreen.classList.add('hidden');
-            startGame('practice', [level]);
+            aiSimilarHint.textContent = `已把 ${levels.length} 組加入自定義題庫，可再生成其他字。`;
         }
         
         function populateLevelSelectionGrid() {
@@ -2201,12 +2324,12 @@ body::after {
         });
         aiSeedCharInput.addEventListener('input', (e) => {
             if (aiSeedComposing || e.isComposing) {
-                updateAiStartBtn();
+                updateAiAddBtn();
                 return;
             }
             normalizeAiSeedInput();
         });
-        aiStartSelectedBtn.addEventListener('click', startGameFromSimilarSelection);
+        aiAddLibraryBtn.addEventListener('click', addSelectedAiGroupsToLibrary);
         
         
         addCustomBtn.addEventListener('click', () => {
