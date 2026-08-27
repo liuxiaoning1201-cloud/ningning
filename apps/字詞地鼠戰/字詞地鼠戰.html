@@ -566,11 +566,11 @@ body::after {
     color: #0f766e;
     background: #fff;
 }
-.bank-toolbar {
+.bank-picker-row {
     display: flex;
     gap: 8px;
     align-items: center;
-    margin-top: 10px;
+    margin-bottom: 8px;
 }
 .bank-select {
     flex: 1;
@@ -583,61 +583,53 @@ body::after {
     color: #334155;
     font-weight: 600;
 }
-.bank-tabs {
-    display: flex;
-    gap: 6px;
-    margin-top: 12px;
+.bank-add-btn {
+    flex: 0 0 40px;
+    height: 40px;
+    border: 1px solid #14b8a6;
+    border-radius: 0.5rem;
+    background: #ccfbf1;
+    color: #0f766e;
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
 }
-.bank-tab {
-    flex: 1;
-    height: 36px;
+.bank-add-btn:hover { background: #99f6e4; }
+.bank-mini-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 10px;
+    justify-content: flex-start;
+}
+.bank-mini-btn {
+    height: 32px;
+    padding: 0 10px;
     border: 1px solid #cbd5e1;
     border-radius: 8px;
     background: #f8fafc;
     color: #475569;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
 }
-.bank-tab.is-active {
-    background: #ccfbf1;
-    border-color: #14b8a6;
-    color: #0f766e;
-}
-.bank-preview {
-    max-height: 180px;
-    overflow-y: auto;
-    margin-top: 8px;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.375rem;
-    padding: 0.5rem;
-    text-align: left;
-    background: #fff;
-}
-.bank-preview-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0;
-    border-bottom: 1px solid #f1f5f9;
-    font-size: 0.95rem;
-    color: #334155;
-}
-.bank-preview-row:last-child { border-bottom: 0; }
-.bank-preview-target {
-    font-weight: 800;
-    color: #0f766e;
-}
-.bank-preview-add {
-    margin-left: auto;
-    height: 26px;
+.bank-mini-btn:hover { background: #e2e8f0; }
+.bank-mini-btn.is-danger { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+.lib-del-group {
+    flex: 0 0 auto;
+    height: 32px;
     padding: 0 8px;
     border: 0;
-    border-radius: 6px;
-    background: #e0f2fe;
-    color: #0369a1;
+    border-radius: 8px;
+    background: #fee2e2;
+    color: #b91c1c;
     font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
+}
+.lib-row-readonly .lib-chip {
+    padding-right: 8px;
 }
 /* 地鼠探頭動畫樣式 - 首頁置中完整顯示 */
 .mole-animation {
@@ -1045,7 +1037,7 @@ body::after {
 <!-- 關卡選擇畫面 -->
 <div id="level-selection-screen" class="modal-overlay hidden">
     <div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-lg text-center">
-        <h2 class="text-2xl font-bold text-slate-800 mb-4">選擇關卡 (四年級)</h2>
+        <h2 id="level-selection-title" class="text-2xl font-bold text-slate-800 mb-4">選擇關卡</h2>
         <div id="level-grid" class="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-[60vh] overflow-y-auto p-2">
             <!-- 關卡按鈕將由 JS 動態生成 -->
         </div>
@@ -1115,25 +1107,27 @@ body::after {
     <p class="text-slate-500 text-sm mt-2">可設 15 到 180 秒，開始計時比賽時會套用。</p>
 </div>
 <hr id="timed-duration-divider" class="my-4 border-slate-200">
-<div class="mb-4">
-    <h3 class="text-lg font-semibold text-slate-700 mb-3">匯入/匯出題庫</h3>
-    <div class="flex space-x-2">
-        <button id="import-excel-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">導入題庫 (Excel)</button>
-        <button id="export-excel-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">導出題庫 (Excel)</button>
+<div class="mb-4 text-left">
+    <h3 class="text-lg font-semibold text-slate-700 mb-3 text-center">詞庫</h3>
+    <label class="text-sm text-slate-600 font-bold" for="active-bank-select">目前詞庫</label>
+    <div class="bank-picker-row">
+        <select id="active-bank-select" class="bank-select" aria-label="選擇目前詞庫"></select>
+        <button type="button" id="add-bank-btn" class="bank-add-btn" aria-label="新增詞庫" title="新增詞庫">＋</button>
     </div>
-    <div class="bank-toolbar">
-        <label class="text-sm text-slate-600 font-bold" for="export-bank-select">導出哪個詞庫</label>
-        <select id="export-bank-select" class="bank-select" aria-label="選擇要導出的詞庫">
-            <option value="system">系統詞庫（四年級）</option>
-            <option value="custom">自定義題庫</option>
-        </select>
+    <div class="flex space-x-2">
+        <button id="import-excel-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">導入</button>
+        <button id="export-excel-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">導出這份</button>
     </div>
     <input type="file" id="excel-upload-input" class="hidden" accept=".xlsx, .xls">
-    <div class="bank-tabs" role="tablist">
-        <button type="button" id="bank-tab-system" class="bank-tab is-active" data-bank="system">系統詞庫</button>
-        <button type="button" id="bank-tab-custom" class="bank-tab" data-bank="custom">自定義題庫</button>
+    <div class="bank-mini-actions">
+        <button type="button" id="copy-bank-btn" class="bank-mini-btn">複製成新詞庫</button>
+        <button type="button" id="rename-bank-btn" class="bank-mini-btn">改名</button>
+        <button type="button" id="delete-bank-btn" class="bank-mini-btn is-danger">刪除詞庫</button>
     </div>
-    <div id="bank-preview" class="bank-preview"></div>
+    <div id="custom-library-list"></div>
+    <p id="library-hint" class="text-slate-500 text-sm mt-2">最後一行可手動輸入目標字與形近字。</p>
+    <button id="commit-new-row-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition">將上述字添加到詞庫中</button>
+    <button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>用這份詞庫開始挑戰</button>
 </div>
 <hr class="my-4 border-slate-200">
 <div class="mb-4">
@@ -1146,15 +1140,7 @@ body::after {
 </div>
 <div id="ai-similar-results"></div>
 <p id="ai-similar-hint" class="text-slate-500 text-sm mt-2">輸入一個或多個漢字，可多次生成。形近字可為偏旁或部首相近。</p>
-<button id="ai-add-library-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>加入自定義題庫</button>
-</div>
-<hr class="my-4 border-slate-200">
-<div class="mb-4">
-    <h3 class="text-lg font-semibold text-slate-700 mb-3">自定義題庫</h3>
-    <div id="custom-library-list"></div>
-    <p id="library-hint" class="text-slate-500 text-sm mt-2">最後一行可手動輸入目標字與形近字。</p>
-    <button id="commit-new-row-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition">將上述字添加到詞庫中</button>
-    <button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>開始題庫挑戰</button>
+<button id="ai-add-library-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>加入目前詞庫</button>
 </div>
 <button id="close-settings-btn" class="mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition">關閉</button>
 </div>
@@ -1215,6 +1201,7 @@ body::after {
         // 關卡選擇畫面
         const levelGrid = document.getElementById('level-grid');
         const closeLevelSelectionBtn = document.getElementById('close-level-selection-btn');
+        const levelSelectionTitle = document.getElementById('level-selection-title');
 
         // 結束與回顧畫面
         const levelEndTitle = document.getElementById('level-end-title');
@@ -1248,11 +1235,12 @@ body::after {
         const libraryHint = document.getElementById('library-hint');
         const importExcelBtn = document.getElementById('import-excel-btn');
         const exportExcelBtn = document.getElementById('export-excel-btn');
-        const exportBankSelect = document.getElementById('export-bank-select');
         const excelUploadInput = document.getElementById('excel-upload-input');
-        const bankPreview = document.getElementById('bank-preview');
-        const bankTabSystem = document.getElementById('bank-tab-system');
-        const bankTabCustom = document.getElementById('bank-tab-custom');
+        const activeBankSelect = document.getElementById('active-bank-select');
+        const addBankBtn = document.getElementById('add-bank-btn');
+        const copyBankBtn = document.getElementById('copy-bank-btn');
+        const renameBankBtn = document.getElementById('rename-bank-btn');
+        const deleteBankBtn = document.getElementById('delete-bank-btn');
 
         let holes = [];
 
@@ -1266,7 +1254,6 @@ body::after {
         let aiGeneratedGroups = [];
         let aiSeedComposing = false;
         let newRowDraft = { target: '', distractors: [] };
-        let previewBank = 'system';
         let practiceHintTimer = null;
         let slowSkillTimer = null;
         const TIMED_DURATION_MIN = 15;
@@ -1275,6 +1262,8 @@ body::after {
         const TIMED_HIT_POINTS = 15;
         const TIMED_MISS_POINTS = 4;
         const SLOW_TOKEN_SCORE = 30;
+        const SYSTEM_BANK_ID = 'sys-g4';
+        const SYSTEM_BANK_NAME = '四年級（系統）';
 
         // --- 內建四年級關卡 ---
         const gradeFourLevels = [
@@ -1443,23 +1432,26 @@ body::after {
             }
         }
 
-        function startGame(mode, levels, startIndex = 0) {
+        function startGame(mode, levels, startIndex = 0, options = {}) {
             startScreen.classList.add('hidden');
             modeSelectionView.classList.add('hidden');
             gameScreen.classList.remove('hidden');
             allMistakesInGame = [];
 
             let gameLevels = levels;
-            // In timed mode, we shuffle for replayability.
             if (mode === 'timed') {
                 gameLevels = [...levels].sort(() => Math.random() - 0.5);
             }
 
             const timedDuration = getTimedDuration();
+            const bankMeta = getBankMeta();
 
             gameState = {
                 mode: mode,
                 levelList: gameLevels,
+                sourceLevels: [...levels],
+                bankName: options.bankName || bankMeta.name,
+                weeklyPairs: options.weeklyPairs === true,
                 currentLevelIndex: startIndex,
                 score: 0,
                 combo: 0,
@@ -1491,7 +1483,7 @@ body::after {
                 hitsDisplay.classList.add('hidden');
                 comboDisplay.classList.remove('hidden');
                 skillsBar.classList.remove('hidden');
-                gameModeTitleEl.textContent = '計時比賽 (四年級)';
+                gameModeTitleEl.textContent = `計時比賽 (${gameState.bankName})`;
                 saveQuitBtn.textContent = '儲存並離開';
                 applyTimedPace();
                 timerId = setInterval(updateTimer, 1000);
@@ -1588,11 +1580,12 @@ body::after {
         function switchToNextTarget() {
             gameState.currentLevelIndex++;
             if (gameState.currentLevelIndex >= gameState.levelList.length) {
-                // Reshuffle and start from the beginning if we went through all characters
-                gameState.levelList = [...gradeFourLevels].sort(() => Math.random() - 0.5);
+                const source = gameState.sourceLevels && gameState.sourceLevels.length
+                    ? gameState.sourceLevels
+                    : getActivePlayableLevels();
+                gameState.levelList = [...source].sort(() => Math.random() - 0.5);
                 gameState.currentLevelIndex = 0;
             }
-            // Manually call setupLevel to update target character and UI immediately
             setupLevel();
         }
         
@@ -1704,7 +1697,9 @@ body::after {
                 levelEndTitle.textContent = "時間到！";
                 nextLevelBtn.classList.add('hidden');
             } else {
-                levelEndTitle.textContent = `第 ${Math.floor(gameState.currentLevelIndex / 2) + 1} 關完成！`;
+                levelEndTitle.textContent = gameState.weeklyPairs
+                    ? `第 ${Math.floor(gameState.currentLevelIndex / 2) + 1} 關完成！`
+                    : `第 ${gameState.currentLevelIndex + 1} 關完成！`;
                 nextLevelBtn.classList.remove('hidden');
                 // 播放獲勝音效
                 winnerSound.currentTime = 0; // 重置到開頭
@@ -1781,9 +1776,17 @@ body::after {
             
             if (gameState.mode === 'practice') {
                 hitsEl.textContent = `${gameState.correctHitsThisLevel} / 3`;
-                const totalWeeks = Math.ceil(gradeFourLevels.length / 2);
-                const currentWeek = Math.floor(gameState.currentLevelIndex / 2) + 1;
-                gameModeTitleEl.textContent = `闖關練習 (四年級 - 第 ${currentWeek} / ${totalWeeks} 關)`;
+                const sourceLen = (gameState.sourceLevels && gameState.sourceLevels.length)
+                    ? gameState.sourceLevels.length
+                    : gameState.levelList.length;
+                const bankName = gameState.bankName || getBankMeta().name;
+                const totalWeeks = gameState.weeklyPairs
+                    ? Math.ceil(sourceLen / 2)
+                    : sourceLen;
+                const currentWeek = gameState.weeklyPairs
+                    ? Math.floor(gameState.currentLevelIndex / 2) + 1
+                    : gameState.currentLevelIndex + 1;
+                gameModeTitleEl.textContent = `闖關練習 (${bankName} - 第 ${currentWeek} / ${totalWeeks} 關)`;
             } else {
                 timerEl.textContent = gameState.timeLeft;
             }
@@ -1862,11 +1865,14 @@ body::after {
                 gameData.users[currentUser] = {
                     highScore: 0,
                     customLibrary: {},
+                    libraries: {},
+                    activeLibraryId: SYSTEM_BANK_ID,
                     skillTokens: 0,
                     timedDuration: TIMED_DURATION_DEFAULT,
                     savedTimedGame: null
                 };
             }
+            migrateUserLibraries();
             if (!Number.isFinite(Number(gameData.users[currentUser].timedDuration))) {
                 gameData.users[currentUser].timedDuration = TIMED_DURATION_DEFAULT;
             }
@@ -2082,26 +2088,176 @@ body::after {
             libraryHint.className = (isError ? 'text-red-500' : 'text-slate-500') + ' text-sm mt-2';
         }
 
-        function loadCustomLibrary() {
-            const library = gameData.users[currentUser]?.customLibrary || {};
-            customLibraryList.innerHTML = '';
-            const keys = Object.keys(library);
-            keys.forEach((key) => {
-                const level = library[key];
-                customLibraryList.appendChild(buildLibraryRow(level, false));
-            });
-            customLibraryList.appendChild(buildLibraryRow({
-                target: newRowDraft.target,
-                distractors: [...newRowDraft.distractors]
-            }, true));
-            const playable = keys.some((key) => (library[key].distractors || []).length > 0);
-            playLibraryBtn.disabled = !playable;
-            renderBankPreview();
+        function getUserRecord() {
+            return gameData.users[currentUser];
         }
 
-        function buildLibraryRow(level, isNew) {
+        function levelsArrayFromMap(map) {
+            return Object.values(map || {}).filter((level) =>
+                level && level.target && Array.isArray(level.distractors) && level.distractors.length > 0
+            );
+        }
+
+        function levelsMapFromArray(arr) {
+            const map = {};
+            (arr || []).forEach((level) => {
+                if (!level || !level.target) return;
+                map[level.target] = {
+                    target: level.target,
+                    distractors: [...new Set(level.distractors || [])].filter((c) => c && c !== level.target)
+                };
+            });
+            return map;
+        }
+
+        function migrateUserLibraries() {
+            const user = getUserRecord();
+            if (!user) return;
+            if (!user.libraries || typeof user.libraries !== 'object') user.libraries = {};
+            const old = user.customLibrary;
+            const oldHas = old && typeof old === 'object' && Object.keys(old).length > 0;
+            const hasCustom = Object.values(user.libraries).some((bank) => bank && bank.kind === 'custom');
+            if (oldHas && !hasCustom) {
+                user.libraries['custom-migrated'] = {
+                    id: 'custom-migrated',
+                    name: '我的詞庫',
+                    kind: 'custom',
+                    levels: { ...old }
+                };
+            }
+            const active = user.activeLibraryId;
+            const activeOk = active === SYSTEM_BANK_ID || (active && user.libraries[active]);
+            if (!activeOk) {
+                user.activeLibraryId = user.libraries['custom-migrated'] ? 'custom-migrated' : SYSTEM_BANK_ID;
+            }
+        }
+
+        function getActiveBankId() {
+            return getUserRecord()?.activeLibraryId || SYSTEM_BANK_ID;
+        }
+
+        function isSystemBank(id = getActiveBankId()) {
+            return id === SYSTEM_BANK_ID;
+        }
+
+        function getBankMeta(id = getActiveBankId()) {
+            if (id === SYSTEM_BANK_ID || !getUserRecord()?.libraries?.[id]) {
+                return { id: SYSTEM_BANK_ID, name: SYSTEM_BANK_NAME, kind: 'system' };
+            }
+            const bank = getUserRecord().libraries[id];
+            return { id: bank.id, name: bank.name || '未命名詞庫', kind: 'custom' };
+        }
+
+        function getBankLevelsById(id = getActiveBankId()) {
+            if (id === SYSTEM_BANK_ID) return gradeFourLevels.slice();
+            return levelsArrayFromMap(getUserRecord()?.libraries?.[id]?.levels);
+        }
+
+        function getActivePlayableLevels() {
+            return getBankLevelsById();
+        }
+
+        function getEditableLevelsMap() {
+            if (isSystemBank()) return null;
+            const user = getUserRecord();
+            const bank = user.libraries[getActiveBankId()];
+            if (!bank) return null;
+            if (!bank.levels || typeof bank.levels !== 'object') bank.levels = {};
+            return bank.levels;
+        }
+
+        function listAllBanks() {
+            const custom = Object.values(getUserRecord()?.libraries || {})
+                .filter((bank) => bank && bank.kind === 'custom')
+                .sort((a, b) => String(a.name).localeCompare(String(b.name), 'zh-Hant'));
+            return [
+                { id: SYSTEM_BANK_ID, name: SYSTEM_BANK_NAME, kind: 'system' },
+                ...custom.map((bank) => ({ id: bank.id, name: bank.name, kind: 'custom' }))
+            ];
+        }
+
+        function safeNamePart(name) {
+            return String(name || '詞庫').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || '詞庫';
+        }
+
+        function createCustomBank(name, levelsMap = {}, makeActive = true) {
+            const user = getUserRecord();
+            const id = 'custom-' + Date.now().toString(36);
+            user.libraries[id] = {
+                id,
+                name: String(name || '').trim() || '未命名詞庫',
+                kind: 'custom',
+                levels: { ...levelsMap }
+            };
+            if (makeActive) user.activeLibraryId = id;
+            saveGameData();
+            return id;
+        }
+
+        function setActiveBank(id) {
+            const user = getUserRecord();
+            if (id !== SYSTEM_BANK_ID && !user.libraries[id]) return;
+            user.activeLibraryId = id;
+            newRowDraft = { target: '', distractors: [] };
+            saveGameData();
+            refreshLibraryUI();
+        }
+
+        function refreshLibraryUI() {
+            const meta = getBankMeta();
+            const levels = getActivePlayableLevels();
+            const readOnly = meta.kind === 'system';
+
+            if (activeBankSelect) {
+                activeBankSelect.innerHTML = '';
+                listAllBanks().forEach((bank) => {
+                    const option = document.createElement('option');
+                    option.value = bank.id;
+                    const count = getBankLevelsById(bank.id).length;
+                    option.textContent = `${bank.name} · ${count} 題`;
+                    activeBankSelect.appendChild(option);
+                });
+                activeBankSelect.value = meta.id;
+            }
+
+            if (exportExcelBtn) exportExcelBtn.textContent = `導出：${meta.name}`;
+            if (renameBankBtn) renameBankBtn.classList.toggle('hidden', readOnly);
+            if (deleteBankBtn) deleteBankBtn.classList.toggle('hidden', readOnly);
+            if (commitNewRowBtn) commitNewRowBtn.classList.toggle('hidden', readOnly);
+            if (aiAddLibraryBtn) aiAddLibraryBtn.textContent = '加入目前詞庫';
+
+            customLibraryList.innerHTML = '';
+            if (readOnly) {
+                levels.forEach((level) => {
+                    customLibraryList.appendChild(buildLibraryRow(level, false, true));
+                });
+                setLibraryHint('這是系統詞庫，只能查看。要改字請先「複製成新詞庫」。', false);
+            } else {
+                const map = getEditableLevelsMap() || {};
+                Object.keys(map).forEach((key) => {
+                    customLibraryList.appendChild(buildLibraryRow(map[key], false, false));
+                });
+                customLibraryList.appendChild(buildLibraryRow({
+                    target: newRowDraft.target,
+                    distractors: [...newRowDraft.distractors]
+                }, true, false));
+                if (levels.length === 0 && !newRowDraft.target) {
+                    setLibraryHint('這份詞庫還是空的。最後一行可手動加字，或從系統詞庫複製。', false);
+                } else {
+                    setLibraryHint('最後一行可手動輸入目標字與形近字。', false);
+                }
+            }
+            playLibraryBtn.disabled = levels.length === 0;
+            updateAiAddBtn();
+        }
+
+        function loadCustomLibrary() {
+            refreshLibraryUI();
+        }
+
+        function buildLibraryRow(level, isNew, readOnly) {
             const row = document.createElement('div');
-            row.className = 'lib-row' + (isNew ? ' lib-row-new' : '');
+            row.className = 'lib-row' + (isNew ? ' lib-row-new' : '') + (readOnly ? ' lib-row-readonly' : '');
 
             const chips = document.createElement('div');
             chips.className = 'lib-chips';
@@ -2122,7 +2278,7 @@ body::after {
                         newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans.slice(1)])]
                             .filter((c) => c !== newRowDraft.target);
                     }
-                    loadCustomLibrary();
+                    refreshLibraryUI();
                     const next = customLibraryList.querySelector('.lib-row-new .lib-add-input');
                     if (next) next.focus();
                 });
@@ -2139,54 +2295,58 @@ body::after {
                 chip.className = 'lib-chip';
                 const label = document.createElement('span');
                 label.textContent = ch;
-                const xBtn = document.createElement('button');
-                xBtn.type = 'button';
-                xBtn.className = 'lib-chip-x';
-                xBtn.setAttribute('aria-label', `刪除 ${ch}`);
-                xBtn.textContent = '×';
-                xBtn.addEventListener('click', () => {
-                    if (isNew) {
-                        newRowDraft.distractors = newRowDraft.distractors.filter((c) => c !== ch);
-                        loadCustomLibrary();
-                    } else {
-                        removeLibraryChar(level.target, ch);
-                    }
-                });
                 chip.appendChild(label);
-                chip.appendChild(xBtn);
+                if (!readOnly) {
+                    const xBtn = document.createElement('button');
+                    xBtn.type = 'button';
+                    xBtn.className = 'lib-chip-x';
+                    xBtn.setAttribute('aria-label', `刪除 ${ch}`);
+                    xBtn.textContent = '×';
+                    xBtn.addEventListener('click', () => {
+                        if (isNew) {
+                            newRowDraft.distractors = newRowDraft.distractors.filter((c) => c !== ch);
+                            refreshLibraryUI();
+                        } else {
+                            removeLibraryChar(level.target, ch);
+                        }
+                    });
+                    chip.appendChild(xBtn);
+                }
                 chips.appendChild(chip);
             });
 
-            const addInput = document.createElement('input');
-            addInput.className = 'lib-add-input';
-            addInput.placeholder = '+';
-            addInput.setAttribute('lang', 'zh-Hant');
-            addInput.setAttribute('aria-label', isNew ? '為新目標字新增形近字' : `為「${level.target}」新增形近字`);
-            addInput.autocomplete = 'off';
-            addInput.spellcheck = false;
-            bindHanCommit(addInput, () => {
-                const hans = uniqueHanChars(addInput.value);
-                if (hans.length === 0) return;
-                if (isNew) {
-                    if (!newRowDraft.target) {
-                        newRowDraft.target = hans[0];
-                        newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans.slice(1)])]
-                            .filter((c) => c !== newRowDraft.target);
+            if (!readOnly) {
+                const addInput = document.createElement('input');
+                addInput.className = 'lib-add-input';
+                addInput.placeholder = '+';
+                addInput.setAttribute('lang', 'zh-Hant');
+                addInput.setAttribute('aria-label', isNew ? '為新目標字新增形近字' : `為「${level.target}」新增形近字`);
+                addInput.autocomplete = 'off';
+                addInput.spellcheck = false;
+                bindHanCommit(addInput, () => {
+                    const hans = uniqueHanChars(addInput.value);
+                    if (hans.length === 0) return;
+                    if (isNew) {
+                        if (!newRowDraft.target) {
+                            newRowDraft.target = hans[0];
+                            newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans.slice(1)])]
+                                .filter((c) => c !== newRowDraft.target);
+                        } else {
+                            newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans])]
+                                .filter((c) => c !== newRowDraft.target);
+                        }
+                        refreshLibraryUI();
+                        const next = customLibraryList.querySelector('.lib-row-new .lib-add-input');
+                        if (next) next.focus();
                     } else {
-                        newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans])]
-                            .filter((c) => c !== newRowDraft.target);
+                        addLibraryChars(level.target, hans.filter((c) => c !== level.target));
                     }
-                    loadCustomLibrary();
-                    const next = customLibraryList.querySelector('.lib-row-new .lib-add-input');
-                    if (next) next.focus();
-                } else {
-                    addLibraryChars(level.target, hans.filter((c) => c !== level.target));
-                }
-            });
-            chips.appendChild(addInput);
+                });
+                chips.appendChild(addInput);
+            }
             row.appendChild(chips);
 
-            if (!isNew) {
+            if (!isNew && !readOnly) {
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
                 delBtn.className = 'lib-del-group';
@@ -2198,6 +2358,10 @@ body::after {
         }
 
         function commitNewRowToLibrary() {
+            if (isSystemBank()) {
+                setLibraryHint('系統詞庫不能修改，請先複製成新詞庫。', true);
+                return;
+            }
             const target = newRowDraft.target;
             const distractors = [...new Set(newRowDraft.distractors)].filter((c) => c && c !== target);
             if (!target || distractors.length === 0) {
@@ -2206,101 +2370,60 @@ body::after {
             }
             saveLevelsToLibrary([{ target, distractors }], { merge: true });
             newRowDraft = { target: '', distractors: [] };
-            loadCustomLibrary();
-            setPreviewBank('custom');
-            setLibraryHint('已加入自定義題庫。', false);
+            refreshLibraryUI();
+            setLibraryHint('已加入目前詞庫。', false);
             setTimeout(() => setLibraryHint('最後一行可手動輸入目標字與形近字。', false), 1800);
         }
 
-        function getBankLevels(which) {
-            if (which === 'system') return gradeFourLevels.slice();
-            return Object.values(gameData.users[currentUser]?.customLibrary || {}).filter((level) =>
-                level && level.target && Array.isArray(level.distractors) && level.distractors.length > 0
-            );
-        }
-
-        function renderBankPreview() {
-            if (!bankPreview) return;
-            const levels = getBankLevels(previewBank);
-            bankPreview.innerHTML = '';
-            if (levels.length === 0) {
-                bankPreview.innerHTML = '<p class="text-slate-400">這個詞庫目前沒有題目</p>';
-                return;
-            }
-            levels.forEach((level) => {
-                const row = document.createElement('div');
-                row.className = 'bank-preview-row';
-                const t = document.createElement('span');
-                t.className = 'bank-preview-target';
-                t.textContent = level.target;
-                const d = document.createElement('span');
-                d.textContent = (level.distractors || []).join('、');
-                row.appendChild(t);
-                row.appendChild(d);
-                bankPreview.appendChild(row);
-            });
-        }
-
-        function setPreviewBank(which) {
-            previewBank = which;
-            if (bankTabSystem) bankTabSystem.classList.toggle('is-active', which === 'system');
-            if (bankTabCustom) bankTabCustom.classList.toggle('is-active', which === 'custom');
-            renderBankPreview();
-        }
-
-        function getLibrary() {
-            if (!gameData.users[currentUser].customLibrary) {
-                gameData.users[currentUser].customLibrary = {};
-            }
-            return gameData.users[currentUser].customLibrary;
-        }
-
         function addLibraryChars(target, chars) {
-            const library = getLibrary();
+            const library = getEditableLevelsMap();
+            if (!library) return;
             const existing = library[target] || { target, distractors: [] };
             const next = [...new Set([...existing.distractors, ...chars])].filter((c) => c && c !== target);
             if (next.length === 0) return;
             library[target] = { target, distractors: next };
             saveGameData();
-            loadCustomLibrary();
+            refreshLibraryUI();
         }
 
         function removeLibraryChar(target, ch) {
-            const library = getLibrary();
+            const library = getEditableLevelsMap();
+            if (!library) return;
             const existing = library[target];
             if (!existing) return;
             const next = existing.distractors.filter((c) => c !== ch);
             if (next.length === 0) delete library[target];
             else library[target] = { target, distractors: next };
             saveGameData();
-            loadCustomLibrary();
+            refreshLibraryUI();
         }
 
         function deleteLibraryGroup(target) {
-            const library = getLibrary();
+            const library = getEditableLevelsMap();
+            if (!library) return;
             delete library[target];
             saveGameData();
-            loadCustomLibrary();
+            refreshLibraryUI();
         }
 
         function saveLevelsToLibrary(levels, options = {}) {
-            if (!currentUser || !gameData.users[currentUser]) {
-                console.error("錯誤：沒有選擇目前使用者，無法儲存題庫。");
+            if (!currentUser || !getUserRecord()) {
+                console.error('錯誤：沒有選擇目前使用者，無法儲存題庫。');
                 return false;
             }
-            if (!gameData.users[currentUser].customLibrary) {
-                 gameData.users[currentUser].customLibrary = {};
-            }
+            if (isSystemBank()) return false;
+            const library = getEditableLevelsMap();
+            if (!library) return false;
             const merge = !!options.merge;
-            levels.forEach(level => {
-                const existing = gameData.users[currentUser].customLibrary[level.target];
+            levels.forEach((level) => {
+                const existing = library[level.target];
                 if (!existing) {
-                    gameData.users[currentUser].customLibrary[level.target] = {
+                    library[level.target] = {
                         target: level.target,
                         distractors: [...level.distractors]
                     };
                 } else if (merge) {
-                    gameData.users[currentUser].customLibrary[level.target] = {
+                    library[level.target] = {
                         target: level.target,
                         distractors: [...new Set([...existing.distractors, ...level.distractors])]
                     };
@@ -2308,6 +2431,59 @@ body::after {
             });
             saveGameData();
             return true;
+        }
+
+        function promptBankName(defaultName) {
+            const name = window.prompt('請輸入詞庫名稱', defaultName || '');
+            if (name === null) return null;
+            const trimmed = name.trim();
+            if (!trimmed) {
+                alert('名稱不能空白。');
+                return null;
+            }
+            return trimmed;
+        }
+
+        function handleAddBank() {
+            const name = promptBankName('三年級甲班');
+            if (!name) return;
+            createCustomBank(name, {});
+            refreshLibraryUI();
+            setLibraryHint(`已新增詞庫「${name}」。`, false);
+        }
+
+        function handleCopyBank() {
+            const meta = getBankMeta();
+            const name = promptBankName(`${meta.name} 副本`);
+            if (!name) return;
+            const levelsMap = isSystemBank()
+                ? levelsMapFromArray(gradeFourLevels)
+                : { ...(getEditableLevelsMap() || {}) };
+            createCustomBank(name, levelsMap);
+            refreshLibraryUI();
+            setLibraryHint(`已複製為「${name}」，可以自由增刪。`, false);
+        }
+
+        function handleRenameBank() {
+            if (isSystemBank()) return;
+            const meta = getBankMeta();
+            const name = promptBankName(meta.name);
+            if (!name) return;
+            getUserRecord().libraries[meta.id].name = name;
+            saveGameData();
+            refreshLibraryUI();
+        }
+
+        function handleDeleteBank() {
+            if (isSystemBank()) return;
+            const meta = getBankMeta();
+            if (!confirm(`確定刪除詞庫「${meta.name}」？此動作無法復原。`)) return;
+            delete getUserRecord().libraries[meta.id];
+            getUserRecord().activeLibraryId = SYSTEM_BANK_ID;
+            newRowDraft = { target: '', distractors: [] };
+            saveGameData();
+            refreshLibraryUI();
+            setLibraryHint(`已刪除「${meta.name}」，已切回系統詞庫。`, false);
         }
 
         function allHanChars(value) {
@@ -2335,7 +2511,7 @@ body::after {
 
         function updateAiAddBtn() {
             if (!aiAddLibraryBtn) return;
-            aiAddLibraryBtn.disabled = getSelectedAiLevels().length === 0;
+            aiAddLibraryBtn.disabled = isSystemBank() || getSelectedAiLevels().length === 0;
         }
 
         function upsertAiGroup(target, chars) {
@@ -2459,25 +2635,49 @@ body::after {
                 return;
             }
             if (!saveLevelsToLibrary(levels, { merge: true })) {
-                aiSimilarHint.textContent = '加入題庫失敗，請稍後再試。';
+                aiSimilarHint.textContent = isSystemBank()
+                    ? '系統詞庫不能修改，請先複製成新詞庫。'
+                    : '加入題庫失敗，請稍後再試。';
                 return;
             }
-            loadCustomLibrary();
-            aiSimilarHint.textContent = `已把 ${levels.length} 組加入自定義題庫，可再生成其他字。`;
+            refreshLibraryUI();
+            aiSimilarHint.textContent = `已把 ${levels.length} 組加入「${getBankMeta().name}」，可再生成其他字。`;
         }
         
         function populateLevelSelectionGrid() {
             levelGrid.innerHTML = '';
-            const weeklyTargets = gradeFourLevels.filter((_, index) => index % 2 === 0);
-            weeklyTargets.forEach((level, index) => {
+            const meta = getBankMeta();
+            const levels = getActivePlayableLevels();
+            if (levelSelectionTitle) levelSelectionTitle.textContent = `選擇關卡 (${meta.name})`;
+            if (meta.kind === 'system') {
+                const weeklyTargets = gradeFourLevels.filter((_, index) => index % 2 === 0);
+                weeklyTargets.forEach((level, index) => {
+                    const button = document.createElement('button');
+                    button.classList.add('p-2', 'border', 'rounded-lg', 'hover:bg-blue-100', 'transition');
+                    button.innerHTML = `<p class="font-bold">第 ${index + 1} 關</p><p class="text-sm text-slate-500">${level.target}, ${level.distractors[0]}...</p>`;
+                    button.dataset.startIndex = index * 2;
+                    button.addEventListener('click', (e) => {
+                        const startIndex = parseInt(e.currentTarget.dataset.startIndex, 10);
+                        levelSelectionScreen.classList.add('hidden');
+                        startGame('practice', gradeFourLevels, startIndex, {
+                            bankName: meta.name,
+                            weeklyPairs: true
+                        });
+                    });
+                    levelGrid.appendChild(button);
+                });
+                return;
+            }
+            levels.forEach((level, index) => {
                 const button = document.createElement('button');
                 button.classList.add('p-2', 'border', 'rounded-lg', 'hover:bg-blue-100', 'transition');
-                button.innerHTML = `<p class="font-bold">第 ${index + 1} 關</p><p class="text-sm text-slate-500">${level.target}, ${level.distractors[0]}...</p>`;
-                button.dataset.startIndex = index * 2;
-                button.addEventListener('click', (e) => {
-                    const startIndex = parseInt(e.currentTarget.dataset.startIndex);
+                button.innerHTML = `<p class="font-bold">第 ${index + 1} 關</p><p class="text-sm text-slate-500">${level.target}</p>`;
+                button.addEventListener('click', () => {
                     levelSelectionScreen.classList.add('hidden');
-                    startGame('practice', gradeFourLevels, startIndex);
+                    startGame('practice', levels, index, {
+                        bankName: meta.name,
+                        weeklyPairs: false
+                    });
                 });
                 levelGrid.appendChild(button);
             });
@@ -2499,7 +2699,7 @@ body::after {
                 hitsDisplay.classList.add('hidden');
                 comboDisplay.classList.remove('hidden');
                 skillsBar.classList.remove('hidden');
-                gameModeTitleEl.textContent = '計時比賽 (四年級)';
+                gameModeTitleEl.textContent = `計時比賽 (${gameState.bankName || getBankMeta().name})`;
                 saveQuitBtn.textContent = '儲存並離開';
                 applyTimedPace();
                 timerId = setInterval(updateTimer, 1000);
@@ -2554,15 +2754,26 @@ body::after {
                         };
                     }).filter(level => level && level.target.length === 1 && level.distractors.length > 0);
 
-                    if (newLevels.length > 0) {
-                        if (saveLevelsToLibrary(newLevels)) {
-                            loadCustomLibrary();
-                            alert(`成功導入 ${newLevels.length} 題！`);
-                        } else {
-                            alert('導入失敗，請稍後再試。');
-                        }
-                    } else {
+                    if (newLevels.length === 0) {
                         alert('Excel 檔案中沒有找到有效格式的題目。');
+                        return;
+                    }
+
+                    if (isSystemBank()) {
+                        const fallback = file.name.replace(/\.(xlsx|xls)$/i, '') || '導入詞庫';
+                        const name = promptBankName(fallback);
+                        if (!name) return;
+                        createCustomBank(name, levelsMapFromArray(newLevels));
+                        refreshLibraryUI();
+                        alert(`系統詞庫不能直接修改。已匯入 ${newLevels.length} 題到新詞庫「${name}」。`);
+                        return;
+                    }
+
+                    if (saveLevelsToLibrary(newLevels, { merge: true })) {
+                        refreshLibraryUI();
+                        alert(`已把 ${newLevels.length} 題匯入「${getBankMeta().name}」。`);
+                    } else {
+                        alert('導入失敗，請稍後再試。');
                     }
                 } catch (error) {
                     console.error("導入 Excel 失敗:", error);
@@ -2570,14 +2781,14 @@ body::after {
                 }
             };
             reader.readAsArrayBuffer(file);
-            excelUploadInput.value = ''; // Reset file input
+            excelUploadInput.value = '';
         }
 
         async function handleExport() {
-            const which = (exportBankSelect && exportBankSelect.value) || 'custom';
-            const levels = getBankLevels(which);
+            const meta = getBankMeta();
+            const levels = getActivePlayableLevels();
             if (levels.length === 0) {
-                alert(which === 'system' ? '系統詞庫是空的！' : '自定義題庫是空的！');
+                alert(`「${meta.name}」目前沒有題目可導出。`);
                 return;
             }
             try {
@@ -2587,17 +2798,19 @@ body::after {
                 return;
             }
 
-            const dataForSheet = [['目標字', '干擾字1', '干擾字2', '干擾字3']];
+            const maxDist = Math.max(3, ...levels.map((level) => (level.distractors || []).length));
+            const headers = ['目標字'];
+            for (let i = 1; i <= maxDist; i++) headers.push(`干擾字${i}`);
+            const dataForSheet = [headers];
             levels.forEach((level) => {
                 dataForSheet.push([level.target, ...level.distractors]);
             });
 
             const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
             const workbook = XLSX.utils.book_new();
-            const sheetName = which === 'system' ? '系統詞庫' : '自定義題庫';
+            const sheetName = safeNamePart(meta.name).slice(0, 31);
             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-            const filename = which === 'system' ? '系統詞庫_四年級.xlsx' : `${currentUser}_自定義題庫.xlsx`;
-            XLSX.writeFile(workbook, filename);
+            XLSX.writeFile(workbook, `${safeNamePart(meta.name)}.xlsx`);
         }
         
         // --- 事件監聽器 ---
@@ -2609,19 +2822,31 @@ body::after {
             updateHighScoreDisplay();
         });
         practiceModeBtn.addEventListener('click', () => {
+            const levels = getActivePlayableLevels();
+            if (levels.length === 0) {
+                alert(`「${getBankMeta().name}」還沒有題目。請先在設定裡加字，或切換到其他詞庫。`);
+                return;
+            }
+            populateLevelSelectionGrid();
             levelSelectionScreen.classList.remove('hidden');
         });
         timedModeBtn.addEventListener('click', () => {
             const savedGame = gameData.users[currentUser]?.savedTimedGame;
             if (savedGame) {
-                // Clear saved game once loaded
                 gameData.users[currentUser].savedTimedGame = null;
                 saveGameData();
-                // Restore game from saved state
                 resumeGame(savedGame);
-            } else {
-                startGame('timed', gradeFourLevels);
+                return;
             }
+            const levels = getActivePlayableLevels();
+            if (levels.length === 0) {
+                alert(`「${getBankMeta().name}」還沒有題目。請先在設定裡加字，或切換到其他詞庫。`);
+                return;
+            }
+            startGame('timed', levels, 0, {
+                bankName: getBankMeta().name,
+                weeklyPairs: false
+            });
         });
         saveQuitBtn.addEventListener('click', () => {
             if (gameState) gameState.isRunning = false;
@@ -2711,19 +2936,24 @@ body::after {
         });
         aiAddLibraryBtn.addEventListener('click', addSelectedAiGroupsToLibrary);
         if (commitNewRowBtn) commitNewRowBtn.addEventListener('click', commitNewRowToLibrary);
-        if (bankTabSystem) bankTabSystem.addEventListener('click', () => setPreviewBank('system'));
-        if (bankTabCustom) bankTabCustom.addEventListener('click', () => setPreviewBank('custom'));
+        if (activeBankSelect) {
+            activeBankSelect.addEventListener('change', () => setActiveBank(activeBankSelect.value));
+        }
+        if (addBankBtn) addBankBtn.addEventListener('click', handleAddBank);
+        if (copyBankBtn) copyBankBtn.addEventListener('click', handleCopyBank);
+        if (renameBankBtn) renameBankBtn.addEventListener('click', handleRenameBank);
+        if (deleteBankBtn) deleteBankBtn.addEventListener('click', handleDeleteBank);
 
         playLibraryBtn.addEventListener('click', () => {
-            const library = gameData.users[currentUser]?.customLibrary || {};
-            const selectedLevels = Object.values(library).filter((level) =>
-                level && level.target && Array.isArray(level.distractors) && level.distractors.length > 0
-            );
+            const selectedLevels = getActivePlayableLevels();
             if (selectedLevels.length > 0) {
                 settingsScreen.classList.add('hidden');
-                startGame('practice', selectedLevels);
+                startGame('practice', selectedLevels, 0, {
+                    bankName: getBankMeta().name,
+                    weeklyPairs: isSystemBank()
+                });
             } else {
-                alert('題庫裡還沒有可用的題目');
+                alert(`「${getBankMeta().name}」還沒有可用的題目`);
             }
         });
         
