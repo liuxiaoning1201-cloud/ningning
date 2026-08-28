@@ -6,6 +6,10 @@
 /crossword/index.html
   Cache-Control: public, max-age=0, must-revalidate
 
+# 日箋：入口每次重新驗證，避免舊版快取卡住更新
+/rijian/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
 # 靈感魔方：HTML 與自家 JS 每次重新驗證，避免舊版快取卡住更新
 /lingganmofang/index.html
   Cache-Control: public, max-age=0, must-revalidate

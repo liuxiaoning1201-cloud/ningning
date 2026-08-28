@@ -108,6 +108,10 @@ buildVueApp('句子排序小火車', {
   env: { VITE_BASE_PATH: '/句子排序小火車/' },
 });
 
+buildVueApp('rijian', {
+  outDir: 'rijian',
+});
+
 buildVueApp('手勢切水果學中文', {
   env: {
     VITE_BASE_PATH: '/手勢切水果學中文/',

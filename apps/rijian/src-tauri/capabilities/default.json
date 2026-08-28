@@ -1,0 +1,18 @@
+{
+  "identifier": "default",
+  "description": "日箋預設權限",
+  "windows": ["main", "capture"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:webview:allow-create-webview-window",
+    "core:event:allow-emit",
+    "core:event:allow-listen",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
+    "notification:default"
+  ]
+}
