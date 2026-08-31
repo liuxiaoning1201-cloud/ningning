@@ -10,15 +10,8 @@
 
 | 請加入的 URI | 說明 |
 |-------------|------|
-| `https://qingyiu.com` | 正式站（清沂遊） |
-| `https://www.qingyiu.com` | 若使用 www（可選） |
-| `https://zykongjian.pages.dev` | Pages 預設網域（部署預覽 / 備用） |
-| `https://zykongjian.com` | 舊自訂網域（過渡期可選） |
-| `https://www.zykongjian.com` | 舊 www（過渡期可選） |
-
-若你還會用 **預覽網址**（每次部署不同子網域），Google **不支援**萬用字元 `*.pages.dev`，預覽網址需**每次**把完整網址加進去，例如：
-
-- `https://04846793.zykongjian.pages.dev`
+| `https://qingyiu.com` | **必加**。正式站（清沂遊），Google 登入在此來源直接執行 |
+| `https://www.qingyiu.com` | 若使用 www（建議一併加） |
 
 **本機開發**（可選）：
 
@@ -47,7 +40,7 @@
 
 - 只加了 `http` 但網站是 `https` → 要改成 `https://...`
 - 加了完整路徑如 `https://qingyiu.com/crossword` → **錯誤**，只要來源：`https://qingyiu.com`
-- 舊專案網域是 `ziyoukongjian.pages.dev` 但現在用 `zykongjian.pages.dev` → **兩個都要各加一筆**（若仍會開舊網址）
+- 登入仍跳到 `zykongjian.pages.dev` → 代表瀏覽器還在用舊版 `auth-widget.js`，請強制重新整理（Cmd+Shift+R）
 
 ## 已授權的重新導向 URI
 

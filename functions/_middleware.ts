@@ -18,6 +18,12 @@ export const onRequest: PagesFunction<{
   JWT_SECRET: string;
   DB: D1Database;
 }, '/', ContextData> = async (context) => {
+  const incoming = new URL(context.request.url);
+  if (incoming.hostname === 'zykongjian.pages.dev') {
+    incoming.hostname = 'qingyiu.com';
+    return Response.redirect(incoming.toString(), 301);
+  }
+
   let token: string | undefined;
 
   const cookie = context.request.headers.get('Cookie') || '';

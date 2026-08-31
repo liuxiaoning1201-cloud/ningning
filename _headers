@@ -2,6 +2,10 @@
 /assets/hero/*
   Cache-Control: public, max-age=31536000
 
+# 登入元件：勿長快取，避免 Google 來源修正後仍載入舊 JS
+/auth-widget.js
+  Cache-Control: public, max-age=0, must-revalidate
+
 # 讓瀏覽器較常重新驗證填字 SPA 入口，減少舊版 JS 快取導致 Google Client ID 錯誤
 /crossword/index.html
   Cache-Control: public, max-age=0, must-revalidate
