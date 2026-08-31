@@ -26,3 +26,6 @@ apps/yueyu-learn/mobile/build/
 *.xcuserdata/
 *.xcodeproj/xcuserdata/
 local.properties
+
+# 巧手猜猜字：筆畫分類報告是製作期產物，供人工覈核用
+apps/巧手猜猜字/scripts/stroke-report.json
