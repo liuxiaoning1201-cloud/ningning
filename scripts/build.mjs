@@ -119,6 +119,10 @@ buildVueApp('手勢切水果學中文', {
   },
 });
 
+buildVueApp('巧手猜猜字', {
+  env: { VITE_BASE_PATH: '/巧手猜猜字/' },
+});
+
 // 粵語學習網頁 — 掛在 /yueyu/ 子路徑
 buildVueApp('yueyu-learn/web', {
   outDir: 'yueyu',
