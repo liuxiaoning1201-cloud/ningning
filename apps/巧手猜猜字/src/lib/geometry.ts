@@ -32,15 +32,16 @@ export function slotFromMedian(median: Median, index: number, strokeId: StrokeSl
   const first = pts[0];
   const last = pts[pts.length - 1];
 
-  // 中心取折線的重心，比首末中點更貼合帶鈎、帶彎的筆畫
-  let cx = 0;
-  let cy = 0;
-  for (const [x, y] of pts) {
-    cx += x;
-    cy += y;
-  }
-  cx /= pts.length;
-  cy /= pts.length;
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  // 中心取外框中心，帶鈎、帶彎的筆才不會被鈎那一小段把重心拉偏
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
 
   const angle = (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
   const span = Math.hypot(last[0] - first[0], last[1] - first[1]);
@@ -50,9 +51,10 @@ export function slotFromMedian(median: Median, index: number, strokeId: StrokeSl
     strokeId,
     cx,
     cy,
-    // 單筆的點幾乎沒有跨距，給一個下限免得物件被壓成一條線
     angle,
-    length: Math.max(span, pathLength(pts) * 0.45, 0.08),
+    length: Math.max(span, 0.06),
+    // 物品圖是按外框裁成正方形的，所以物品該有的大小是外框最大邊，不是首末點距離
+    extent: Math.max(maxX - minX, maxY - minY, pathLength(pts) * 0.2, 0.09),
   };
 }
 
@@ -146,8 +148,8 @@ export function judge(slots: StrokeSlot[], pieces: Piece[]): JudgeResult {
     const placementOk =
       matchDist <= TOLERANCE.distance &&
       angleDelta(match.rot, slot.angle) <= TOLERANCE.angle &&
-      match.scale >= slot.length * TOLERANCE.scaleLow &&
-      match.scale <= slot.length * TOLERANCE.scaleHigh;
+      match.scale >= slot.extent * TOLERANCE.scaleLow &&
+      match.scale <= slot.extent * TOLERANCE.scaleHigh;
 
     perStroke.push({
       slotIndex: slot.index,

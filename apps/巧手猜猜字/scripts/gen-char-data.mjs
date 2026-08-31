@@ -22,6 +22,7 @@ import { PENDING_CHARS, VERIFIED_STROKES } from './verified-strokes.mjs';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OVERRIDES = resolve(HERE, 'overrides');
 const OUT = resolve(HERE, '../src/data/chars.json');
+const METRICS = resolve(HERE, '../src/data/strokeMetrics.json');
 const REPORT = resolve(HERE, 'stroke-report.json');
 
 const ZHHANT = (ch) =>
@@ -62,7 +63,8 @@ async function loadChar(ch) {
 
 // ── 幾何：把 median 折線化簡成方向序列，只用來產生「建議」 ──
 
-/** makemeahanzi 座標系左上為 (0,900)、y 軸向下遞減，轉成一般螢幕座標。 */
+/** makemeahanzi 座標系邊長 1024、左上為 (0,900)、y 軸向下遞減，轉成一般螢幕座標。 */
+const GRID = 1024;
 const toScreen = ([x, y]) => [x, 900 - y];
 
 const dist = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -166,6 +168,54 @@ function suggest(shape) {
   return null;
 }
 
+// ── 每種筆畫的基準角度 ──
+
+/**
+ * 算出每種筆畫的「基準角度」：該筆畫在已核對字裡首末點連線角度的中位數。
+ *
+ * 這個數字是給前端拿來抵銷旋轉用的。23 件物品圖各自已經畫成該筆畫的樣子
+ * （曲尺本來就是 ┐、羽毛本來就從右上撇到左下），所以畫面上實際要轉的角度是
+ * 「這一筆的角度 − 基準角度」。典型的字轉出來接近 0 度，物件維持它被畫出來的樣子；
+ * 偏一點的字才會得到一點修正。若直接照筆畫角度轉，折角類的物件會整個轉歪。
+ *
+ * 同時記錄外框最大邊的中位數，前端拿它當物件的預設大小下限。
+ */
+function strokeMetrics(chars) {
+  const buckets = {};
+
+  for (const data of Object.values(chars)) {
+    if (!data.verified) continue;
+    data.medians.forEach((median, i) => {
+      const id = data.strokeTypes[i];
+      if (!id) return;
+      const pts = median.map(toScreen);
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const xs = pts.map((p) => p[0]);
+      const ys = pts.map((p) => p[1]);
+      (buckets[id] = buckets[id] ?? []).push({
+        angle: (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI,
+        extent: Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / GRID,
+      });
+    });
+  }
+
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)];
+  };
+
+  const out = {};
+  for (const [id, list] of Object.entries(buckets)) {
+    out[id] = {
+      samples: list.length,
+      baseAngle: Math.round(median(list.map((s) => s.angle))),
+      extent: Number(median(list.map((s) => s.extent)).toFixed(3)),
+    };
+  }
+  return out;
+}
+
 // ── 主流程 ──
 
 async function main() {
@@ -234,9 +284,11 @@ async function main() {
 
   await mkdir(dirname(OUT), { recursive: true });
   await writeFile(OUT, JSON.stringify(chars), 'utf8');
+  await writeFile(METRICS, JSON.stringify(strokeMetrics(chars), null, 2) + '\n', 'utf8');
   await writeFile(REPORT, JSON.stringify(report, null, 2) + '\n', 'utf8');
 
   process.stdout.write(`寫入 ${OUT}\n`);
+  process.stdout.write(`寫入 ${METRICS}\n`);
   process.stdout.write(`  已核對 ${verifiedCount} 字，待核 ${Object.keys(chars).length - verifiedCount} 字\n`);
   process.stdout.write(`報告 ${REPORT}\n`);
 

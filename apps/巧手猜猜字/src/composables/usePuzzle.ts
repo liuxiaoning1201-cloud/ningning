@@ -3,6 +3,7 @@ import { computed, ref, shallowRef } from 'vue';
 import { STROKE_BY_ID } from '@/data/strokes';
 import { loadChar } from '@/lib/charData';
 import { judge, nearestSlot, requiredStrokeIds, slotsForChar } from '@/lib/geometry';
+import { baseAngleFor, metricFor, pickVariant } from '@/lib/strokeMetrics';
 import type { CharData, JudgeResult, Piece, StrokeId, StrokeSlot } from '@/types';
 
 let seq = 0;
@@ -94,16 +95,19 @@ export function usePuzzle(options: { snap: boolean }) {
    * 讓學生把注意力放在「這一筆是什麼、第幾筆寫」，而不是跟滑鼠搏鬥。
    */
   function take(strokeId: StrokeId, variantKey?: string, at?: { x: number; y: number }) {
+    const drawScale = STROKE_BY_ID[strokeId].drawScale ?? 1;
+
     if (options.snap) {
       const slot = nextSlot.value;
       if (!slot || slot.strokeId !== strokeId) return null;
       const piece: Piece = {
         id: nextPieceId(),
         strokeId,
-        variantKey,
+        // 學生沒特別挑朝向時，替他選最貼近這一筆角度的那一個（例如三點水的三顆點）
+        variantKey: variantKey ?? pickVariant(strokeId, slot.angle),
         x: slot.cx,
         y: slot.cy,
-        scale: slot.length,
+        scale: slot.extent * drawScale,
         rot: slot.angle,
         seq: pieces.value.length,
         slotIndex: slot.index,
@@ -120,8 +124,9 @@ export function usePuzzle(options: { snap: boolean }) {
       variantKey,
       x: at?.x ?? 0.5,
       y: at?.y ?? 0.5,
-      scale: 0.3,
-      rot: 0,
+      // 一開始給典型大小、維持物品被畫出來的樣子，學生再自己轉與縮
+      scale: metricFor(strokeId).extent * drawScale,
+      rot: baseAngleFor(strokeId, variantKey),
       seq: pieces.value.length,
     };
     pieces.value.push(piece);

@@ -23,10 +23,12 @@ export const STROKES: StrokeDef[] = [
     stage: 1,
     examples: ['主', '卜'],
     hint: '一顆水滴。三點水裡的點方向不同，用左斜或右斜。',
+    // 水滴是一整顆，比一個點粗，縮一點才不會蓋掉旁邊的筆
+    drawScale: 0.82,
     variants: [
-      { key: 'up', label: '直立', image: 'dian-shuidi.webp' },
-      { key: 'left', label: '左斜', image: 'dian-shuidi-zuo.webp' },
-      { key: 'right', label: '右斜', image: 'dian-shuidi-you.webp' },
+      { key: 'up', label: '直立', image: 'dian-shuidi.webp', baseAngle: 90 },
+      { key: 'left', label: '左斜', image: 'dian-shuidi-zuo.webp', baseAngle: 135 },
+      { key: 'right', label: '右斜', image: 'dian-shuidi-you.webp', baseAngle: 45 },
     ],
   },
   {

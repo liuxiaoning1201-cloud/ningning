@@ -33,6 +33,8 @@ export interface StrokeVariant {
   key: string;
   label: string;
   image: string;
+  /** 這張圖被畫出來的方向，度；用來抵銷旋轉 */
+  baseAngle?: number;
 }
 
 export interface StrokeDef {
@@ -56,6 +58,11 @@ export interface StrokeDef {
   examples: string[];
   /** 擺放提示，寫給老師看 */
   hint: string;
+  /**
+   * 物品畫得比筆畫本身「胖」時的縮放補償。水滴是一整顆，比一個點粗，所以要縮。
+   * 預設 1，代表物品的外框就等於筆畫的外框。
+   */
+  drawScale?: number;
   variants?: StrokeVariant[];
 }
 
@@ -87,6 +94,11 @@ export interface StrokeSlot {
   angle: number;
   /** 首末點距離佔格寬的比例 */
   length: number;
+  /**
+   * 這一筆外框的最大邊，佔格寬的比例。
+   * 物品圖是按外框裁成正方形的，所以這個才是物品該有的大小，不是首末點距離。
+   */
+  extent: number;
 }
 
 /** 學生擺在格子裡的一件物品。 */
