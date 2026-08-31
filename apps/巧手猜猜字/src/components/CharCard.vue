@@ -62,25 +62,16 @@ watch(stage, (el) => {
 onBeforeUnmount(() => {
   writer = null;
 });
-
-const sourceLabel: Record<CharData['source'], string> = {
-  override: '人工校訂',
-  ZhHant: '繁體筆順',
-  makemeahanzi: '內地筆順',
-};
 </script>
 
 <template>
   <div class="charcard">
     <div class="card-title">
       <span>{{ data.char }} 的筆順</span>
-      <span class="pill" :class="data.verified ? 'pill-ready' : 'pill-pending'">
-        {{ data.verified ? '已核對' : '筆順待核' }}
-      </span>
     </div>
 
     <div ref="stage" class="charcard-stage" role="button" tabindex="0" @click="replay" @keyup.enter="replay" />
-    <p class="charcard-hint">點一下字，再看一次筆順（資料來源：{{ sourceLabel[data.source] }}）</p>
+    <p class="charcard-hint">點一下字，再看一次筆順</p>
 
     <ol v-if="showStrokeList" class="stroke-list">
       <li

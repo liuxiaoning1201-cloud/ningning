@@ -2,7 +2,7 @@ import { computed, ref, shallowRef } from 'vue';
 
 import { STROKE_BY_ID } from '@/data/strokes';
 import { loadChar } from '@/lib/charData';
-import { judge, nearestSlot, requiredStrokeIds, slotsForChar } from '@/lib/geometry';
+import { judge, nearestSlot, requiredStrokeIds, slotsForChar, TOLERANCE } from '@/lib/geometry';
 import { baseAngleFor, metricFor, pickVariant } from '@/lib/strokeMetrics';
 import type { CharData, JudgeResult, Piece, StrokeId, StrokeSlot } from '@/types';
 
@@ -25,10 +25,7 @@ export function usePuzzle(options: { snap: boolean }) {
 
   const available = computed<StrokeId[]>(() => {
     if (!data.value) return [];
-    const ids = requiredStrokeIds(data.value) as StrokeId[];
-    // 沒有筆畫標註的字（待核）就把 23 件全發出來，讓學生仍能自由拼
-    if (!ids.length) return Object.keys(STROKE_BY_ID) as StrokeId[];
-    return ids;
+    return requiredStrokeIds(data.value) as StrokeId[];
   });
 
   /** 練習模式已吸附的槽位。 */
@@ -90,20 +87,28 @@ export function usePuzzle(options: { snap: boolean }) {
   }
 
   /**
-   * 從工具欄拿一件物品放進格子。
-   * 練習模式直接吸附到當前該寫的那一筆，位置、角度、長度一次對好，
-   * 讓學生把注意力放在「這一筆是什麼、第幾筆寫」，而不是跟滑鼠搏鬥。
+   * 把一件物品放到格子上。
+   * 練習模式要拖到「現在該寫的那一筆」附近、且種類對，才會黏住；
+   * 拖錯種類或離槽位太遠，直接不黏。
+   * 挑戰模式就放在鬆手的位置，學生再自己轉與縮。
    */
-  function take(strokeId: StrokeId, variantKey?: string, at?: { x: number; y: number }) {
+  function drop(
+    strokeId: StrokeId,
+    x: number,
+    y: number,
+    variantKey?: string
+  ): { ok: boolean; reason?: 'kind' | 'pos' | 'done' } {
     const drawScale = STROKE_BY_ID[strokeId].drawScale ?? 1;
 
     if (options.snap) {
       const slot = nextSlot.value;
-      if (!slot || slot.strokeId !== strokeId) return null;
+      if (!slot) return { ok: false, reason: 'done' };
+      if (slot.strokeId && slot.strokeId !== strokeId) return { ok: false, reason: 'kind' };
+      if (Math.hypot(slot.cx - x, slot.cy - y) > TOLERANCE.snap) return { ok: false, reason: 'pos' };
+
       const piece: Piece = {
         id: nextPieceId(),
         strokeId,
-        // 學生沒特別挑朝向時，替他選最貼近這一筆角度的那一個（例如三點水的三顆點）
         variantKey: variantKey ?? pickVariant(strokeId, slot.angle),
         x: slot.cx,
         y: slot.cy,
@@ -115,24 +120,29 @@ export function usePuzzle(options: { snap: boolean }) {
       pieces.value.push(piece);
       selectedId.value = piece.id;
       pop(piece.id);
-      return piece;
+      return { ok: true };
     }
 
     const piece: Piece = {
       id: nextPieceId(),
       strokeId,
       variantKey,
-      x: at?.x ?? 0.5,
-      y: at?.y ?? 0.5,
-      // 一開始給典型大小、維持物品被畫出來的樣子，學生再自己轉與縮
-      scale: metricFor(strokeId).extent * drawScale,
+      x: Math.min(0.92, Math.max(0.08, x)),
+      y: Math.min(0.92, Math.max(0.08, y)),
+      // 先給偏小的尺寸，學生用＋放大；複合筆外框大，直接放上去會蓋住整格
+      scale: Math.min(0.38, metricFor(strokeId).extent * drawScale),
       rot: baseAngleFor(strokeId, variantKey),
       seq: pieces.value.length,
     };
     pieces.value.push(piece);
     selectedId.value = piece.id;
     pop(piece.id);
-    return piece;
+    return { ok: true };
+  }
+
+  /** @deprecated 點擊工具欄改走 drop；保留給舊呼叫。 */
+  function take(strokeId: StrokeId, variantKey?: string, at?: { x: number; y: number }) {
+    return drop(strokeId, at?.x ?? 0.5, at?.y ?? 0.5, variantKey).ok ? pieces.value.at(-1) ?? null : null;
   }
 
   function move(id: string, x: number, y: number) {
@@ -165,7 +175,7 @@ export function usePuzzle(options: { snap: boolean }) {
   function scale(factor: number) {
     const piece = pieces.value.find((p) => p.id === selectedId.value);
     if (!piece) return;
-    piece.scale = Math.min(0.95, Math.max(0.06, piece.scale * factor));
+    piece.scale = Math.min(0.95, Math.max(0.05, piece.scale * factor));
   }
 
   function removeSelected() {
@@ -208,6 +218,7 @@ export function usePuzzle(options: { snap: boolean }) {
     finished,
     setChar,
     take,
+    drop,
     move,
     rotate,
     scale,

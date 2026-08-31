@@ -331,7 +331,7 @@ export function isStrokeId(value: unknown): value is StrokeId {
 }
 
 export function strokeName(id: StrokeId | null): string {
-  return id ? STROKE_BY_ID[id].name : '待核';
+  return id ? STROKE_BY_ID[id].name : '這一筆';
 }
 
 export function objectUrl(file: string): string {

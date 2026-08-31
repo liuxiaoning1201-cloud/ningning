@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 
-import { hkCharsetSize, verifiedChars } from '@/lib/charData';
+import { hkCharsetSize } from '@/lib/charData';
 import { useWordbooks } from '@/stores/wordbooks';
 
 const router = useRouter();
 const books = useWordbooks();
-
-const readyCount = verifiedChars().length;
 const charsetSize = hkCharsetSize();
 
 const menu = [
@@ -21,7 +19,7 @@ const menu = [
     to: '/practice',
     emoji: '✏️',
     name: '練習模式',
-    desc: '物品會自動吸到正確位置，並鎖住筆順，一筆一筆帶你寫完。',
+    desc: '把物品拖進亮起來的格子。種類不對或離太遠，不會黏住。',
   },
   {
     to: '/challenge',
@@ -29,17 +27,13 @@ const menu = [
     name: '挑戰模式',
     desc: '自己擺、自己轉，按「拼好了」看種類、筆順、位置三項得分。',
   },
-  {
-    to: '/teacher',
-    emoji: '📚',
-    name: '老師設定',
-    desc: '建字簿、加減練習字、匯出匯入，一課一本。',
-  },
 ];
 </script>
 
 <template>
   <div class="home">
+    <button class="home-gear" title="設定" @click="router.push('/teacher')">⚙</button>
+
     <div>
       <h1 class="home-logo">巧手猜猜字</h1>
       <p class="home-sub">
@@ -57,9 +51,8 @@ const menu = [
     </div>
 
     <p class="hint">
-      目前字庫：{{ readyCount }} 個字的筆畫標註已人工覈核，可玩練習模式；
-      白名單涵蓋香港《常用字字形表》{{ charsetSize }} 字。
-      正在用的字簿是「{{ books.active?.name ?? '未選擇' }}」。
+      正在用「{{ books.active?.name ?? '未選擇' }}」。
+      老師把生字貼進設定即可練，涵蓋香港《常用字字形表》{{ charsetSize }} 字。
     </p>
   </div>
 </template>

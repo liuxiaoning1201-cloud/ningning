@@ -188,6 +188,12 @@ h4 {
   color: var(--ink);
 }
 
+textarea.text-input {
+  resize: vertical;
+  min-height: 5.5em;
+  line-height: 1.65;
+}
+
 .text-input:focus,
 .select:focus {
   outline: none;
@@ -244,6 +250,26 @@ h4 {
   padding: 40px 20px;
   min-height: 100%;
   text-align: center;
+  position: relative;
+}
+
+.home-gear {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.home-gear:active {
+  transform: scale(0.94);
 }
 
 .home-logo {
@@ -387,7 +413,54 @@ h4 {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   touch-action: none;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.grid-frame.is-reject {
+  animation: reject-shake 0.4s ease;
+}
+
+@keyframes reject-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-7px);
+  }
+  75% {
+    transform: translateX(7px);
+  }
+}
+
+.piece-hud {
+  position: absolute;
+  transform: translate(-50%, 6px);
+  display: flex;
+  gap: 2px;
+  z-index: 12;
+  background: var(--card);
+  border-radius: 999px;
+  padding: 3px 5px;
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+}
+
+.piece-hud button {
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.piece-hud button:active {
+  background: rgba(51, 64, 58, 0.08);
 }
 
 .grid-lines {
@@ -473,8 +546,15 @@ h4 {
   background: var(--card);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 12px;
+  padding: 10px;
   width: 100%;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .tool-row {
@@ -488,19 +568,28 @@ h4 {
   border: none;
   background: rgba(255, 249, 236, 0.9);
   border-radius: var(--radius-sm);
-  padding: 8px;
+  padding: 6px 4px;
   width: 76px;
   cursor: grab;
   font: inherit;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   box-shadow: 0 2px 6px rgba(80, 66, 40, 0.1);
   transition:
     transform 0.12s ease,
     box-shadow 0.12s ease;
   touch-action: none;
+}
+
+.tool-grid .tool-item {
+  width: auto;
+}
+
+.tool-item.is-hint {
+  outline: 2px solid var(--peach-deep);
+  background: rgba(244, 164, 140, 0.22);
 }
 
 .tool-item:hover:not(:disabled) {
@@ -518,16 +607,27 @@ h4 {
 }
 
 .tool-item img {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   pointer-events: none;
 }
 
 .tool-label {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: var(--ink-soft);
+}
+
+.drag-ghost {
+  position: fixed;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 80;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.28));
 }
 
 .tool-divider {
@@ -796,6 +896,46 @@ h4 {
   font-family: var(--font-body);
   font-size: 0.62rem;
   color: var(--ink-faint);
+}
+
+.book-fold {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.book-fold > li {
+  border-radius: var(--radius-sm);
+  background: rgba(255, 249, 236, 0.9);
+}
+
+.book-fold > li.is-on {
+  background: rgba(126, 200, 227, 0.22);
+}
+
+.book-fold-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.book-fold-caret {
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+  width: 1.1em;
+}
+
+.book-fold-body {
+  padding: 0 12px 12px;
 }
 
 .book-list {

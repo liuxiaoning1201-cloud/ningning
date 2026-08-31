@@ -9,8 +9,9 @@ import ObjectToolbar from '@/components/ObjectToolbar.vue';
 import StrokePouch from '@/components/StrokePouch.vue';
 import { usePuzzle } from '@/composables/usePuzzle';
 import { strokeName } from '@/data/strokes';
-import { readiness } from '@/lib/charData';
+import { canPlay } from '@/lib/charData';
 import { useWordbooks } from '@/stores/wordbooks';
+import type { StrokeId } from '@/types';
 
 const router = useRouter();
 const books = useWordbooks();
@@ -26,7 +27,7 @@ const {
   error,
   available,
   setChar,
-  take,
+  drop,
   move,
   rotate,
   scale,
@@ -39,9 +40,11 @@ const pouchOpen = ref(false);
 const showResult = ref(false);
 const revealed = ref(false);
 const index = ref(0);
+const grid = ref<{ hitTest: (x: number, y: number) => { x: number; y: number; inside: boolean } | null } | null>(
+  null
+);
 
-/** 挑戰模式靠位置比對，待核的字也能玩，只是不判筆畫種類。 */
-const chars = computed(() => books.activeChars.filter((c) => readiness(c) !== 'missing'));
+const chars = computed(() => books.activeChars.filter(canPlay));
 const current = computed(() => chars.value[index.value] ?? '');
 
 async function loadCurrent() {
@@ -67,6 +70,12 @@ function submit() {
   if (result.value && !result.value.passed) revealed.value = true;
 }
 
+function onToolDrop(payload: { strokeId: StrokeId; variantKey?: string; clientX: number; clientY: number }) {
+  const hit = grid.value?.hitTest(payload.clientX, payload.clientY);
+  if (!hit?.inside) return;
+  drop(payload.strokeId, hit.x, hit.y, payload.variantKey);
+}
+
 const pct = (v: number) => Math.round(v * 100);
 
 const mascotMood = computed(() => {
@@ -85,8 +94,8 @@ const mascotMood = computed(() => {
 
     <div class="page-body wrap">
       <div v-if="!chars.length" class="card">
-        <p class="hint">字簿「{{ books.active?.name ?? '未選擇' }}」裡沒有可用的字。</p>
-        <button class="btn btn-sky btn-sm" style="margin-top: 10px" @click="router.push('/teacher')">去選字</button>
+        <p class="hint">字簿「{{ books.active?.name ?? '未選擇' }}」裡還沒有字。到設定裡貼生字即可。</p>
+        <button class="btn btn-sky btn-sm" style="margin-top: 10px" @click="router.push('/teacher')">去設定</button>
       </div>
 
       <div v-else class="play">
@@ -119,6 +128,7 @@ const mascotMood = computed(() => {
         <!-- 中欄：米字格與工具欄 -->
         <div class="play-center">
           <MiZiGrid
+            ref="grid"
             :pieces="pieces"
             :slots="slots"
             :show-slots="revealed"
@@ -126,12 +136,15 @@ const mascotMood = computed(() => {
             :popped-id="poppedId"
             @move="move($event.id, $event.x, $event.y)"
             @select="selectedId = $event"
+            @rotate="rotate($event)"
+            @scale="scale($event)"
+            @delete="removeSelected()"
           />
 
           <ObjectToolbar
             :available="available"
             :has-selection="!!selectedId"
-            @take="take($event.strokeId, $event.variantKey)"
+            @drop="onToolDrop"
             @rotate="rotate($event)"
             @scale="scale($event)"
             @delete="removeSelected()"

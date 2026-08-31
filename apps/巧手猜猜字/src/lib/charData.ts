@@ -1,5 +1,6 @@
 import bundled from '@/data/chars.json';
 import hkCharset from '@/data/hkCharset.json';
+import { fillStrokeTypes } from '@/lib/classifyStroke';
 import { isStrokeId } from '@/data/strokes';
 import type { CharData, Median, StrokeId } from '@/types';
 
@@ -7,8 +8,10 @@ import type { CharData, Median, StrokeId } from '@/types';
  * 字形筆順資料的取用層。
  *
  * 隨 app 一起打包的 chars.json 是製作期跑 scripts/gen-char-data.mjs 產生的，
- * 涵蓋已核對的字，離線可用。老師臨時加的字若不在包裡，才即時打 CDN，
- * 順序仍是 animCJK ZhHant（繁體、貼近港標）優先，makemeahanzi 備援。
+ * 已核對的筆畫標註離線可用。老師臨時加的字若不在包裡，即時打 CDN，
+ * 再用幾何規則自動判每一筆是哪一種物品——不必人工複核才能練。
+ *
+ * 來源順序：animCJK ZhHant（繁體、貼近港標）優先，makemeahanzi 備援。
  */
 
 const BUNDLED = bundled as unknown as Record<string, CharData>;
@@ -49,6 +52,14 @@ function sanitizeTypes(input: unknown, count: number): (StrokeId | null)[] {
   return input.map((v) => (isStrokeId(v) ? v : null));
 }
 
+/** 人工標註保留，缺的用幾何自動補齊，練習模式才能立刻鎖筆順。 */
+function finish(data: CharData): CharData {
+  return {
+    ...data,
+    strokeTypes: fillStrokeTypes(data.medians, data.strokeTypes),
+  };
+}
+
 async function fetchRemote(ch: string): Promise<CharData | null> {
   for (const [source, url] of [
     ['ZhHant', ZHHANT(ch)],
@@ -59,14 +70,14 @@ async function fetchRemote(ch: string): Promise<CharData | null> {
       if (!res.ok) continue;
       const raw = (await res.json()) as { strokes?: string[]; medians?: Median[] };
       if (!raw.strokes?.length || raw.strokes.length !== raw.medians?.length) continue;
-      return {
+      return finish({
         char: ch,
         strokes: raw.strokes,
         medians: raw.medians,
         strokeTypes: sanitizeTypes(null, raw.strokes.length),
         source,
         verified: false,
-      };
+      });
     } catch {
       // 換下一個來源
     }
@@ -79,10 +90,10 @@ export async function loadChar(ch: string): Promise<CharData | null> {
 
   const local = BUNDLED[ch];
   if (local) {
-    const data: CharData = {
+    const data = finish({
       ...local,
       strokeTypes: sanitizeTypes(local.strokeTypes, local.strokes.length),
-    };
+    });
     cache.set(ch, data);
     return data;
   }
@@ -95,26 +106,28 @@ export async function loadChar(ch: string): Promise<CharData | null> {
 export type CharReadiness = 'ready' | 'pending' | 'missing' | 'unknown';
 
 /**
- * 一個字能玩到什麼程度：
- *   ready    筆畫標註已覈核，練習模式可以鎖筆順
- *   pending  有筆順動畫，但筆畫種類待核，只能玩挑戰模式的位置比對
- *   missing  沒有筆順資料
+ * 一個字能不能拿來練：
+ *   ready    本地已有筆順（含自動補上的筆畫種類）
+ *   unknown  港標字，進入遊戲時再下載
+ *   missing  不在港標、也沒有本地資料
  */
 export function readiness(ch: string): CharReadiness {
-  const local = BUNDLED[ch];
-  if (local) return local.verified ? 'ready' : 'pending';
-  if (!isHkChar(ch)) return 'missing';
-  return 'unknown';
+  if (BUNDLED[ch]) return 'ready';
+  if (isHkChar(ch)) return 'unknown';
+  return 'missing';
+}
+
+/** 字簿裡的字只要不是明確缺失，就可以進練習／挑戰。 */
+export function canPlay(ch: string): boolean {
+  return readiness(ch) !== 'missing';
 }
 
 export function readinessLabel(state: CharReadiness): string {
   switch (state) {
     case 'ready':
-      return '已核對';
     case 'pending':
-      return '筆順待核';
     case 'unknown':
-      return '未收錄，需即時下載';
+      return '可練習';
     default:
       return '沒有筆順資料';
   }

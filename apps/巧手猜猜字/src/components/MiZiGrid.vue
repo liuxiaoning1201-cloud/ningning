@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import { strokeImage } from '@/data/strokes';
 import { renderRotation } from '@/lib/strokeMetrics';
@@ -19,12 +19,16 @@ const props = defineProps<{
   readonly?: boolean;
   /** 剛放好、要彈一下的物件 */
   poppedId?: string | null;
+  /** 拖錯時閃一下 */
+  rejectTick?: number;
 }>();
 
 const emit = defineEmits<{
   (e: 'move', payload: { id: string; x: number; y: number }): void;
   (e: 'select', id: string | null): void;
-  (e: 'drop-new', payload: { x: number; y: number }): void;
+  (e: 'rotate', deg: number): void;
+  (e: 'scale', factor: number): void;
+  (e: 'delete'): void;
 }>();
 
 const frame = ref<HTMLElement | null>(null);
@@ -69,13 +73,40 @@ function onFramePointerDown() {
   emit('select', null);
 }
 
-function onDrop(event: DragEvent) {
-  if (props.readonly) return;
-  event.preventDefault();
-  const local = toLocal(event);
-  if (!local) return;
-  emit('drop-new', local);
+/** 把螢幕座標換成格子裡的 0–1。工具欄拖放用這個判斷黏不黏。 */
+function hitTest(clientX: number, clientY: number): { x: number; y: number; inside: boolean } | null {
+  const el = frame.value;
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  const x = (clientX - rect.left) / rect.width;
+  const y = (clientY - rect.top) / rect.height;
+  return { x, y, inside: x >= 0 && x <= 1 && y >= 0 && y <= 1 };
 }
+
+defineExpose({ hitTest });
+
+const rejecting = ref(false);
+watch(
+  () => props.rejectTick,
+  (tick) => {
+    if (!tick) return;
+    rejecting.value = true;
+    window.setTimeout(() => {
+      rejecting.value = false;
+    }, 420);
+  }
+);
+
+const selectedPiece = computed(() => props.pieces.find((p) => p.id === props.selectedId) ?? null);
+
+const hudStyle = computed(() => {
+  const piece = selectedPiece.value;
+  if (!piece) return {};
+  return {
+    left: `${piece.x * 100}%`,
+    top: `${Math.min(92, (piece.y + piece.scale / 2) * 100 + 2)}%`,
+  };
+});
 
 const ghostViewBox = '0 0 1024 1024';
 
@@ -113,12 +144,11 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
   <div
     ref="frame"
     class="grid-frame"
+    :class="{ 'is-reject': rejecting }"
     @pointerdown="onFramePointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
-    @dragover.prevent
-    @drop="onDrop"
   >
     <!-- 米字格：外框、田字十字、再加兩條斜線 -->
     <svg class="grid-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -165,5 +195,18 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
       draggable="false"
       @pointerdown="onPiecePointerDown($event, piece)"
     />
+
+    <div
+      v-if="selectedPiece && !readonly"
+      class="piece-hud"
+      :style="hudStyle"
+      @pointerdown.stop
+    >
+      <button type="button" title="左轉" @click.stop="emit('rotate', -15)">↺</button>
+      <button type="button" title="右轉" @click.stop="emit('rotate', 15)">↻</button>
+      <button type="button" title="縮小" @click.stop="emit('scale', 0.82)">－</button>
+      <button type="button" title="放大" @click.stop="emit('scale', 1.18)">＋</button>
+      <button type="button" title="拿走" @click.stop="emit('delete')">✕</button>
+    </div>
   </div>
 </template>
