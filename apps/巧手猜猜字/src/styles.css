@@ -657,14 +657,52 @@ textarea.text-input {
   text-align: center;
 }
 
-.charcard-stage {
+.charcard-stage-wrap {
+  position: relative;
   width: 100%;
   max-width: 210px;
-  aspect-ratio: 1;
   margin: 0 auto;
-  cursor: pointer;
+}
+
+.charcard-stage {
+  width: 100%;
+  aspect-ratio: 1;
   background: #fffdf7;
   border-radius: var(--radius-sm);
+}
+
+.charcard-play {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #3b82f6;
+  cursor: pointer;
+  line-height: 0;
+  filter: drop-shadow(0 3px 6px rgba(37, 99, 235, 0.38));
+  transition:
+    transform 0.12s ease,
+    filter 0.12s ease;
+}
+
+.charcard-play svg {
+  display: block;
+  width: 34px;
+  height: 34px;
+}
+
+.charcard-play:hover {
+  filter: drop-shadow(0 4px 8px rgba(37, 99, 235, 0.48));
+  transform: scale(1.06);
+}
+
+.charcard-play:active {
+  transform: scale(0.94);
 }
 
 .charcard-hint {

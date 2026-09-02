@@ -87,8 +87,18 @@ onBeforeUnmount(() => {
       <span>{{ data.char }} 的筆順</span>
     </div>
 
-    <div ref="stage" class="charcard-stage" role="button" tabindex="0" @click="replay" @keyup.enter="replay" />
-    <p class="charcard-hint">點一下字，再看一次筆順</p>
+    <div class="charcard-stage-wrap">
+      <div ref="stage" class="charcard-stage" />
+      <button class="charcard-play" type="button" title="再看一次筆順" aria-label="再看一次筆順" @click="replay">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="12" fill="currentColor" />
+          <path
+            d="M10 8.2c0-.7.8-1.1 1.4-.7l6.1 3.8c.6.4.6 1.2 0 1.6l-6.1 3.8c-.6.4-1.4 0-1.4-.7V8.2Z"
+            fill="#fff"
+          />
+        </svg>
+      </button>
+    </div>
     <p class="charcard-hint">筆順依開源 animCJK 繁體（香港教育局字詞表為參考來源）</p>
 
     <div v-if="showStrokeList" ref="listBox" class="stroke-list-box">
