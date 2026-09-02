@@ -43,7 +43,7 @@ mkdirSync(OUT, { recursive: true });
 
 // ── 根目錄靜態檔案 ──
 
-const ROOT_FILES = ['index.html', '404.html', 'auth-widget.js', '_headers'];
+const ROOT_FILES = ['index.html', '404.html', 'auth-widget.js', '_headers', '_redirects'];
 for (const file of ROOT_FILES) {
   const src = join(ROOT, file);
   if (existsSync(src)) {
@@ -72,6 +72,7 @@ const STATIC_APPS = [
   'luoyang-trip',
   '誰是臥底',
   '巧手猜猜畫',
+  '巧手猜猜字',
   'lingganmofang',
 ];
 
@@ -119,8 +120,8 @@ buildVueApp('手勢切水果學中文', {
   },
 });
 
-buildVueApp('巧手猜猜字', {
-  env: { VITE_BASE_PATH: '/巧手猜猜字/' },
+buildVueApp('巧手拼拼字', {
+  env: { VITE_BASE_PATH: '/巧手拼拼字/' },
 });
 
 // 粵語學習網頁 — 掛在 /yueyu/ 子路徑

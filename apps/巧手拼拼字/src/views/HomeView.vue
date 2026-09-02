@@ -35,7 +35,7 @@ const menu = [
     <button class="home-gear" title="設定" @click="router.push('/teacher')">⚙</button>
 
     <div>
-      <h1 class="home-logo">巧手猜猜字</h1>
+      <h1 class="home-logo">巧手拼拼字</h1>
       <p class="home-sub">
         漢字的每一筆，都是生活裡的一件東西。筷子是橫、蠟燭是直、雨傘是直鈎——
         把物品拖進米字格，字就站起來了。字形與筆順依香港《小學學習字詞表》及《常用字字形表》。

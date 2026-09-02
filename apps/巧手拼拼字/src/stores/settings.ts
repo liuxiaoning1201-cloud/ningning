@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 
+/** 瀏覽器儲存鍵沿用舊名，以免老師已改的設定被清掉。 */
 const KEY = 'caicaizi_settings_v1';
 
 interface Settings {

@@ -4,7 +4,7 @@
 只清除「與邊緣相連」的白色，物件內部的白（高光、刷毛、瓷面）會保留。
 
 用法：
-    python3 scripts/knockout-objects.py apps/巧手猜猜字/public/objects
+    python3 scripts/knockout-objects.py apps/巧手拼拼字/public/objects
 """
 import sys
 from collections import deque

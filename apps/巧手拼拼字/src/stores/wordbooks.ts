@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import { verifiedChars } from '@/lib/charData';
 import type { Wordbook } from '@/types';
 
+/** 瀏覽器儲存鍵沿用舊名，以免老師已建的字簿消失。 */
 const STORAGE_KEY = 'caicaizi_books_v1';
 const ACTIVE_KEY = 'caicaizi_active_book_v1';
 
@@ -122,7 +123,7 @@ export const useWordbooks = defineStore('wordbooks', () => {
 
   function exportJson(ids?: string[]): string {
     const picked = ids?.length ? books.value.filter((b) => ids.includes(b.id)) : books.value;
-    return JSON.stringify({ app: '巧手猜猜字', version: 1, books: picked }, null, 2);
+    return JSON.stringify({ app: '巧手拼拼字', version: 1, books: picked }, null, 2);
   }
 
   /** 匯入時合併同名字簿，不覆蓋老師手上已有的內容。 */

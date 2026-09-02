@@ -94,7 +94,7 @@ function confirmExport() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `巧手猜猜字-字簿-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `巧手拼拼字-字簿-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
   exportOpen.value = false;

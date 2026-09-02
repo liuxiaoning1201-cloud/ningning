@@ -23,3 +23,9 @@
   Cache-Control: public, max-age=0, must-revalidate
 /巧手猜猜畫/style.css
   Cache-Control: public, max-age=0, must-revalidate
+
+# 巧手拼拼字：SPA 入口每次重新驗證
+/巧手拼拼字/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/巧手猜猜字/index.html
+  Cache-Control: public, max-age=0, must-revalidate
