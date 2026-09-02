@@ -54,8 +54,8 @@ export const STROKES: StrokeDef[] = [
     material: '蠟',
     stage: 1,
     examples: ['十', '川'],
-    hint: '蠟燭要站直，不要歪。',
-    drawScale: 0.7,
+    hint: '蠟燭要站直，不要歪。短直用短蠟燭，長直用長的。',
+    drawScale: 0.9,
   },
   {
     id: 'pie',
@@ -67,9 +67,8 @@ export const STROKES: StrokeDef[] = [
     material: '羽',
     stage: 1,
     examples: ['人', '竹'],
-    hint: '羽毛從右上掃到左下。',
-    // 羽毛圖很胖，不縮會蓋住後面的橫
-    drawScale: 0.52,
+    hint: '羽毛從右上掃到左下。長撇用較長的羽毛，並跟著那一筆的角度。',
+    drawScale: 0.82,
   },
   {
     id: 'na',
@@ -82,8 +81,8 @@ export const STROKES: StrokeDef[] = [
     material: '塑膠滑面',
     stage: 1,
     examples: ['人', '木'],
-    hint: '滑梯從左上滑到右下。',
-    drawScale: 0.62,
+    hint: '滑梯從左上滑到右下。長捺滑梯也較長。',
+    drawScale: 0.84,
   },
   {
     id: 'ti',

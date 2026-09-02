@@ -153,7 +153,7 @@ const mascotMood = computed(() => {
           <div class="card">
             <div class="card-title">怎麼算分</div>
             <p class="hint">
-              沒有吸附、沒有鎖筆順，全部自己擺。按「拼好了」會分三項算：
+              靠近正確位置時，物品會自動對齊那一筆的長短和角度。按「拼好了」會分三項算：
               <strong>種類</strong>有沒有用對物品、<strong>筆順</strong>放下的次序、<strong>位置</strong>擺得準不準。
             </p>
           </div>

@@ -67,8 +67,10 @@ export const VERIFIED_STROKES = {
   白: ['pie', 'zhi', 'hengzhi', 'heng', 'heng'],
   生: ['pie', 'heng', 'heng', 'zhi', 'heng'],
   衣: ['dian', 'heng', 'pie', 'zhiti', 'pie', 'na'],
-  // ZhHant 字形裡「好」的女旁末筆仍是平橫，標註跟著字卡動畫走
+  // 好：ZhHant 字形裡女旁末筆仍是平橫，標註跟著字卡動畫走
   好: ['piedian', 'pie', 'heng', 'hengpie', 'zhigou', 'heng'],
+  // 難：第五畫是口形左邊的直，不是點（楷書略斜）
+  難: ['heng', 'zhi', 'zhi', 'heng', 'zhi', 'hengzhi', 'heng', 'heng', 'heng', 'pie', 'dian', 'pie', 'zhi', 'dian', 'heng', 'heng', 'heng', 'zhi', 'heng'],
 };
 
 /**

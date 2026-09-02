@@ -1,6 +1,6 @@
 import generated from '@/data/strokeMetrics.json';
 import { STROKE_BY_ID } from '@/data/strokes';
-import type { StrokeId } from '@/types';
+import type { StrokeId, StrokeSlot } from '@/types';
 
 /**
  * 每種筆畫的「基準角度」與典型大小。
@@ -37,14 +37,41 @@ export function metricFor(id: StrokeId): Metric {
   return FALLBACK[id] ?? { baseAngle: 0, extent: 0.45 };
 }
 
-/** 羽毛、滑梯這類圖很胖，用外框當大小會蓋住後面的橫。 */
-const SLIM = new Set<StrokeId>(['pie', 'na', 'zhi', 'dian']);
+/** 羽毛、滑梯這類圖很胖，用外框當大小會蓋住後面的橫。複合筆仍用外框。 */
+const LENGTH_STROKES = new Set<StrokeId>(['heng', 'zhi', 'pie', 'na', 'ti', 'dian']);
 
-/** 格子上實際要畫的大小：外框再打個折，避免視覺錯位。 */
-export function objectScale(extent: number, id: StrokeId): number {
+function clampScale(n: number): number {
+  return Math.min(0.82, Math.max(0.07, n));
+}
+
+/**
+ * 格子上實際要畫的大小。
+ * 單向筆（橫直撇捺點趯）跟首末距走：長撇羽毛就長、短直蠟燭就短。
+ * 折角類物品是正方形外框，仍用 extent。
+ */
+export function objectScale(slot: Pick<StrokeSlot, 'length' | 'extent'>, id: StrokeId): number {
   const draw = STROKE_BY_ID[id].drawScale ?? 1;
-  const slim = SLIM.has(id) ? 0.72 : 0.92;
-  return Math.min(0.7, Math.max(0.06, extent * draw * slim));
+  if (LENGTH_STROKES.has(id)) {
+    return clampScale(Math.max(slot.length, 0.06) * draw);
+  }
+  return clampScale(slot.extent * draw * 0.92);
+}
+
+/** 挑戰模式尚未對上槽位時的預設大小。 */
+export function defaultObjectScale(id: StrokeId): number {
+  const m = metricFor(id);
+  return Math.min(0.34, objectScale({ length: m.extent, extent: m.extent }, id));
+}
+
+/** 拖入正確槽位時的位置、大小、角度。 */
+export function fitToSlot(id: StrokeId, slot: StrokeSlot, variantKey?: string) {
+  return {
+    x: slot.cx,
+    y: slot.cy,
+    scale: objectScale(slot, id),
+    rot: slot.angle,
+    variantKey: variantKey ?? pickVariant(id, slot.angle),
+  };
 }
 
 /** 後寫的筆疊在上面；橫直再高一層，避免被羽毛擋住。 */

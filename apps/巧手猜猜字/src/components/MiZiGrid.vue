@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 
 import { strokeImage } from '@/data/strokes';
-import { pieceLayer, renderRotation } from '@/lib/strokeMetrics';
+import { objectScale, pieceLayer, renderRotation } from '@/lib/strokeMetrics';
 import type { Piece, StrokeSlot } from '@/types';
 
 const props = defineProps<{
@@ -113,9 +113,9 @@ const ghostViewBox = '0 0 1024 1024';
 /** makemeahanzi 座標系要翻 y 才能疊在格子上。 */
 const ghostTransform = 'translate(0, 900) scale(1, -1)';
 
-/** 槽位提示照這一筆真正的大小畫，才不會看起來像物件爆出格線。 */
+/** 槽位提示照這一筆真正要擺的物品大小畫。 */
 const slotStyle = (slot: StrokeSlot) => {
-  const size = Math.max(slot.extent, 0.14);
+  const size = slot.strokeId ? objectScale(slot, slot.strokeId) : Math.max(slot.extent, 0.14);
   return {
     left: `${(slot.cx - size / 2) * 100}%`,
     top: `${(slot.cy - size / 2) * 100}%`,

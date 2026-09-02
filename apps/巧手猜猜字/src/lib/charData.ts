@@ -12,6 +12,7 @@ import type { CharData, Median, StrokeId } from '@/types';
  * 再用幾何規則自動判每一筆是哪一種物品——不必人工複核才能練。
  *
  * 來源順序：animCJK ZhHant（繁體、貼近港標）優先，makemeahanzi 備援。
+ * 筆畫名稱再對開源 cnchar 繁體筆順做相容覆寫（筆數／順序不合則不覆蓋）。
  */
 
 const BUNDLED = bundled as unknown as Record<string, CharData>;
@@ -56,7 +57,7 @@ function sanitizeTypes(input: unknown, count: number): (StrokeId | null)[] {
 function finish(data: CharData): CharData {
   return {
     ...data,
-    strokeTypes: fillStrokeTypes(data.medians, data.strokeTypes),
+    strokeTypes: fillStrokeTypes(data.medians, data.strokeTypes, data.char),
   };
 }
 

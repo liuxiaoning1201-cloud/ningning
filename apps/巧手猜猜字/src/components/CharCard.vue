@@ -72,6 +72,7 @@ onBeforeUnmount(() => {
 
     <div ref="stage" class="charcard-stage" role="button" tabindex="0" @click="replay" @keyup.enter="replay" />
     <p class="charcard-hint">點一下字，再看一次筆順</p>
+    <p class="charcard-hint">筆順依開源 animCJK 繁體（香港教育局字詞表為參考來源）</p>
 
     <ol v-if="showStrokeList" class="stroke-list">
       <li

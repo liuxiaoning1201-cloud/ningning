@@ -1,3 +1,4 @@
+import { objectScale } from '@/lib/strokeMetrics';
 import type { CharData, JudgeResult, Median, Piece, StrokeJudgement, StrokeSlot } from '@/types';
 
 /**
@@ -79,8 +80,8 @@ export const TOLERANCE = {
   /** 長度比例的容許倍數區間 */
   scaleLow: 0.55,
   scaleHigh: 1.9,
-  /** 練習模式的吸附半徑 */
-  snap: 0.13,
+  /** 練習模式：拖進格子且種類對就黏到槽位 */
+  snap: 0.22,
 };
 
 /** 練習模式：找出離某個座標最近、且尚未填滿的槽位。 */
@@ -145,11 +146,12 @@ export function judge(slots: StrokeSlot[], pieces: Piece[]): JudgeResult {
     }
 
     used.add(match.id);
+    const expected = slot.strokeId ? objectScale(slot, slot.strokeId) : slot.extent;
     const placementOk =
       matchDist <= TOLERANCE.distance &&
       angleDelta(match.rot, slot.angle) <= TOLERANCE.angle &&
-      match.scale >= slot.extent * TOLERANCE.scaleLow &&
-      match.scale <= slot.extent * TOLERANCE.scaleHigh;
+      match.scale >= expected * TOLERANCE.scaleLow &&
+      match.scale <= expected * TOLERANCE.scaleHigh;
 
     perStroke.push({
       slotIndex: slot.index,

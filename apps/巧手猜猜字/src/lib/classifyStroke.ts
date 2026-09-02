@@ -1,4 +1,5 @@
 import { isStrokeId } from '@/data/strokes';
+import { isSoftStrokeSwap, officialStrokeTypes } from '@/lib/officialStrokes';
 import type { Median, StrokeId } from '@/types';
 
 /**
@@ -149,8 +150,12 @@ function scoreShape(s: StrokeShape): StrokeId {
   if (c === 'p' || c === 'l') return span < 170 ? 'dian' : 'pie';
   if (c === 'vp') return span < 330 ? 'dian' : 'pie';
 
-  // 點 vs 捺：右下、沒有折
-  if (c === 'n' || c === 'np') return span < 340 ? 'dian' : 'na';
+  // 點 vs 捺 vs 帶斜勢的短直：楷書「口」左邊常略向右傾，方向會落在 n
+  if (c === 'n' || c === 'np') {
+    const aspect = s.boxH / Math.max(s.boxW, 1);
+    if (aspect >= 1.65 && s.startDeg >= 55 && s.startDeg <= 115 && span < 320) return 'zhi';
+    return span < 340 ? 'dian' : 'na';
+  }
 
   // 橫直：轉角常被收成一段斜（hnv）
   if (/^hn?v$/.test(c)) return 'hengzhi';
@@ -213,7 +218,8 @@ export function classifyMedian(median: Median): StrokeId {
  */
 export function fillStrokeTypes(
   medians: Median[],
-  existing: (StrokeId | null | string)[] | null | undefined
+  existing: (StrokeId | null | string)[] | null | undefined,
+  char?: string
 ): StrokeId[] {
   const locked = medians.map((_, i) => isStrokeId(existing?.[i]));
   const types = medians.map((median, i) => {
@@ -238,5 +244,42 @@ export function fillStrokeTypes(
     }
   }
 
+  /**
+   * 「口」形左邊那豎：前一筆橫、後一筆橫直，中間短斜畫是直不是點。
+   * 「難」第五畫就是這個結構。
+   */
+  for (let i = 1; i < types.length - 1; i += 1) {
+    if (locked[i]) continue;
+    if (types[i] !== 'dian') continue;
+    if (types[i - 1] !== 'heng' || types[i + 1] !== 'hengzhi') continue;
+    const s = describeMedian(medians[i]);
+    if (s.boxH > s.boxW * 1.35 && s.startDeg > 40) types[i] = 'zhi';
+  }
+
+  applyOfficialNames(types, locked, char);
   return types;
+}
+
+/**
+ * 開源繁體筆畫名稱（cnchar）只在筆數相同、且沒有「撇／點對調」這種順序衝突時才覆寫。
+ * 「必」幾何與 cnchar 順序不同，會整字跳過，避免把字卡路徑標錯。
+ */
+function applyOfficialNames(types: StrokeId[], locked: boolean[], char?: string) {
+  if (!char) return;
+  const official = officialStrokeTypes(char);
+  if (!official || official.length !== types.length) return;
+
+  let hard = 0;
+  for (let i = 0; i < types.length; i += 1) {
+    const want = official[i];
+    if (!want || locked[i] || want === types[i] || isSoftStrokeSwap(want, types[i])) continue;
+    hard += 1;
+  }
+  if (hard > 0) return;
+
+  for (let i = 0; i < types.length; i += 1) {
+    const want = official[i];
+    if (!want || locked[i]) continue;
+    if (want === types[i] || isSoftStrokeSwap(want, types[i])) types[i] = want;
+  }
 }

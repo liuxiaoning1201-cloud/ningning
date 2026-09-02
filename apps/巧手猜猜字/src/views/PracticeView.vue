@@ -77,7 +77,7 @@ function onToolDrop(payload: { strokeId: StrokeId; variantKey?: string; clientX:
   }
   rejectTick.value += 1;
   rejectHint.value =
-    placed.reason === 'kind' ? '不是這一件，換一個再拖進來。' : '再靠近亮起來的那一筆。';
+    placed.reason === 'kind' ? '不是這一件，換一個再拖進來。' : '這一筆已經拼好了。';
 }
 
 const nextStrokeLabel = computed(() => {
@@ -88,7 +88,7 @@ const nextStrokeLabel = computed(() => {
 const mascotMessage = computed(() => {
   if (rejectHint.value) return rejectHint.value;
   if (finished.value) return `「${current.value}」拼好了，再看一次筆順動畫吧。`;
-  return '把物品拖進亮起來的格子。拖錯種類或離太遠，不會黏住。';
+  return '把對應的物品拖進米字格，會自動對齊那一筆的位置、長短和角度。';
 });
 
 const ghostPaths = computed(() => (settings.state.ghost && data.value ? data.value.strokes : []));
@@ -145,7 +145,7 @@ const ghostPaths = computed(() => (settings.state.ghost && data.value ? data.val
           />
 
           <p class="hint" style="text-align: center">
-            從下面拖進米字格。種類不對或沒拖到亮格，不會黏住。
+            從下面拖進米字格。種類對就會自動對齊；種類不對不會黏住。
           </p>
         </div>
 

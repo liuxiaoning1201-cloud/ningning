@@ -2,7 +2,7 @@ import { computed, ref, shallowRef } from 'vue';
 
 import { loadChar } from '@/lib/charData';
 import { judge, nearestSlot, requiredStrokeIds, slotsForChar, TOLERANCE } from '@/lib/geometry';
-import { baseAngleFor, metricFor, objectScale, pickVariant } from '@/lib/strokeMetrics';
+import { baseAngleFor, defaultObjectScale, fitToSlot } from '@/lib/strokeMetrics';
 import type { CharData, JudgeResult, Piece, StrokeId, StrokeSlot } from '@/types';
 
 let seq = 0;
@@ -87,9 +87,8 @@ export function usePuzzle(options: { snap: boolean }) {
 
   /**
    * 把一件物品放到格子上。
-   * 練習模式要拖到「現在該寫的那一筆」附近、且種類對，才會黏住；
-   * 拖錯種類或離槽位太遠，直接不黏。
-   * 挑戰模式就放在鬆手的位置，學生再自己轉與縮。
+   * 練習模式：種類對就自動對齊該筆的位置、長短、角度；種類錯不黏。
+   * 挑戰模式：靠近同種類的空槽時也自動對齊；否則放在鬆手處。
    */
   function drop(
     strokeId: StrokeId,
@@ -101,18 +100,39 @@ export function usePuzzle(options: { snap: boolean }) {
       const slot = nextSlot.value;
       if (!slot) return { ok: false, reason: 'done' };
       if (slot.strokeId && slot.strokeId !== strokeId) return { ok: false, reason: 'kind' };
-      if (Math.hypot(slot.cx - x, slot.cy - y) > TOLERANCE.snap) return { ok: false, reason: 'pos' };
 
+      const fit = fitToSlot(strokeId, slot, variantKey);
       const piece: Piece = {
         id: nextPieceId(),
         strokeId,
-        variantKey: variantKey ?? pickVariant(strokeId, slot.angle),
-        x: slot.cx,
-        y: slot.cy,
-        scale: objectScale(slot.extent, strokeId),
-        rot: slot.angle,
+        variantKey: fit.variantKey,
+        x: fit.x,
+        y: fit.y,
+        scale: fit.scale,
+        rot: fit.rot,
         seq: pieces.value.length,
         slotIndex: slot.index,
+      };
+      pieces.value.push(piece);
+      selectedId.value = piece.id;
+      pop(piece.id);
+      return { ok: true };
+    }
+
+    const taken = new Set(pieces.value.map((p) => p.slotIndex).filter((i): i is number => i !== undefined));
+    const near = nearestMatchingSlot(strokeId, x, y, taken);
+    if (near) {
+      const fit = fitToSlot(strokeId, near, variantKey);
+      const piece: Piece = {
+        id: nextPieceId(),
+        strokeId,
+        variantKey: fit.variantKey,
+        x: fit.x,
+        y: fit.y,
+        scale: fit.scale,
+        rot: fit.rot,
+        seq: pieces.value.length,
+        slotIndex: near.index,
       };
       pieces.value.push(piece);
       selectedId.value = piece.id;
@@ -126,8 +146,7 @@ export function usePuzzle(options: { snap: boolean }) {
       variantKey,
       x: Math.min(0.92, Math.max(0.08, x)),
       y: Math.min(0.92, Math.max(0.08, y)),
-      // 先給偏小的尺寸，學生用＋放大；複合筆外框大，直接放上去會蓋住整格
-      scale: Math.min(0.34, objectScale(metricFor(strokeId).extent, strokeId)),
+      scale: defaultObjectScale(strokeId),
       rot: baseAngleFor(strokeId, variantKey),
       seq: pieces.value.length,
     };
@@ -135,6 +154,11 @@ export function usePuzzle(options: { snap: boolean }) {
     selectedId.value = piece.id;
     pop(piece.id);
     return { ok: true };
+  }
+
+  function nearestMatchingSlot(strokeId: StrokeId, x: number, y: number, taken: Set<number>) {
+    const candidates = slots.value.filter((s) => !taken.has(s.index) && (!s.strokeId || s.strokeId === strokeId));
+    return nearestSlot(candidates, x, y, new Set(), TOLERANCE.snap);
   }
 
   /** @deprecated 點擊工具欄改走 drop；保留給舊呼叫。 */
