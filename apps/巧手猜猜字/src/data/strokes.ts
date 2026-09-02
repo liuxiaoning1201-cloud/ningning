@@ -55,6 +55,7 @@ export const STROKES: StrokeDef[] = [
     stage: 1,
     examples: ['十', '川'],
     hint: '蠟燭要站直，不要歪。',
+    drawScale: 0.7,
   },
   {
     id: 'pie',
@@ -67,6 +68,8 @@ export const STROKES: StrokeDef[] = [
     stage: 1,
     examples: ['人', '竹'],
     hint: '羽毛從右上掃到左下。',
+    // 羽毛圖很胖，不縮會蓋住後面的橫
+    drawScale: 0.52,
   },
   {
     id: 'na',
@@ -80,6 +83,7 @@ export const STROKES: StrokeDef[] = [
     stage: 1,
     examples: ['人', '木'],
     hint: '滑梯從左上滑到右下。',
+    drawScale: 0.62,
   },
   {
     id: 'ti',

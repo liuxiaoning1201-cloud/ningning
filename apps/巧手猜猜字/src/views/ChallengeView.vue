@@ -99,30 +99,10 @@ const mascotMood = computed(() => {
       </div>
 
       <div v-else class="play">
-        <!-- 左欄：題目與規則 -->
         <div class="stack">
-          <div class="card">
-            <div class="card-title">
-              <span>{{ books.active?.name }}</span>
-              <span class="pill">{{ index + 1 }} / {{ chars.length }}</span>
-            </div>
-            <p style="font-family: var(--font-title); font-size: 3.4rem; text-align: center; line-height: 1.1">
-              {{ current }}
-            </p>
-            <div class="row" style="justify-content: center">
-              <button class="btn btn-ghost btn-sm" @click="step(-1)">上一個</button>
-              <button class="btn btn-sky btn-sm" @click="step(1)">下一個字</button>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">怎麼算分</div>
-            <p class="hint">
-              沒有吸附、沒有鎖筆順，全部自己擺。按「拼好了」會分三項算：
-              <strong>種類</strong>有沒有用對物品、<strong>筆順</strong>放下的次序、<strong>位置</strong>擺得準不準。
-              種類與位置都對才算過關，筆順分另外顯示。
-            </p>
-          </div>
+          <CharCard v-if="data" :data="data" :show-stroke-list="false" />
+          <p v-else-if="loading" class="card hint">正在取筆順資料…</p>
+          <p v-else-if="error" class="card hint">{{ error }}</p>
         </div>
 
         <!-- 中欄：米字格與工具欄 -->
@@ -159,11 +139,24 @@ const mascotMood = computed(() => {
           </div>
         </div>
 
-        <!-- 右欄：字卡。逐筆物品清單先藏起來，否則等於送答案 -->
         <div class="stack">
-          <CharCard v-if="data" :data="data" :show-stroke-list="revealed" />
-          <p v-else-if="loading" class="card hint">正在取筆順資料…</p>
-          <p v-else-if="error" class="card hint">{{ error }}</p>
+          <div class="card">
+            <div class="card-title">
+              <span>{{ books.active?.name }}</span>
+              <span class="pill">{{ index + 1 }} / {{ chars.length }}</span>
+            </div>
+            <div class="row">
+              <button class="btn btn-ghost btn-sm" @click="step(-1)">上一個</button>
+              <button class="btn btn-sky btn-sm" @click="step(1)">下一個字</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">怎麼算分</div>
+            <p class="hint">
+              沒有吸附、沒有鎖筆順，全部自己擺。按「拼好了」會分三項算：
+              <strong>種類</strong>有沒有用對物品、<strong>筆順</strong>放下的次序、<strong>位置</strong>擺得準不準。
+            </p>
+          </div>
         </div>
       </div>
     </div>

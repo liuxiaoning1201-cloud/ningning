@@ -120,8 +120,9 @@ export const useWordbooks = defineStore('wordbooks', () => {
     activeId.value = id;
   }
 
-  function exportJson(): string {
-    return JSON.stringify({ app: '巧手猜猜字', version: 1, books: books.value }, null, 2);
+  function exportJson(ids?: string[]): string {
+    const picked = ids?.length ? books.value.filter((b) => ids.includes(b.id)) : books.value;
+    return JSON.stringify({ app: '巧手猜猜字', version: 1, books: picked }, null, 2);
   }
 
   /** 匯入時合併同名字簿，不覆蓋老師手上已有的內容。 */

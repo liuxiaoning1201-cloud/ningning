@@ -1,9 +1,8 @@
 import { computed, ref, shallowRef } from 'vue';
 
-import { STROKE_BY_ID } from '@/data/strokes';
 import { loadChar } from '@/lib/charData';
 import { judge, nearestSlot, requiredStrokeIds, slotsForChar, TOLERANCE } from '@/lib/geometry';
-import { baseAngleFor, metricFor, pickVariant } from '@/lib/strokeMetrics';
+import { baseAngleFor, metricFor, objectScale, pickVariant } from '@/lib/strokeMetrics';
 import type { CharData, JudgeResult, Piece, StrokeId, StrokeSlot } from '@/types';
 
 let seq = 0;
@@ -98,8 +97,6 @@ export function usePuzzle(options: { snap: boolean }) {
     y: number,
     variantKey?: string
   ): { ok: boolean; reason?: 'kind' | 'pos' | 'done' } {
-    const drawScale = STROKE_BY_ID[strokeId].drawScale ?? 1;
-
     if (options.snap) {
       const slot = nextSlot.value;
       if (!slot) return { ok: false, reason: 'done' };
@@ -112,7 +109,7 @@ export function usePuzzle(options: { snap: boolean }) {
         variantKey: variantKey ?? pickVariant(strokeId, slot.angle),
         x: slot.cx,
         y: slot.cy,
-        scale: slot.extent * drawScale,
+        scale: objectScale(slot.extent, strokeId),
         rot: slot.angle,
         seq: pieces.value.length,
         slotIndex: slot.index,
@@ -130,7 +127,7 @@ export function usePuzzle(options: { snap: boolean }) {
       x: Math.min(0.92, Math.max(0.08, x)),
       y: Math.min(0.92, Math.max(0.08, y)),
       // 先給偏小的尺寸，學生用＋放大；複合筆外框大，直接放上去會蓋住整格
-      scale: Math.min(0.38, metricFor(strokeId).extent * drawScale),
+      scale: Math.min(0.34, objectScale(metricFor(strokeId).extent, strokeId)),
       rot: baseAngleFor(strokeId, variantKey),
       seq: pieces.value.length,
     };

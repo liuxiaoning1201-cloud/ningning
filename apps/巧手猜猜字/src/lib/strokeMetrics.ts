@@ -37,6 +37,22 @@ export function metricFor(id: StrokeId): Metric {
   return FALLBACK[id] ?? { baseAngle: 0, extent: 0.45 };
 }
 
+/** 羽毛、滑梯這類圖很胖，用外框當大小會蓋住後面的橫。 */
+const SLIM = new Set<StrokeId>(['pie', 'na', 'zhi', 'dian']);
+
+/** 格子上實際要畫的大小：外框再打個折，避免視覺錯位。 */
+export function objectScale(extent: number, id: StrokeId): number {
+  const draw = STROKE_BY_ID[id].drawScale ?? 1;
+  const slim = SLIM.has(id) ? 0.72 : 0.92;
+  return Math.min(0.7, Math.max(0.06, extent * draw * slim));
+}
+
+/** 後寫的筆疊在上面；橫直再高一層，避免被羽毛擋住。 */
+export function pieceLayer(id: StrokeId, order: number): number {
+  const boost = id === 'heng' || id === 'zhi' || id === 'ti' ? 3 : id === 'pie' || id === 'na' ? 0 : 1;
+  return (order + 1) * 4 + boost;
+}
+
 /** 這個筆畫的實測樣本數，0 表示大小與角度還是估的。 */
 export function sampleCount(id: StrokeId): number {
   return GENERATED[id]?.samples ?? 0;

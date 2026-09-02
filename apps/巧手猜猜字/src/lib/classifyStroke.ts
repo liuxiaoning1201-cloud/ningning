@@ -26,6 +26,9 @@ export interface StrokeShape {
   pathLen: number;
   startDeg: number;
   endDeg: number;
+  /** 外框高／寬。用來把「難」裡短而高的直，跟「心」裡向下的點分開。 */
+  boxW: number;
+  boxH: number;
 }
 
 function toScreen([x, y]: [number, number]): [number, number] {
@@ -108,6 +111,8 @@ export function describeMedian(median: Median): StrokeShape {
   const first = pts[0];
   const last = pts[pts.length - 1];
   const tail = segs[segs.length - 1];
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
 
   return {
     tokens,
@@ -116,6 +121,8 @@ export function describeMedian(median: Median): StrokeShape {
     tailRatio: tail ? Math.round((tail.len / total) * 100) : 0,
     span: Math.round(dist(first, last)),
     pathLen: Math.round(total),
+    boxW: Math.max(...xs) - Math.min(...xs),
+    boxH: Math.max(...ys) - Math.min(...ys),
     startDeg: (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI,
     endDeg: tail
       ? (Math.atan2(
@@ -208,9 +215,28 @@ export function fillStrokeTypes(
   medians: Median[],
   existing: (StrokeId | null | string)[] | null | undefined
 ): StrokeId[] {
-  return medians.map((median, i) => {
+  const locked = medians.map((_, i) => isStrokeId(existing?.[i]));
+  const types = medians.map((median, i) => {
     const prev = existing?.[i];
     if (isStrokeId(prev)) return prev;
     return classifyMedian(median);
   });
+
+  /**
+   * 「難」「花」的卝／廿是兩條並排短直，單獨看很像「心」的點。
+   * 連在一起出現就改回直；「心」「必」只有一條，不會被誤傷。
+   */
+  for (let i = 0; i < types.length - 1; i += 1) {
+    if (locked[i] || locked[i + 1]) continue;
+    if (types[i] !== 'dian' || types[i + 1] !== 'dian') continue;
+    const a = describeMedian(medians[i]);
+    const b = describeMedian(medians[i + 1]);
+    const tall = (s: StrokeShape) => s.boxH > s.boxW * 1.6 && Math.abs(s.startDeg - 90) < 28;
+    if (tall(a) && tall(b)) {
+      types[i] = 'zhi';
+      types[i + 1] = 'zhi';
+    }
+  }
+
+  return types;
 }

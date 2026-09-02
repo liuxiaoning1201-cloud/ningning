@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 
 import { strokeImage } from '@/data/strokes';
-import { renderRotation } from '@/lib/strokeMetrics';
+import { pieceLayer, renderRotation } from '@/lib/strokeMetrics';
 import type { Piece, StrokeSlot } from '@/types';
 
 const props = defineProps<{
@@ -134,7 +134,7 @@ const pieceStyle = (piece: Piece) => ({
   width: `${piece.scale * 100}%`,
   height: `${piece.scale * 100}%`,
   transform: `rotate(${renderRotation(piece.strokeId, piece.rot, piece.variantKey)}deg)`,
-  zIndex: piece.seq + 2,
+  zIndex: pieceLayer(piece.strokeId, piece.slotIndex ?? piece.seq),
 });
 
 const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.seq));

@@ -110,33 +110,9 @@ const ghostPaths = computed(() => (settings.state.ghost && data.value ? data.val
 
       <div v-else class="play">
         <div class="stack">
-          <div class="card">
-            <div class="card-title">
-              <span>{{ books.active?.name }}</span>
-              <span class="pill">{{ index + 1 }} / {{ chars.length }}</span>
-            </div>
-            <div class="row">
-              <button class="btn btn-ghost btn-sm" @click="step(-1)">上一個</button>
-              <button class="btn btn-sky btn-sm" @click="step(1)">下一個字</button>
-            </div>
-            <div class="tool-divider" />
-            <p class="hint">
-              <strong>第 {{ Math.min(doneCount + 1, slots.length) }} 筆</strong>：{{ nextStrokeLabel }}
-            </p>
-            <p v-if="rejectHint" class="hint" style="color: var(--peach-deep); margin-top: 6px">{{ rejectHint }}</p>
-          </div>
-
-          <div class="card">
-            <div class="card-title">顯示</div>
-            <label class="row" style="cursor: pointer">
-              <input v-model="settings.state.ghost" type="checkbox" />
-              <span class="hint">格子裡顯示淡淡的字影</span>
-            </label>
-            <label class="row" style="cursor: pointer; margin-top: 8px">
-              <input v-model="settings.state.mascot" type="checkbox" />
-              <span class="hint">顯示檸檬茶小精靈</span>
-            </label>
-          </div>
+          <CharCard v-if="data" :data="data" :done-count="doneCount" :show-stroke-list="true" />
+          <p v-else-if="loading" class="card hint">正在取筆順資料…</p>
+          <p v-else-if="error" class="card hint">{{ error }}</p>
         </div>
 
         <div class="play-center">
@@ -174,9 +150,21 @@ const ghostPaths = computed(() => (settings.state.ghost && data.value ? data.val
         </div>
 
         <div class="stack">
-          <CharCard v-if="data" :data="data" :done-count="doneCount" :show-stroke-list="true" />
-          <p v-else-if="loading" class="card hint">正在取筆順資料…</p>
-          <p v-else-if="error" class="card hint">{{ error }}</p>
+          <div class="card">
+            <div class="card-title">
+              <span>{{ books.active?.name }}</span>
+              <span class="pill">{{ index + 1 }} / {{ chars.length }}</span>
+            </div>
+            <div class="row">
+              <button class="btn btn-ghost btn-sm" @click="step(-1)">上一個</button>
+              <button class="btn btn-sky btn-sm" @click="step(1)">下一個字</button>
+            </div>
+            <div class="tool-divider" />
+            <p class="hint">
+              <strong>第 {{ Math.min(doneCount + 1, slots.length) }} 筆</strong>：{{ nextStrokeLabel }}
+            </p>
+            <p v-if="rejectHint" class="hint" style="color: var(--peach-deep); margin-top: 6px">{{ rejectHint }}</p>
+          </div>
         </div>
       </div>
     </div>

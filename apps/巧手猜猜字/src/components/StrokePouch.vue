@@ -16,14 +16,10 @@ const props = defineProps<{
 
 type Filter = 'all' | 'basic' | 'compound';
 const filter = ref<Filter>('all');
-const stage = ref<0 | 1 | 2 | 3 | 4>(0);
 
-const list = computed<StrokeDef[]>(() => {
-  let items: StrokeDef[] =
-    filter.value === 'basic' ? BASIC_STROKES : filter.value === 'compound' ? COMPOUND_STROKES : [...BASIC_STROKES, ...COMPOUND_STROKES];
-  if (stage.value !== 0) items = items.filter((s) => s.stage <= stage.value);
-  return items;
-});
+const list = computed<StrokeDef[]>(() =>
+  filter.value === 'basic' ? BASIC_STROKES : filter.value === 'compound' ? COMPOUND_STROKES : [...BASIC_STROKES, ...COMPOUND_STROKES]
+);
 
 const isHighlighted = (id: string) => !props.highlight?.length || props.highlight.includes(id);
 </script>
@@ -40,14 +36,6 @@ const isHighlighted = (id: string) => !props.highlight?.length || props.highligh
       <button class="btn btn-sm" :class="filter === 'compound' ? 'btn-sky' : 'btn-ghost'" @click="filter = 'compound'">
         複合 17 件
       </button>
-      <span style="flex: 1" />
-      <select v-model.number="stage" class="select" style="width: auto">
-        <option :value="0">不限年級</option>
-        <option :value="1">小一可用</option>
-        <option :value="2">小二可用</option>
-        <option :value="3">小三可用</option>
-        <option :value="4">小四可用</option>
-      </select>
     </div>
 
     <div class="atlas-grid">
@@ -62,13 +50,7 @@ const isHighlighted = (id: string) => !props.highlight?.length || props.highligh
         <div class="atlas-name">{{ s.name }}</div>
         <div class="atlas-object">{{ s.objectName }}</div>
         <div v-if="!compact" class="atlas-examples">字例：{{ s.examples.join('、') }}</div>
-        <div v-if="!compact" class="atlas-examples">小{{ s.stage }}起</div>
       </div>
     </div>
-
-    <p v-if="!compact" class="hint" style="margin-top: 14px">
-      一筆一物、一物一筆：一件物品終身只代表一個筆畫。帶鈎的幾筆靠材質分辨——雨傘是布、屋簷是瓦、長靴是皮、衣帽鈎是金屬、耳機是塑膠、豆芽是植物、湯匙是餐具。
-      平撇、直撇、平捺、左頓點、右頓點沿用母筆畫同一件物品，只改擺放角度。
-    </p>
   </div>
 </template>
