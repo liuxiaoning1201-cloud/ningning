@@ -26,7 +26,8 @@ export const STROKES: StrokeDef[] = [
     // 水滴是一整顆，比一個點粗，縮一點才不會蓋掉旁邊的筆
     drawScale: 0.82,
     variants: [
-      { key: 'up', label: '直立', image: 'dian-shuidi.webp', baseAngle: 90 },
+      // 直立圖尖朝上（−90°）；右斜尖朝右下（45°）；左斜尖朝左下（135°）
+      { key: 'up', label: '直立', image: 'dian-shuidi.webp', baseAngle: -90 },
       { key: 'left', label: '左斜', image: 'dian-shuidi-zuo.webp', baseAngle: 135 },
       { key: 'right', label: '右斜', image: 'dian-shuidi-you.webp', baseAngle: 45 },
     ],

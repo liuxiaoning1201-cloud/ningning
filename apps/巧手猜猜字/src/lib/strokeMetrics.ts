@@ -63,14 +63,15 @@ export function defaultObjectScale(id: StrokeId): number {
   return Math.min(0.34, objectScale({ length: m.extent, extent: m.extent }, id));
 }
 
-/** 拖入正確槽位時的位置、大小、角度。 */
+/** 拖入正確槽位時的位置、大小、角度。點一律依格子方向選朝向，不沿用工具欄那一顆。 */
 export function fitToSlot(id: StrokeId, slot: StrokeSlot, variantKey?: string) {
+  const chosen = id === 'dian' ? pickVariant(id, slot.angle) : (variantKey ?? pickVariant(id, slot.angle));
   return {
     x: slot.cx,
     y: slot.cy,
     scale: objectScale(slot, id),
     rot: slot.angle,
-    variantKey: variantKey ?? pickVariant(id, slot.angle),
+    variantKey: chosen,
   };
 }
 
@@ -101,6 +102,13 @@ export function baseAngleFor(id: StrokeId, variantKey?: string): number {
 export function pickVariant(id: StrokeId, angle: number): string | undefined {
   const variants = STROKE_BY_ID[id].variants;
   if (!variants?.length) return undefined;
+
+  // 點：直立圖尖朝上，近乎向下的點用它轉 180° 讓尖朝下，才跟字影同向。
+  if (id === 'dian') {
+    if (angle >= 70 && angle <= 110) return 'up';
+    if (angle > 110 || angle < -20) return 'left';
+    return 'right';
+  }
 
   let best = variants[0];
   let bestDelta = Infinity;

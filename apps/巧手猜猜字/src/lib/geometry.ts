@@ -44,7 +44,18 @@ export function slotFromMedian(median: Median, index: number, strokeId: StrokeSl
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
 
-  const angle = (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
+  /**
+   * 點的中線常先平後陡：首末連線約 45°，收筆那一段才是字影看起來的方向。
+   * 用收筆方向對齊水滴，才會跟米字格裡的墨跡一致。
+   */
+  let angle: number;
+  if (strokeId === 'dian' && pts.length >= 3) {
+    const a = pts[pts.length - 2];
+    const b = last;
+    angle = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+  } else {
+    angle = (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
+  }
   const span = Math.hypot(last[0] - first[0], last[1] - first[1]);
 
   return {
