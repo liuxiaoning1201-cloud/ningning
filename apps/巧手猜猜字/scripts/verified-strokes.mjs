@@ -33,6 +33,7 @@ export const VERIFIED_STROKES = {
   力: ['hengzhigou', 'pie'],
   又: ['hengpie', 'na'],
   夕: ['pie', 'hengpie', 'dian'],
+  丸: ['pie', 'hengwangou', 'dian'],
   也: ['hengzhigou', 'zhi', 'zhiwangou'],
   工: ['heng', 'zhi', 'heng'],
   土: ['heng', 'zhi', 'heng'],

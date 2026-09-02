@@ -99,7 +99,7 @@ onBeforeUnmount(() => {
         </svg>
       </button>
     </div>
-    <p class="charcard-hint">筆順依開源 animCJK 繁體（香港教育局字詞表為參考來源）</p>
+    <p class="charcard-hint">筆順依香港《小學學習字詞表》／《常用字字形表》</p>
 
     <div v-if="showStrokeList" ref="listBox" class="stroke-list-box">
       <ol class="stroke-list">

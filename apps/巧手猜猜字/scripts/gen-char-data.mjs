@@ -4,7 +4,7 @@
  *
  * 筆順資料三層優先序：
  *   1. overrides/<字>.json    人工修正檔，最高優先
- *   2. animCJK ZhHant         繁體筆順，animCJK 明列香港教育局 lexlist 為參考來源
+ *   2. animCJK ZhHant         繁體筆順，animCJK 明列香港《小學學習字詞表》為參考來源
  *   3. makemeahanzi           內地筆順與 Arphic 字形，覆蓋率高但標為待核
  *
  * 筆畫種類（23 件物品對哪一筆）不靠猜：只有 verified-strokes.mjs 裡人工覈核、

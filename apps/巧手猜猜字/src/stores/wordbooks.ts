@@ -28,7 +28,7 @@ function seedBooks(): Wordbook[] {
     {
       id: uid(),
       name: '第二課 · 折與鈎',
-      chars: pick(['口', '日', '目', '山', '中', '小', '了', '子', '刀', '力', '又', '也', '月', '手']),
+      chars: pick(['口', '日', '目', '山', '中', '小', '了', '子', '刀', '力', '又', '也', '月', '手', '丸']),
       createdAt: now,
       updatedAt: now,
     },

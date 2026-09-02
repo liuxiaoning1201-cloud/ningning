@@ -43,6 +43,18 @@ export function officialStrokeTypes(ch: string): (StrokeId | null)[] | null {
   return [...code].map((c) => FROM_CODE[c] ?? null);
 }
 
+/** 幾何把複合筆看成了開頭那一段（橫當橫彎鈎），允許用開源名稱升級。 */
+export function isNameUpgrade(geo: StrokeId, want: StrokeId): boolean {
+  if (geo === want) return true;
+  const upgrades: Partial<Record<StrokeId, StrokeId[]>> = {
+    heng: ['hengzhi', 'hengzhigou', 'hengwangou', 'henggou', 'hengpie', 'hengpiewangou'],
+    zhi: ['zhigou', 'zhiwangou', 'zhizheng', 'zhiti', 'zhizhengzhi', 'zhizhengzhigou'],
+    pie: ['hengpie', 'piedian', 'pieti'],
+    na: ['xiegou'],
+  };
+  return upgrades[geo]?.includes(want) ?? false;
+}
+
 /** 只有點／直、點／捺這種楷書斜勢容易混的，才允許用開源名稱覆寫幾何結果。 */
 export function isSoftStrokeSwap(a: StrokeId, b: StrokeId): boolean {
   const pair = new Set([a, b]);

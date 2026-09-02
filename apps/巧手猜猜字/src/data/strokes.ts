@@ -162,7 +162,7 @@ export const STROKES: StrokeDef[] = [
     image: 'hengwangou-danche.webp',
     material: '車件',
     stage: 3,
-    examples: ['吃', '乙', '九'],
+    examples: ['吃', '乙', '九', '丸'],
     hint: '頂橫短，下面的彎鈎大而明顯。',
   },
   {

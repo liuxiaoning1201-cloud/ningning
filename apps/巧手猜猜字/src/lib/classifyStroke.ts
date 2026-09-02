@@ -1,5 +1,5 @@
 import { isStrokeId } from '@/data/strokes';
-import { isSoftStrokeSwap, officialStrokeTypes } from '@/lib/officialStrokes';
+import { isNameUpgrade, isSoftStrokeSwap, officialStrokeTypes } from '@/lib/officialStrokes';
 import type { Median, StrokeId } from '@/types';
 
 /**
@@ -272,7 +272,8 @@ function applyOfficialNames(types: StrokeId[], locked: boolean[], char?: string)
   let hard = 0;
   for (let i = 0; i < types.length; i += 1) {
     const want = official[i];
-    if (!want || locked[i] || want === types[i] || isSoftStrokeSwap(want, types[i])) continue;
+    if (!want || locked[i] || want === types[i] || isSoftStrokeSwap(want, types[i]) || isNameUpgrade(types[i], want))
+      continue;
     hard += 1;
   }
   if (hard > 0) return;
@@ -280,6 +281,6 @@ function applyOfficialNames(types: StrokeId[], locked: boolean[], char?: string)
   for (let i = 0; i < types.length; i += 1) {
     const want = official[i];
     if (!want || locked[i]) continue;
-    if (want === types[i] || isSoftStrokeSwap(want, types[i])) types[i] = want;
+    if (want === types[i] || isSoftStrokeSwap(want, types[i]) || isNameUpgrade(types[i], want)) types[i] = want;
   }
 }

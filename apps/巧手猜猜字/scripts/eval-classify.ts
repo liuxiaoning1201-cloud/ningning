@@ -85,3 +85,15 @@ if (huo) {
   process.stdout.write(`火第一筆 ${got[0] === 'dian' ? 'OK' : 'FAIL'} ${got.join(',')}\n`);
   if (got[0] !== 'dian') process.exitCode = 1;
 }
+
+const wan = chars['丸'];
+if (wan) {
+  const got = fillStrokeTypes(wan.medians, null, '丸').join(',');
+  const expect = 'pie,hengwangou,dian';
+  process.stdout.write(`丸 fillStrokeTypes ${got === expect ? 'OK' : 'FAIL'} ${got}\n`);
+  if (got !== expect) process.exitCode = 1;
+  if (wan.source !== 'override' || wan.strokeTypes.join(',') !== expect) {
+    process.stdout.write('丸 應為港標 override：撇、橫彎鈎、點\n');
+    process.exitCode = 1;
+  }
+}

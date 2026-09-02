@@ -11,7 +11,7 @@ import type { CharData, Median, StrokeId } from '@/types';
  * 已核對的筆畫標註離線可用。老師臨時加的字若不在包裡，即時打 CDN，
  * 再用幾何規則自動判每一筆是哪一種物品——不必人工複核才能練。
  *
- * 來源順序：animCJK ZhHant（繁體、貼近港標）優先，makemeahanzi 備援。
+ * 來源順序：人工 override（對齊《小學學習字詞表》）→ animCJK ZhHant → makemeahanzi。
  * 筆畫名稱再對開源 cnchar 繁體筆順做相容覆寫（筆數／順序不合則不覆蓋）。
  */
 
