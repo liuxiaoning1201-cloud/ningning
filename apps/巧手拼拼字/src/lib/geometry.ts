@@ -53,17 +53,11 @@ export function slotFromMedian(
   const height = ink?.height ?? Math.max(maxY - minY, 0.04);
 
   /**
-   * 點的中線常先平後陡：首末連線約 45°，收筆那一段才是字影看起來的方向。
-   * 用收筆方向對齊水滴，才會跟米字格裡的墨跡一致。
+   * 點的水滴永遠直立（尖上圓下），角度固定成物品圖的基準角。
+   * 其他筆仍用中線首末連線。
    */
-  let angle: number;
-  if (strokeId === 'dian' && pts.length >= 3) {
-    const a = pts[pts.length - 2];
-    const b = last;
-    angle = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
-  } else {
-    angle = (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
-  }
+  const angle =
+    strokeId === 'dian' ? -90 : (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
   const span = Math.hypot(last[0] - first[0], last[1] - first[1]);
 
   return {
@@ -171,9 +165,10 @@ export function judge(slots: StrokeSlot[], pieces: Piece[]): JudgeResult {
       : { sx: slot.extent, sy: slot.extent };
     const sx = match.scale;
     const sy = match.scaleY ?? match.scale;
+    const angleOk = slot.strokeId === 'dian' || angleDelta(match.rot, slot.angle) <= TOLERANCE.angle;
     const placementOk =
       matchDist <= TOLERANCE.distance &&
-      angleDelta(match.rot, slot.angle) <= TOLERANCE.angle &&
+      angleOk &&
       sx >= expected.sx * TOLERANCE.scaleLow &&
       sx <= expected.sx * TOLERANCE.scaleHigh &&
       sy >= expected.sy * TOLERANCE.scaleLow &&

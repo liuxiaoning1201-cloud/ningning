@@ -21,7 +21,7 @@ export const STROKES: StrokeDef[] = [
     material: '水',
     stage: 1,
     examples: ['主', '卜'],
-    hint: '一顆水滴。尖朝上畫好，放進格子時跟著那一筆的角度轉。',
+    hint: '一顆水滴。尖朝上、圓底朝下，放進格子時不要轉歪。',
     // 水滴是一整顆，比一個點粗，縮一點才不會蓋掉旁邊的筆
     drawScale: 0.82,
   },

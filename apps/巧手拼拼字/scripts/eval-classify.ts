@@ -97,3 +97,33 @@ if (wan) {
     process.exitCode = 1;
   }
 }
+
+for (const [ch, expect] of [
+  ['口', 'zhi,hengzhi,heng'],
+  ['日', 'zhi,hengzhi,heng,heng'],
+  ['主', 'dian,heng,heng,zhi,heng'],
+] as const) {
+  const data = chars[ch];
+  if (!data) continue;
+  const got = fillStrokeTypes(data.medians, null, ch).join(',');
+  process.stdout.write(`${ch} 開源筆序 ${got === expect ? 'OK' : 'FAIL'} ${got}\n`);
+  if (got !== expect) process.exitCode = 1;
+}
+
+const bi = chars['必'];
+if (bi) {
+  const locked = fillStrokeTypes(bi.medians, bi.strokeTypes, '必').join(',');
+  const expect = 'dian,wogou,pie,dian,dian';
+  process.stdout.write(`必 人工鎖定 ${locked === expect ? 'OK' : 'FAIL'} ${locked}\n`);
+  if (locked !== expect) process.exitCode = 1;
+}
+
+const yong = chars['永'];
+if (yong) {
+  const got = fillStrokeTypes(yong.medians, null, '永');
+  process.stdout.write(`永 自動 ${got.join(',')}\n`);
+  if (got[0] !== 'dian' || got[1] !== 'hengzhigou' || got[3] !== 'pie' || got[4] !== 'na') {
+    process.stdout.write('永 應為點、橫直鈎、…、撇、捺\n');
+    process.exitCode = 1;
+  }
+}

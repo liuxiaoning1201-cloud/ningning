@@ -1,11 +1,12 @@
 import { isStrokeId } from '@/data/strokes';
-import { isNameUpgrade, isSoftStrokeSwap, officialStrokeTypes } from '@/lib/officialStrokes';
+import { officialStrokeTypes } from '@/lib/officialStrokes';
 import type { Median, StrokeId } from '@/types';
 
 /**
  * 由一筆的中線自動判出是 24 種筆畫的哪一種。
  *
- * 老師加生字時不必人工複核：有人工標註就沿用，沒有就用這套幾何規則填。
+ * 老師加生字時不必人工複核：有人工標註就沿用；否則筆數對得上就用開源繁體
+ * 筆畫名稱（與字卡動畫同一筆序），幾何只補未知碼、分辨橫彎鈎／橫折彎鈎。
  * 漢字起筆常有一小段「入筆」斜勢，會先削掉再比對，才不會把「直」看成「捺」。
  */
 
@@ -215,8 +216,11 @@ export function classifyMedian(median: Median): StrokeId {
 }
 
 /**
- * 填滿每一筆的種類。已有的人工標註（或先前分類結果）原樣保留，
- * 只補 null，這樣已核對的字永遠不被自動分類覆蓋。
+ * 填滿每一筆的種類。已有的人工標註原樣保留。
+ *
+ * 老師加生字時：若開源繁體筆畫名稱的筆數跟字卡動畫相同，就以那份名稱為準
+ * （跟 Hanzi Writer 播的順序同一套索引），幾何只補名稱表裡的未知碼，
+ * 並分辨「橫彎鈎／橫折彎鈎」。這樣物品順序才會跟動畫一致。
  */
 export function fillStrokeTypes(
   medians: Median[],
@@ -263,26 +267,19 @@ export function fillStrokeTypes(
 }
 
 /**
- * 開源繁體筆畫名稱（cnchar）只在筆數相同、且沒有「撇／點對調」這種順序衝突時才覆寫。
- * 「必」幾何與 cnchar 順序不同，會整字跳過，避免把字卡路徑標錯。
+ * 筆數對得上時，開源名稱就是這一筆叫什麼；幾何不再整字否決。
+ * 「必」這類順序衝突已在 verified-strokes 鎖死，不會被覆蓋。
  */
 function applyOfficialNames(types: StrokeId[], locked: boolean[], char?: string) {
   if (!char) return;
   const official = officialStrokeTypes(char);
   if (!official || official.length !== types.length) return;
 
-  let hard = 0;
-  for (let i = 0; i < types.length; i += 1) {
-    const want = official[i];
-    if (!want || locked[i] || want === types[i] || isSoftStrokeSwap(want, types[i]) || isNameUpgrade(types[i], want))
-      continue;
-    hard += 1;
-  }
-  if (hard > 0) return;
-
   for (let i = 0; i < types.length; i += 1) {
     const want = official[i];
     if (!want || locked[i]) continue;
-    if (want === types[i] || isSoftStrokeSwap(want, types[i]) || isNameUpgrade(types[i], want)) types[i] = want;
+    // 橫斜鈎在 cnchar 裡兼指乙（橫彎鈎）與九（橫折彎鈎）；幾何能分就聽幾何。
+    if (want === 'hengwangou' && types[i] === 'hengzhewangou') continue;
+    types[i] = want;
   }
 }

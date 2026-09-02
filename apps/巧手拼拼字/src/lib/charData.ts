@@ -12,7 +12,8 @@ import type { CharData, Median, StrokeId } from '@/types';
  * 再用幾何規則自動判每一筆是哪一種物品——不必人工複核才能練。
  *
  * 來源順序：人工 override（對齊《小學學習字詞表》）→ animCJK ZhHant → makemeahanzi。
- * 筆畫名稱再對開源 cnchar 繁體筆順做相容覆寫（筆數／順序不合則不覆蓋）。
+ * 筆畫名稱：筆數相同時以開源 cnchar 繁體筆順為準，與字卡動畫同一筆序；
+ * 名稱表沒有的碼才用幾何補。人工核對過的字不會被覆蓋。
  */
 
 const BUNDLED = bundled as unknown as Record<string, CharData>;

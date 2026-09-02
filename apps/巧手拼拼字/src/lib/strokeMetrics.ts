@@ -87,6 +87,12 @@ export function objectSize(
   const box = contentBox(id, variantKey);
   const w = slot.width ?? slot.extent;
   const h = slot.height ?? slot.extent;
+  if (id === 'dian') {
+    // 水滴要保持尖上圓下，不能按墨跡外框拉成斜橢圓。
+    const shrink = STROKE_BY_ID[id].drawScale ?? 1;
+    const s = clampScale(Math.max(w / box.w, h / box.h) * shrink);
+    return { sx: s, sy: s };
+  }
   return { sx: clampScale(w / box.w), sy: clampScale(h / box.h) };
 }
 
@@ -102,7 +108,7 @@ export function defaultObjectScale(id: StrokeId): number {
   return Math.min(0.34, objectScale({ length: m.extent, extent: m.extent, width: m.extent, height: m.extent }, id));
 }
 
-/** 拖入正確槽位時的位置、大小、角度。點一律依格子方向選朝向，不沿用工具欄那一顆。 */
+/** 拖入正確槽位時的位置、大小、角度。點永遠尖上圓下，不跟著墨跡斜。 */
 export function fitToSlot(id: StrokeId, slot: StrokeSlot, variantKey?: string) {
   const chosen = variantKey ?? pickVariant(id, slot.angle);
   const size = objectSize(slot, id, chosen);
@@ -111,7 +117,7 @@ export function fitToSlot(id: StrokeId, slot: StrokeSlot, variantKey?: string) {
     y: slot.cy,
     scale: size.sx,
     scaleY: size.sy,
-    rot: slot.angle,
+    rot: id === 'dian' ? baseAngleFor('dian') : slot.angle,
     variantKey: chosen,
   };
 }
@@ -128,11 +134,9 @@ export function sampleCount(id: StrokeId): number {
 }
 
 /**
- * 物品被畫出來的角度。點有三個朝向，各自有自己的基準角，
- * 學生拼三點水時就不必一直按旋轉。
+ * 物品被畫出來的角度。水滴圖尖朝上（−90°），畫面上不再另轉。
  */
 export function baseAngleFor(id: StrokeId, variantKey?: string): number {
-  // 水滴圖尖朝上，跟字影角度相減才會轉到正確方向。
   if (id === 'dian') return -90;
   if (variantKey) {
     const variant = STROKE_BY_ID[id].variants?.find((v) => v.key === variantKey);
@@ -182,6 +186,9 @@ const COMPOUND_ROTATION_LIMIT = 32;
 
 /** 畫面上真正要套的旋轉角度。 */
 export function renderRotation(id: StrokeId, rot: number, variantKey?: string): number {
+  // 點＝水滴：永遠尖朝上、圓底朝下，不要跟楷書斜勢一起轉歪。
+  if (id === 'dian') return 0;
+
   let delta = rot - baseAngleFor(id, variantKey);
   while (delta > 180) delta -= 360;
   while (delta < -180) delta += 360;

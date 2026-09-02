@@ -4,8 +4,8 @@ import type { StrokeId } from '@/types';
 /**
  * 開源繁體筆畫名稱（cnchar-order + cnchar-trad）的解碼。
  *
- * 路徑動畫繼續用 animCJK ZhHant；這份表只補「這一筆叫什麼」。
- * 若筆數或順序跟字卡對不上（例如「必」），呼叫端不會套用。
+ * 路徑動畫繼續用 animCJK ZhHant；這份表在筆數相同時決定「這一筆叫什麼」，
+ * 與字卡動畫共用同一個筆序。幾何只補未知碼（`.`）。
  */
 
 const FROM_CODE: Record<string, StrokeId> = {
