@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 
 import { strokeImage } from '@/data/strokes';
-import { objectScale, pieceLayer, renderRotation } from '@/lib/strokeMetrics';
+import { pieceLayer, renderRotation } from '@/lib/strokeMetrics';
 import type { Piece, StrokeSlot } from '@/types';
 
 const props = defineProps<{
@@ -102,9 +102,10 @@ const selectedPiece = computed(() => props.pieces.find((p) => p.id === props.sel
 const hudStyle = computed(() => {
   const piece = selectedPiece.value;
   if (!piece) return {};
+  const h = piece.scaleY ?? piece.scale;
   return {
     left: `${piece.x * 100}%`,
-    top: `${Math.min(92, (piece.y + piece.scale / 2) * 100 + 2)}%`,
+    top: `${Math.min(92, (piece.y + h / 2) * 100 + 2)}%`,
   };
 });
 
@@ -115,12 +116,13 @@ const ghostTransform = 'translate(0, 900) scale(1, -1)';
 
 /** 槽位提示照這一筆真正要擺的物品大小畫。 */
 const slotStyle = (slot: StrokeSlot) => {
-  const size = slot.strokeId ? objectScale(slot, slot.strokeId) : Math.max(slot.extent, 0.14);
+  const w = slot.width || Math.max(slot.extent, 0.14);
+  const h = slot.height || Math.max(slot.extent, 0.14);
   return {
-    left: `${(slot.cx - size / 2) * 100}%`,
-    top: `${(slot.cy - size / 2) * 100}%`,
-    width: `${size * 100}%`,
-    height: `${size * 100}%`,
+    left: `${(slot.cx - w / 2) * 100}%`,
+    top: `${(slot.cy - h / 2) * 100}%`,
+    width: `${w * 100}%`,
+    height: `${h * 100}%`,
   };
 };
 
@@ -128,14 +130,18 @@ const slotStyle = (slot: StrokeSlot) => {
  * 物品圖已經畫成該筆畫的樣子，所以套上去的旋轉是「這一筆的角度 − 物品被畫出來的角度」。
  * 直接用 piece.rot 去轉，折角類的物件會整個轉歪。
  */
-const pieceStyle = (piece: Piece) => ({
-  left: `${(piece.x - piece.scale / 2) * 100}%`,
-  top: `${(piece.y - piece.scale / 2) * 100}%`,
-  width: `${piece.scale * 100}%`,
-  height: `${piece.scale * 100}%`,
-  transform: `rotate(${renderRotation(piece.strokeId, piece.rot, piece.variantKey)}deg)`,
-  zIndex: pieceLayer(piece.strokeId, piece.slotIndex ?? piece.seq),
-});
+const pieceStyle = (piece: Piece) => {
+  const w = piece.scale;
+  const h = piece.scaleY ?? piece.scale;
+  return {
+    left: `${(piece.x - w / 2) * 100}%`,
+    top: `${(piece.y - h / 2) * 100}%`,
+    width: `${w * 100}%`,
+    height: `${h * 100}%`,
+    transform: `rotate(${renderRotation(piece.strokeId, piece.rot, piece.variantKey)}deg)`,
+    zIndex: pieceLayer(piece.strokeId, piece.slotIndex ?? piece.seq),
+  };
+};
 
 const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.seq));
 </script>

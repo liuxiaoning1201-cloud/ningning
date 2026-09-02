@@ -109,6 +109,7 @@ export function usePuzzle(options: { snap: boolean }) {
         x: fit.x,
         y: fit.y,
         scale: fit.scale,
+        scaleY: fit.scaleY,
         rot: fit.rot,
         seq: pieces.value.length,
         slotIndex: slot.index,
@@ -130,6 +131,7 @@ export function usePuzzle(options: { snap: boolean }) {
         x: fit.x,
         y: fit.y,
         scale: fit.scale,
+        scaleY: fit.scaleY,
         rot: fit.rot,
         seq: pieces.value.length,
         slotIndex: near.index,
@@ -196,7 +198,10 @@ export function usePuzzle(options: { snap: boolean }) {
   function scale(factor: number) {
     const piece = pieces.value.find((p) => p.id === selectedId.value);
     if (!piece) return;
-    piece.scale = Math.min(0.95, Math.max(0.05, piece.scale * factor));
+    piece.scale = Math.min(1.08, Math.max(0.05, piece.scale * factor));
+    if (piece.scaleY !== undefined) {
+      piece.scaleY = Math.min(1.08, Math.max(0.05, piece.scaleY * factor));
+    }
   }
 
   function removeSelected() {

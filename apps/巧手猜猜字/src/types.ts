@@ -99,6 +99,9 @@ export interface StrokeSlot {
    * 物品圖是按外框裁成正方形的，所以這個才是物品該有的大小，不是首末點距離。
    */
   extent: number;
+  /** 墨跡外框寬、高（正規化）。用來把物品拉成跟字影一樣的長寬。 */
+  width: number;
+  height: number;
 }
 
 /** 學生擺在格子裡的一件物品。 */
@@ -110,8 +113,10 @@ export interface Piece {
   /** 中心點，0–1 */
   x: number;
   y: number;
-  /** 佔格寬的比例 */
+  /** 佔格寬的比例（物品圖正方形的寬） */
   scale: number;
+  /** 物品圖正方形的高；沒有就當正方形 */
+  scaleY?: number;
   /** 旋轉角度，度 */
   rot: number;
   /** 放置次序，用於筆順評分 */

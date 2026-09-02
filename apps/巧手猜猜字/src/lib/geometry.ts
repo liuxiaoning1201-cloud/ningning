@@ -1,4 +1,5 @@
-import { objectScale } from '@/lib/strokeMetrics';
+import { objectSize } from '@/lib/strokeMetrics';
+import { pathBox } from '@/lib/strokePath';
 import type { CharData, JudgeResult, Median, Piece, StrokeJudgement, StrokeSlot } from '@/types';
 
 /**
@@ -28,7 +29,12 @@ function pathLength(points: [number, number][]): number {
  * 這是整個遊戲省下大量人工的地方：物件該擺在格子哪裡、轉幾度、多長，
  * 全部從筆順資料的 median 算出來，不必逐字手排座標。
  */
-export function slotFromMedian(median: Median, index: number, strokeId: StrokeSlot['strokeId']): StrokeSlot {
+export function slotFromMedian(
+  median: Median,
+  index: number,
+  strokeId: StrokeSlot['strokeId'],
+  strokePath?: string
+): StrokeSlot {
   const pts = median.map(toUnit);
   const first = pts[0];
   const last = pts[pts.length - 1];
@@ -40,9 +46,11 @@ export function slotFromMedian(median: Median, index: number, strokeId: StrokeSl
   const minY = Math.min(...ys);
   const maxY = Math.max(...ys);
 
-  // 中心取外框中心，帶鈎、帶彎的筆才不會被鈎那一小段把重心拉偏
-  const cx = (minX + maxX) / 2;
-  const cy = (minY + maxY) / 2;
+  const ink = strokePath ? pathBox(strokePath) : null;
+  const cx = ink?.cx ?? (minX + maxX) / 2;
+  const cy = ink?.cy ?? (minY + maxY) / 2;
+  const width = ink?.width ?? Math.max(maxX - minX, 0.04);
+  const height = ink?.height ?? Math.max(maxY - minY, 0.04);
 
   /**
    * 點的中線常先平後陡：首末連線約 45°，收筆那一段才是字影看起來的方向。
@@ -65,13 +73,14 @@ export function slotFromMedian(median: Median, index: number, strokeId: StrokeSl
     cy,
     angle,
     length: Math.max(span, 0.06),
-    // 物品圖是按外框裁成正方形的，所以物品該有的大小是外框最大邊，不是首末點距離
-    extent: Math.max(maxX - minX, maxY - minY, pathLength(pts) * 0.2, 0.09),
+    extent: Math.max(width, height, pathLength(pts) * 0.2, 0.09),
+    width,
+    height,
   };
 }
 
 export function slotsForChar(data: CharData): StrokeSlot[] {
-  return data.medians.map((m, i) => slotFromMedian(m, i, data.strokeTypes[i] ?? null));
+  return data.medians.map((m, i) => slotFromMedian(m, i, data.strokeTypes[i] ?? null, data.strokes[i]));
 }
 
 /** 角度差，收斂到 0–180。 */
@@ -157,12 +166,18 @@ export function judge(slots: StrokeSlot[], pieces: Piece[]): JudgeResult {
     }
 
     used.add(match.id);
-    const expected = slot.strokeId ? objectScale(slot, slot.strokeId) : slot.extent;
+    const expected = slot.strokeId
+      ? objectSize(slot, slot.strokeId, match.variantKey)
+      : { sx: slot.extent, sy: slot.extent };
+    const sx = match.scale;
+    const sy = match.scaleY ?? match.scale;
     const placementOk =
       matchDist <= TOLERANCE.distance &&
       angleDelta(match.rot, slot.angle) <= TOLERANCE.angle &&
-      match.scale >= expected * TOLERANCE.scaleLow &&
-      match.scale <= expected * TOLERANCE.scaleHigh;
+      sx >= expected.sx * TOLERANCE.scaleLow &&
+      sx <= expected.sx * TOLERANCE.scaleHigh &&
+      sy >= expected.sy * TOLERANCE.scaleLow &&
+      sy <= expected.sy * TOLERANCE.scaleHigh;
 
     perStroke.push({
       slotIndex: slot.index,
