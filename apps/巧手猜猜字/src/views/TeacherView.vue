@@ -230,7 +230,7 @@ async function onPickFile(event: Event) {
             </label>
             <label class="row" style="cursor: pointer; margin-top: 8px">
               <input v-model="settings.state.mascot" type="checkbox" />
-              <span class="hint">顯示檸檬茶小精靈</span>
+              <span class="hint">顯示奶茶小精靈</span>
             </label>
           </div>
         </div>

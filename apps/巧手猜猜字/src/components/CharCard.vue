@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import HanziWriter from 'hanzi-writer';
-import { onBeforeUnmount, ref, watch } from 'vue';
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import { STROKE_BY_ID, strokeImage, strokeName } from '@/data/strokes';
 import type { CharData } from '@/types';
@@ -14,6 +14,7 @@ const props = defineProps<{
 }>();
 
 const stage = ref<HTMLElement | null>(null);
+const listBox = ref<HTMLElement | null>(null);
 let writer: HanziWriter | null = null;
 
 /**
@@ -59,6 +60,22 @@ watch(stage, (el) => {
   if (el) mount();
 });
 
+watch(
+  () => props.doneCount,
+  async () => {
+    await nextTick();
+    const box = listBox.value;
+    const next = box?.querySelector<HTMLElement>('.is-next');
+    if (!box || !next) return;
+    const delta =
+      next.getBoundingClientRect().top -
+      box.getBoundingClientRect().top -
+      box.clientHeight / 2 +
+      next.getBoundingClientRect().height / 2;
+    box.scrollBy({ top: delta, behavior: 'smooth' });
+  }
+);
+
 onBeforeUnmount(() => {
   writer = null;
 });
@@ -74,17 +91,19 @@ onBeforeUnmount(() => {
     <p class="charcard-hint">點一下字，再看一次筆順</p>
     <p class="charcard-hint">筆順依開源 animCJK 繁體（香港教育局字詞表為參考來源）</p>
 
-    <ol v-if="showStrokeList" class="stroke-list">
-      <li
-        v-for="(id, i) in data.strokeTypes"
-        :key="i"
-        :class="{ 'is-done': i < (doneCount ?? 0), 'is-next': i === (doneCount ?? 0) }"
-      >
-        <span class="idx">{{ i + 1 }}</span>
-        <img v-if="id" :src="strokeImage(id)" :alt="STROKE_BY_ID[id].objectName" />
-        <span>{{ strokeName(id) }}</span>
-        <span v-if="id" style="color: var(--ink-faint)">{{ STROKE_BY_ID[id].objectName }}</span>
-      </li>
-    </ol>
+    <div v-if="showStrokeList" ref="listBox" class="stroke-list-box">
+      <ol class="stroke-list">
+        <li
+          v-for="(id, i) in data.strokeTypes"
+          :key="i"
+          :class="{ 'is-done': i < (doneCount ?? 0), 'is-next': i === (doneCount ?? 0) }"
+        >
+          <span class="idx">{{ i + 1 }}</span>
+          <img v-if="id" :src="strokeImage(id)" :alt="STROKE_BY_ID[id].objectName" />
+          <span>{{ strokeName(id) }}</span>
+          <span v-if="id" style="color: var(--ink-faint)">{{ STROKE_BY_ID[id].objectName }}</span>
+        </li>
+      </ol>
+    </div>
   </div>
 </template>

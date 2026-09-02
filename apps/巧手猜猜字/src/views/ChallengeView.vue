@@ -10,6 +10,7 @@ import StrokePouch from '@/components/StrokePouch.vue';
 import { usePuzzle } from '@/composables/usePuzzle';
 import { strokeName } from '@/data/strokes';
 import { canPlay } from '@/lib/charData';
+import { celebrateStars } from '@/lib/celebrate';
 import { useWordbooks } from '@/stores/wordbooks';
 import type { StrokeId } from '@/types';
 
@@ -67,6 +68,7 @@ function step(delta: number) {
 function submit() {
   check();
   showResult.value = true;
+  if (result.value?.passed) celebrateStars();
   if (result.value && !result.value.passed) revealed.value = true;
 }
 
@@ -93,6 +95,7 @@ const mascotMood = computed(() => {
     </header>
 
     <div class="page-body wrap">
+      <MascotHint :mood="mascotMood" />
       <div v-if="!chars.length" class="card">
         <p class="hint">字簿「{{ books.active?.name ?? '未選擇' }}」裡還沒有字。到設定裡貼生字即可。</p>
         <button class="btn btn-sky btn-sm" style="margin-top: 10px" @click="router.push('/teacher')">去設定</button>
@@ -161,8 +164,6 @@ const mascotMood = computed(() => {
       </div>
     </div>
 
-    <MascotHint :mood="mascotMood" />
-
     <!-- 結算 -->
     <div v-if="showResult && result" class="overlay" @click.self="showResult = false">
       <div class="overlay-card" style="max-width: 560px">
@@ -189,19 +190,21 @@ const mascotMood = computed(() => {
           </div>
         </div>
 
-        <ol class="stroke-list">
-          <li v-for="s in result.perStroke" :key="s.slotIndex">
-            <span class="idx">{{ s.slotIndex + 1 }}</span>
-            <span>{{ strokeName(s.strokeId) }}</span>
-            <span style="margin-left: auto; font-size: 0.8rem">
-              <template v-if="!s.kindOk">沒放這一筆</template>
-              <template v-else>
-                {{ s.placementOk ? '位置對' : '位置歪了' }} ·
-                {{ s.orderOk ? '順序對' : '順序不對' }}
-              </template>
-            </span>
-          </li>
-        </ol>
+        <div class="stroke-list-box is-result">
+          <ol class="stroke-list">
+            <li v-for="s in result.perStroke" :key="s.slotIndex">
+              <span class="idx">{{ s.slotIndex + 1 }}</span>
+              <span>{{ strokeName(s.strokeId) }}</span>
+              <span style="margin-left: auto; font-size: 0.8rem">
+                <template v-if="!s.kindOk">沒放這一筆</template>
+                <template v-else>
+                  {{ s.placementOk ? '位置對' : '位置歪了' }} ·
+                  {{ s.orderOk ? '順序對' : '順序不對' }}
+                </template>
+              </span>
+            </li>
+          </ol>
+        </div>
 
         <p v-if="result.extraPieceIds.length" class="hint" style="margin-top: 10px">
           多放了 {{ result.extraPieceIds.length }} 件物品。

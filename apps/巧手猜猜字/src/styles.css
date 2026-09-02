@@ -673,13 +673,40 @@ textarea.text-input {
   margin-top: 8px;
 }
 
+.stroke-list-box {
+  margin-top: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 8px;
+  border-radius: 12px;
+  background: #fffdf7;
+  box-shadow: inset 0 0 0 1px rgba(80, 66, 40, 0.12);
+  text-align: left;
+  scrollbar-width: thin;
+  scrollbar-color: #c4a882 #fff8e8;
+}
+
+.stroke-list-box.is-result {
+  margin-top: 0;
+  max-height: 240px;
+}
+
+.stroke-list-box::-webkit-scrollbar {
+  width: 8px;
+}
+
+.stroke-list-box::-webkit-scrollbar-thumb {
+  background: #c4a882;
+  border-radius: 8px;
+}
+
 .stroke-list {
   list-style: none;
-  margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 5px;
-  text-align: left;
 }
 
 .stroke-list li {
@@ -761,32 +788,55 @@ textarea.text-input {
   font-size: 1.15rem;
 }
 
-/* ── 吉祥物 ── */
+/* ── 吉祥物：標題下方的膠囊條，不擋米字格 ── */
 
 .mascot {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  z-index: 30;
-  pointer-events: none;
+  align-items: center;
+  gap: 10px;
+  margin: 0 auto 14px;
+  padding: 6px 16px 6px 8px;
+  background: var(--card);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  width: fit-content;
+  max-width: min(520px, 100%);
 }
 
 .mascot-bubble {
-  background: var(--card);
-  border-radius: 16px 16px 4px 16px;
-  box-shadow: var(--shadow);
-  padding: 9px 13px;
-  font-size: 0.85rem;
-  max-width: 15em;
-  line-height: 1.5;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--ink);
 }
 
-.mascot-body {
-  font-size: 2.6rem;
+.mascot-face {
+  flex: 0 0 auto;
+  overflow: visible;
   animation: mascot-bob 3.2s ease-in-out infinite;
+}
+
+.mascot-face .eye-white {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-blink 4.8s ease-in-out infinite;
+}
+
+.mascot-face .pupil {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.mascot-face.is-cheer {
+  animation: mascot-cheer 0.55s ease-out 2;
+}
+
+.mascot-face.is-retry .mouth-ok,
+.mascot-face:not(.is-retry) .mouth-sad {
+  display: none;
+}
+
+.mascot-face.is-think .pupil {
+  transform: translate(1.4px, 1.6px);
 }
 
 @keyframes mascot-bob {
@@ -795,12 +845,8 @@ textarea.text-input {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
   }
-}
-
-.mascot-body.is-cheer {
-  animation: mascot-cheer 0.55s ease-out 2;
 }
 
 @keyframes mascot-cheer {
@@ -809,10 +855,21 @@ textarea.text-input {
     transform: translateY(0) rotate(0);
   }
   30% {
-    transform: translateY(-12px) rotate(-9deg);
+    transform: translateY(-10px) rotate(-8deg);
   }
   65% {
-    transform: translateY(-4px) rotate(7deg);
+    transform: translateY(-3px) rotate(6deg);
+  }
+}
+
+@keyframes mascot-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  94% {
+    transform: scaleY(0.08);
   }
 }
 
@@ -1038,9 +1095,6 @@ textarea.text-input {
   }
   .play-center {
     order: -1;
-  }
-  .mascot {
-    display: none;
   }
 }
 

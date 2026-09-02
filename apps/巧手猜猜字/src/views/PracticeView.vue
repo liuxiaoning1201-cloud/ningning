@@ -10,6 +10,7 @@ import StrokePouch from '@/components/StrokePouch.vue';
 import { usePuzzle } from '@/composables/usePuzzle';
 import { STROKE_BY_ID } from '@/data/strokes';
 import { canPlay } from '@/lib/charData';
+import { celebrateStars } from '@/lib/celebrate';
 import { useSettings } from '@/stores/settings';
 import { useWordbooks } from '@/stores/wordbooks';
 import type { StrokeId } from '@/types';
@@ -60,6 +61,9 @@ watch(current, loadCurrent);
 watch(chars, () => {
   if (index.value >= chars.value.length) index.value = 0;
 });
+watch(finished, (ok) => {
+  if (ok) celebrateStars();
+});
 
 function step(delta: number) {
   if (!chars.value.length) return;
@@ -103,6 +107,7 @@ const ghostPaths = computed(() => (settings.state.ghost && data.value ? data.val
     </header>
 
     <div class="page-body wrap">
+      <MascotHint :mood="finished ? 'cheer' : rejectHint ? 'retry' : 'idle'" :message="mascotMessage" />
       <div v-if="!chars.length" class="card">
         <p class="hint">字簿「{{ books.active?.name ?? '未選擇' }}」裡還沒有字。到設定裡貼生字即可。</p>
         <button class="btn btn-sky btn-sm" style="margin-top: 10px" @click="router.push('/teacher')">去設定</button>
@@ -168,8 +173,6 @@ const ghostPaths = computed(() => (settings.state.ghost && data.value ? data.val
         </div>
       </div>
     </div>
-
-    <MascotHint :mood="finished ? 'cheer' : rejectHint ? 'retry' : 'idle'" :message="mascotMessage" />
 
     <div v-if="pouchOpen" class="overlay" @click.self="pouchOpen = false">
       <div class="overlay-card">
