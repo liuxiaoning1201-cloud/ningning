@@ -1,14 +1,13 @@
 import type { StrokeDef, StrokeId } from '@/types';
 
 /**
- * 香港小學筆畫與生活物品的對照表：6 基本 + 17 複合 = 23 件。
+ * 香港小學筆畫與生活物品的對照表：6 基本 + 18 複合 = 24 件。
  *
  * 兩條硬規則，由 assertStrokeTableIntegrity 在載入時檢查：
  *   1. 一個筆畫只對一件物品
  *   2. 一件物品只代表一個筆畫
  *
- * 變化形態（平撇、直撇、平捺、左頓點、右頓點）沿用母筆畫同一件物品，只改擺放角度，
- * 因此不另立 StrokeId；點另備左斜與右斜兩個預設朝向。
+ * 變化形態（平撇、直撇、平捺）沿用母筆畫同一件物品，只改擺放角度，因此不另立 StrokeId。
  */
 export const STROKES: StrokeDef[] = [
   // ── 基本筆畫 ──
@@ -22,15 +21,9 @@ export const STROKES: StrokeDef[] = [
     material: '水',
     stage: 1,
     examples: ['主', '卜'],
-    hint: '一顆水滴。三點水裡的點方向不同，用左斜或右斜。',
+    hint: '一顆水滴。尖朝上畫好，放進格子時跟著那一筆的角度轉。',
     // 水滴是一整顆，比一個點粗，縮一點才不會蓋掉旁邊的筆
     drawScale: 0.82,
-    variants: [
-      // 直立圖尖朝上（−90°）；右斜尖朝右下（45°）；左斜尖朝左下（135°）
-      { key: 'up', label: '直立', image: 'dian-shuidi.webp', baseAngle: -90 },
-      { key: 'left', label: '左斜', image: 'dian-shuidi-zuo.webp', baseAngle: 135 },
-      { key: 'right', label: '右斜', image: 'dian-shuidi-you.webp', baseAngle: 45 },
-    ],
   },
   {
     id: 'heng',
@@ -156,14 +149,27 @@ export const STROKES: StrokeDef[] = [
     id: 'hengwangou',
     name: '橫彎鈎',
     shape: '乙',
-    mainlandName: '橫折彎鈎',
+    mainlandName: '橫斜鈎',
     category: 'compound',
     objectName: '單車彎把',
     image: 'hengwangou-danche.webp',
     material: '車件',
     stage: 3,
-    examples: ['吃', '乙', '九', '丸'],
-    hint: '頂橫短，下面的彎鈎大而明顯。',
+    examples: ['乙', '乞'],
+    hint: '頂橫短，下面的彎鈎大而明顯，像「乙」。',
+  },
+  {
+    id: 'hengzhewangou',
+    name: '橫折彎鈎',
+    shape: '㇈',
+    mainlandName: '橫折彎鈎',
+    category: 'compound',
+    objectName: '水龍頭',
+    image: 'hengzhewangou-shuilongtou.webp',
+    material: '金屬水管',
+    stage: 3,
+    examples: ['丸', '九'],
+    hint: '先一小段橫，右轉折向下，再彎向右，尾端上鈎。鵝頸水龍頭就是這個形。',
   },
   {
     id: 'henggou',
@@ -381,7 +387,7 @@ export function assertStrokeTableIntegrity(): void {
     }
   }
 
-  if (STROKES.length !== 23) {
-    throw new Error(`筆畫表應有 23 件，實際 ${STROKES.length} 件`);
+  if (STROKES.length !== 24) {
+    throw new Error(`筆畫表應有 24 件，實際 ${STROKES.length} 件`);
   }
 }

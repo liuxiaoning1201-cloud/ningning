@@ -28,13 +28,13 @@ const isHighlighted = (id: string) => !props.highlight?.length || props.highligh
   <div>
     <div class="atlas-tabs">
       <button class="btn btn-sm" :class="filter === 'all' ? 'btn-sky' : 'btn-ghost'" @click="filter = 'all'">
-        全部 23 件
+        全部 24 件
       </button>
       <button class="btn btn-sm" :class="filter === 'basic' ? 'btn-sky' : 'btn-ghost'" @click="filter = 'basic'">
         基本 6 件
       </button>
       <button class="btn btn-sm" :class="filter === 'compound' ? 'btn-sky' : 'btn-ghost'" @click="filter = 'compound'">
-        複合 17 件
+        複合 18 件
       </button>
     </div>
 

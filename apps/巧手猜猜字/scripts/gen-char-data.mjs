@@ -7,7 +7,7 @@
  *   2. animCJK ZhHant         繁體筆順，animCJK 明列香港《小學學習字詞表》為參考來源
  *   3. makemeahanzi           內地筆順與 Arphic 字形，覆蓋率高但標為待核
  *
- * 筆畫種類（23 件物品對哪一筆）不靠猜：只有 verified-strokes.mjs 裡人工覈核、
+ * 筆畫種類（24 件物品對哪一筆）不靠猜：只有 verified-strokes.mjs 裡人工覈核、
  * 且筆數與抓回來的資料吻合的字，才寫入 strokeTypes。其餘留 null 並標 verified: false。
  * 分類器只產生建議，寫進 stroke-report.json 供人工覈核，絕不直接當成答案。
  *
@@ -143,6 +143,7 @@ const SUGGESTIONS = [
   [/^n?hv[lq]+$/, 'hengzhigou'],
   [/^n?h[np]p*$/, 'hengpie'],
   [/^n?hp+[nv]*[ut]$/, 'hengpiewangou'],
+  [/^n?hv+[nhtu]*[ut]$/, 'hengzhewangou'],
   [/^n?h[nv]+[ut]$/, 'hengwangou'],
   [/^n?h[pv]$/, 'henggou'],
   [/^n?vh$/, 'zhizheng'],
@@ -173,7 +174,7 @@ function suggest(shape) {
 /**
  * 算出每種筆畫的「基準角度」：該筆畫在已核對字裡首末點連線角度的中位數。
  *
- * 這個數字是給前端拿來抵銷旋轉用的。23 件物品圖各自已經畫成該筆畫的樣子
+ * 這個數字是給前端拿來抵銷旋轉用的。24 件物品圖各自已經畫成該筆畫的樣子
  * （曲尺本來就是 ┐、羽毛本來就從右上撇到左下），所以畫面上實際要轉的角度是
  * 「這一筆的角度 − 基準角度」。典型的字轉出來接近 0 度，物件維持它被畫出來的樣子；
  * 偏一點的字才會得到一點修正。若直接照筆畫角度轉，折角類的物件會整個轉歪。

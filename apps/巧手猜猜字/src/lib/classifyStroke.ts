@@ -3,7 +3,7 @@ import { isNameUpgrade, isSoftStrokeSwap, officialStrokeTypes } from '@/lib/offi
 import type { Median, StrokeId } from '@/types';
 
 /**
- * 由一筆的中線自動判出是 23 種筆畫的哪一種。
+ * 由一筆的中線自動判出是 24 種筆畫的哪一種。
  *
  * 老師加生字時不必人工複核：有人工標註就沿用，沒有就用這套幾何規則填。
  * 漢字起筆常有一小段「入筆」斜勢，會先削掉再比對，才不會把「直」看成「捺」。
@@ -165,6 +165,8 @@ function scoreShape(s: StrokeShape): StrokeId {
   if (/^hvp+$/.test(c) || c === 'hp') return 'hengpie';
   if (/^hv[p]?[ql]+$/.test(c) || /^nvl$/.test(c) || /^hn?v[ql]+$/.test(c)) return 'hengzhigou';
   if (/^hp+[nv]*[ut]$/.test(c)) return 'hengpiewangou';
+  // 橫折彎鈎：有明顯下折再彎鈎（九、丸）；橫彎鈎：較平滑的乙
+  if (/^hv+[nhtu]*[ut]$/.test(c) || c === 'hvnhu') return 'hengzhewangou';
   if (/^h[nv]+[ut]$/.test(c)) return 'hengwangou';
   if ((c === 'hp' || c === 'hv') && s.tailRatio < 35) return 'henggou';
   if (c === 'hq' || (c === 'hp' && s.tailRatio < 40)) return 'henggou';

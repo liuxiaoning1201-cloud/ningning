@@ -21,7 +21,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CHARSET = resolve(HERE, '../src/data/hkCharset.json');
 const OUT = resolve(HERE, '../src/data/officialStrokeCodes.json');
 
-/** 單一字母編碼，對得上我們的 23 種 StrokeId。 */
+/** 單一字母編碼，對得上我們的 24 種 StrokeId。 */
 const NAME_TO_CODE = {
   横: 'h',
   竖: 's',
@@ -35,7 +35,7 @@ const NAME_TO_CODE = {
   横折钩: 'B',
   横撇: 'C',
   横撇弯钩: 'D',
-  横折弯钩: 'E',
+  横折弯钩: 'R',
   横斜钩: 'E',
   横钩: 'F',
   竖折: 'G',

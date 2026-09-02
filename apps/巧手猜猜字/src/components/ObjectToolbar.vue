@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import { STROKE_BY_ID, objectUrl, strokeImage } from '@/data/strokes';
+import { STROKE_BY_ID, strokeImage } from '@/data/strokes';
 import type { StrokeId } from '@/types';
 
 const props = defineProps<{
@@ -28,11 +28,6 @@ const items = computed(() =>
     hint: props.hintId === id,
   }))
 );
-
-const dianVariants = computed(() => {
-  if (!props.available.includes('dian')) return [];
-  return STROKE_BY_ID.dian.variants ?? [];
-});
 
 const ghost = ref<{ x: number; y: number; src: string } | null>(null);
 let drag: { strokeId: StrokeId; variantKey?: string; pointerId: number } | null = null;
@@ -101,21 +96,6 @@ function endDrag(event: PointerEvent) {
       >
         <img :src="strokeImage(item.id)" :alt="item.def.objectName" />
         <span class="tool-label">{{ item.def.name }}</span>
-      </button>
-
-      <button
-        v-for="variant in dianVariants"
-        :key="variant.key"
-        class="tool-item"
-        :class="{ 'is-hint': hintId === 'dian' }"
-        :title="`點 · ${variant.label}`"
-        @pointerdown="startDrag($event, 'dian', variant.key)"
-        @pointermove="moveDrag"
-        @pointerup="endDrag"
-        @pointercancel="endDrag"
-      >
-        <img :src="objectUrl(variant.image)" :alt="`點 ${variant.label}`" />
-        <span class="tool-label">點 {{ variant.label }}</span>
       </button>
     </div>
   </div>

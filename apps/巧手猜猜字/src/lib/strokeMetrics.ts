@@ -5,7 +5,7 @@ import type { StrokeId, StrokeSlot } from '@/types';
 /**
  * 每種筆畫的「基準角度」與典型大小。
  *
- * 23 件物品圖各自已經畫成該筆畫的樣子：曲尺本來就是 ┐、羽毛本來就從右上撇到左下、
+ * 24 件物品圖各自已經畫成該筆畫的樣子：曲尺本來就是 ┐、羽毛本來就從右上撇到左下、
  * 湯匙本來就躺平。所以畫面上實際要轉的角度是「這一筆的角度 − 基準角度」，
  * 典型的字轉出來接近 0 度，物件維持它被畫出來的樣子。
  * 若直接照筆畫角度去轉，折角類的物件會整個轉歪。
@@ -26,6 +26,7 @@ const FALLBACK: Partial<Record<StrokeId, Metric>> = {
   henggou: { baseAngle: 30, extent: 0.34 },
   hengpiewangou: { baseAngle: 75, extent: 0.5 },
   hengwangou: { baseAngle: 25, extent: 0.6 },
+  hengzhewangou: { baseAngle: 25, extent: 0.62 },
   zhizhengzhi: { baseAngle: 35, extent: 0.5 },
   zhizhengzhigou: { baseAngle: 75, extent: 0.6 },
   wangou: { baseAngle: 95, extent: 0.6 },
@@ -52,13 +53,12 @@ const CONTENT: Record<string, { w: number; h: number }> = {
   na: { w: 0.984, h: 0.916 },
   ti: { w: 0.98, h: 0.938 },
   'dian:up': { w: 0.641, h: 0.98 },
-  'dian:left': { w: 0.98, h: 0.953 },
-  'dian:right': { w: 0.98, h: 0.877 },
   hengzhi: { w: 0.984, h: 0.703 },
   hengzhigou: { w: 0.684, h: 0.984 },
   hengpie: { w: 0.773, h: 0.984 },
   hengpiewangou: { w: 0.635, h: 0.852 },
   hengwangou: { w: 0.855, h: 0.98 },
+  hengzhewangou: { w: 0.883, h: 0.982 },
   henggou: { w: 0.98, h: 0.328 },
   zhizheng: { w: 0.98, h: 0.922 },
   zhizhengzhi: { w: 0.602, h: 0.984 },
@@ -73,8 +73,8 @@ const CONTENT: Record<string, { w: number; h: number }> = {
   xiegou: { w: 0.984, h: 0.918 },
 };
 
-function contentBox(id: StrokeId, variantKey?: string): { w: number; h: number } {
-  if (id === 'dian') return CONTENT[`dian:${variantKey ?? 'up'}`] ?? CONTENT['dian:up'];
+function contentBox(id: StrokeId, _variantKey?: string): { w: number; h: number } {
+  if (id === 'dian') return CONTENT['dian:up'];
   return CONTENT[id] ?? { w: 0.92, h: 0.92 };
 }
 
@@ -104,7 +104,7 @@ export function defaultObjectScale(id: StrokeId): number {
 
 /** 拖入正確槽位時的位置、大小、角度。點一律依格子方向選朝向，不沿用工具欄那一顆。 */
 export function fitToSlot(id: StrokeId, slot: StrokeSlot, variantKey?: string) {
-  const chosen = id === 'dian' ? pickVariant(id, slot.angle) : (variantKey ?? pickVariant(id, slot.angle));
+  const chosen = variantKey ?? pickVariant(id, slot.angle);
   const size = objectSize(slot, id, chosen);
   return {
     x: slot.cx,
@@ -132,6 +132,8 @@ export function sampleCount(id: StrokeId): number {
  * 學生拼三點水時就不必一直按旋轉。
  */
 export function baseAngleFor(id: StrokeId, variantKey?: string): number {
+  // 水滴圖尖朝上，跟字影角度相減才會轉到正確方向。
+  if (id === 'dian') return -90;
   if (variantKey) {
     const variant = STROKE_BY_ID[id].variants?.find((v) => v.key === variantKey);
     if (variant?.baseAngle !== undefined) return variant.baseAngle;
@@ -143,13 +145,6 @@ export function baseAngleFor(id: StrokeId, variantKey?: string): number {
 export function pickVariant(id: StrokeId, angle: number): string | undefined {
   const variants = STROKE_BY_ID[id].variants;
   if (!variants?.length) return undefined;
-
-  // 點：直立圖尖朝上，近乎向下的點用它轉 180° 讓尖朝下，才跟字影同向。
-  if (id === 'dian') {
-    if (angle >= 70 && angle <= 110) return 'up';
-    if (angle > 110 || angle < -20) return 'left';
-    return 'right';
-  }
 
   let best = variants[0];
   let bestDelta = Infinity;

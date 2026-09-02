@@ -13,7 +13,7 @@ const menu = [
     to: '/atlas',
     emoji: '🎒',
     name: '筆畫圖鑑',
-    desc: '23 件生活物品各代表哪一筆。玩之前先認一認。',
+    desc: '24 件生活物品各代表哪一筆。玩之前先認一認。',
   },
   {
     to: '/practice',

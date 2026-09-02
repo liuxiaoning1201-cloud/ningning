@@ -1,4 +1,4 @@
-/** 23 種香港小學筆畫的識別碼。一筆一物、一物一筆，雙向唯一。 */
+/** 24 種香港小學筆畫的識別碼。一筆一物、一物一筆，雙向唯一。 */
 export type StrokeId =
   // 基本筆畫（6）
   | 'dian'
@@ -7,12 +7,13 @@ export type StrokeId =
   | 'pie'
   | 'na'
   | 'ti'
-  // 複合筆畫（17）
+  // 複合筆畫（18）
   | 'hengzhi'
   | 'hengzhigou'
   | 'hengpie'
   | 'hengpiewangou'
   | 'hengwangou'
+  | 'hengzhewangou'
   | 'henggou'
   | 'zhizheng'
   | 'zhizhengzhi'
@@ -28,7 +29,7 @@ export type StrokeId =
 
 export type StrokeCategory = 'basic' | 'compound';
 
-/** 同一件物品的替代擺放，例如三點水裡朝左與朝右的點。仍是同一個 StrokeId。 */
+/** 同一件物品的替代擺放。仍是同一個 StrokeId。 */
 export interface StrokeVariant {
   key: string;
   label: string;

@@ -20,6 +20,7 @@ const FROM_CODE: Record<string, StrokeId> = {
   C: 'hengpie',
   D: 'hengpiewangou',
   E: 'hengwangou',
+  R: 'hengzhewangou',
   F: 'henggou',
   G: 'zhizheng',
   H: 'zhizhengzhi',
@@ -47,7 +48,8 @@ export function officialStrokeTypes(ch: string): (StrokeId | null)[] | null {
 export function isNameUpgrade(geo: StrokeId, want: StrokeId): boolean {
   if (geo === want) return true;
   const upgrades: Partial<Record<StrokeId, StrokeId[]>> = {
-    heng: ['hengzhi', 'hengzhigou', 'hengwangou', 'henggou', 'hengpie', 'hengpiewangou'],
+    heng: ['hengzhi', 'hengzhigou', 'hengwangou', 'hengzhewangou', 'henggou', 'hengpie', 'hengpiewangou'],
+    hengwangou: ['hengzhewangou'],
     zhi: ['zhigou', 'zhiwangou', 'zhizheng', 'zhiti', 'zhizhengzhi', 'zhizhengzhigou'],
     pie: ['hengpie', 'piedian', 'pieti'],
     na: ['xiegou'],
