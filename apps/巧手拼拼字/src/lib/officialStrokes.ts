@@ -4,8 +4,9 @@ import type { StrokeId } from '@/types';
 /**
  * 開源繁體筆畫名稱（cnchar-order + cnchar-trad）的解碼。
  *
- * 路徑動畫繼續用 animCJK ZhHant；這份表在筆數相同時決定「這一筆叫什麼」，
- * 與字卡動畫共用同一個筆序。幾何只補未知碼（`.`）。
+ * 字卡動畫用 animCJK ZhHant 的 strokes／medians；名稱表用來幫每一條路徑取名。
+ * 兩套資料的筆序不一定相同（例如「必」），所以不能按索引整列覆蓋，
+ * 只能：同一條路徑上用名稱訂正幾何，或把對得上外形的名稱改配到另一筆。
  */
 
 const FROM_CODE: Record<string, StrokeId> = {
@@ -48,7 +49,7 @@ export function officialStrokeTypes(ch: string): (StrokeId | null)[] | null {
 export function isNameUpgrade(geo: StrokeId, want: StrokeId): boolean {
   if (geo === want) return true;
   const upgrades: Partial<Record<StrokeId, StrokeId[]>> = {
-    heng: ['hengzhi', 'hengzhigou', 'hengwangou', 'hengzhewangou', 'henggou', 'hengpie', 'hengpiewangou'],
+    heng: ['hengzhi', 'hengzhigou', 'hengwangou', 'hengzhewangou', 'henggou', 'hengpie', 'hengpiewangou', 'ti'],
     hengwangou: ['hengzhewangou'],
     zhi: ['zhigou', 'zhiwangou', 'zhizheng', 'zhiti', 'zhizhengzhi', 'zhizhengzhigou'],
     pie: ['hengpie', 'piedian', 'pieti'],
@@ -61,4 +62,25 @@ export function isNameUpgrade(geo: StrokeId, want: StrokeId): boolean {
 export function isSoftStrokeSwap(a: StrokeId, b: StrokeId): boolean {
   const pair = new Set([a, b]);
   return (pair.has('dian') && pair.has('zhi')) || (pair.has('dian') && pair.has('na'));
+}
+
+/**
+ * 同一條動畫路徑上，開源名稱能不能用來訂正幾何。
+ * 「橫斜鈎」兼指乙（橫彎鈎）與九（橫折彎鈎）：幾何已判成橫折彎鈎時不要降級。
+ */
+export function officialFitsGeometry(geo: StrokeId, want: StrokeId | null): boolean {
+  if (!want) return false;
+  if (geo === want) return true;
+  if (want === 'hengwangou' && geo === 'hengzhewangou') return false;
+  return isNameUpgrade(geo, want);
+}
+
+/**
+ * 筆序對不上、要把名稱改配到另一筆時，只允許「看起來就是那件物品」的配對。
+ * 不能把橫折鈎硬套到一筆單純的橫上。
+ */
+export function officialFitsReordered(geo: StrokeId, want: StrokeId | null): boolean {
+  if (!want) return false;
+  if (geo === want) return true;
+  return isSoftStrokeSwap(geo, want);
 }

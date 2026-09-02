@@ -57,7 +57,7 @@ export function slotFromMedian(
    * 其他筆仍用中線首末連線。
    */
   const angle =
-    strokeId === 'dian' ? -90 : (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
+    strokeId === 'dian' ? 0 : (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI;
   const span = Math.hypot(last[0] - first[0], last[1] - first[1]);
 
   return {
@@ -119,6 +119,14 @@ export function nearestSlot(
   return best;
 }
 
+/** 練習模式：鬆手處要落在這一筆附近，不能在格子任意位置就黏上。 */
+export function hitsSlot(slot: StrokeSlot, x: number, y: number): boolean {
+  const w = slot.width ?? slot.extent;
+  const h = slot.height ?? slot.extent;
+  const radius = Math.max(0.16, Math.hypot(w, h) * 0.58);
+  return Math.hypot(slot.cx - x, slot.cy - y) <= radius;
+}
+
 /**
  * 「拼好了」的三層判定，完全靠幾何比對，不用影像辨識。
  *
@@ -166,13 +174,15 @@ export function judge(slots: StrokeSlot[], pieces: Piece[]): JudgeResult {
     const sx = match.scale;
     const sy = match.scaleY ?? match.scale;
     const angleOk = slot.strokeId === 'dian' || angleDelta(match.rot, slot.angle) <= TOLERANCE.angle;
+    const scaleLow = slot.strokeId === 'dian' ? 0.4 : TOLERANCE.scaleLow;
+    const scaleHigh = slot.strokeId === 'dian' ? 2.6 : TOLERANCE.scaleHigh;
     const placementOk =
       matchDist <= TOLERANCE.distance &&
       angleOk &&
-      sx >= expected.sx * TOLERANCE.scaleLow &&
-      sx <= expected.sx * TOLERANCE.scaleHigh &&
-      sy >= expected.sy * TOLERANCE.scaleLow &&
-      sy <= expected.sy * TOLERANCE.scaleHigh;
+      sx >= expected.sx * scaleLow &&
+      sx <= expected.sx * scaleHigh &&
+      sy >= expected.sy * scaleLow &&
+      sy <= expected.sy * scaleHigh;
 
     perStroke.push({
       slotIndex: slot.index,

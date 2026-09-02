@@ -62,6 +62,7 @@ export const VERIFIED_STROKES = {
   本: ['heng', 'zhi', 'pie', 'na', 'heng'],
   目: ['zhi', 'hengzhi', 'heng', 'heng', 'heng'],
   去: ['heng', 'zhi', 'heng', 'pieti', 'dian'],
+  // 必：animCJK 原檔把撇放在末筆，override 已重排成港標「點、臥鈎、撇、點、點」
   必: ['dian', 'wogou', 'pie', 'dian', 'dian'],
   主: ['dian', 'heng', 'heng', 'zhi', 'heng'],
   石: ['heng', 'pie', 'zhi', 'hengzhi', 'heng'],

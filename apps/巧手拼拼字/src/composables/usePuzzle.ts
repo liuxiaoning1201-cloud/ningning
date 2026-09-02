@@ -1,7 +1,7 @@
 import { computed, ref, shallowRef } from 'vue';
 
 import { loadChar } from '@/lib/charData';
-import { judge, nearestSlot, requiredStrokeIds, slotsForChar, TOLERANCE } from '@/lib/geometry';
+import { judge, hitsSlot, nearestSlot, requiredStrokeIds, slotsForChar, TOLERANCE } from '@/lib/geometry';
 import { baseAngleFor, defaultObjectScale, fitToSlot } from '@/lib/strokeMetrics';
 import type { CharData, JudgeResult, Piece, StrokeId, StrokeSlot } from '@/types';
 
@@ -100,6 +100,7 @@ export function usePuzzle(options: { snap: boolean }) {
       const slot = nextSlot.value;
       if (!slot) return { ok: false, reason: 'done' };
       if (slot.strokeId && slot.strokeId !== strokeId) return { ok: false, reason: 'kind' };
+      if (!hitsSlot(slot, x, y)) return { ok: false, reason: 'pos' };
 
       const fit = fitToSlot(strokeId, slot, variantKey);
       const piece: Piece = {
@@ -191,7 +192,7 @@ export function usePuzzle(options: { snap: boolean }) {
 
   function rotate(deg: number) {
     const piece = pieces.value.find((p) => p.id === selectedId.value);
-    if (!piece) return;
+    if (!piece || piece.strokeId === 'dian') return;
     piece.rot = (piece.rot + deg) % 360;
   }
 

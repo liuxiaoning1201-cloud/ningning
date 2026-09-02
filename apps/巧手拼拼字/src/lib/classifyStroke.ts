@@ -1,13 +1,13 @@
 import { isStrokeId } from '@/data/strokes';
-import { officialStrokeTypes } from '@/lib/officialStrokes';
+import { officialFitsGeometry, officialFitsReordered, officialStrokeTypes } from '@/lib/officialStrokes';
 import type { Median, StrokeId } from '@/types';
 
 /**
  * 由一筆的中線自動判出是 24 種筆畫的哪一種。
  *
- * 老師加生字時不必人工複核：有人工標註就沿用；否則筆數對得上就用開源繁體
- * 筆畫名稱（與字卡動畫同一筆序），幾何只補未知碼、分辨橫彎鈎／橫折彎鈎。
- * 漢字起筆常有一小段「入筆」斜勢，會先削掉再比對，才不會把「直」看成「捺」。
+ * 老師加生字時不必人工複核：有人工標註就沿用；否則先依動畫中線做幾何分類
+ * （與字卡動畫同一筆序），再開源名稱在「同一條路徑」上訂正，筆序對不上才
+ * 改配到外形相符的另一筆。漢字起筆常有一小段「入筆」斜勢，會先削掉再比對。
  */
 
 const GRID = 1024;
@@ -218,9 +218,8 @@ export function classifyMedian(median: Median): StrokeId {
 /**
  * 填滿每一筆的種類。已有的人工標註原樣保留。
  *
- * 老師加生字時：若開源繁體筆畫名稱的筆數跟字卡動畫相同，就以那份名稱為準
- * （跟 Hanzi Writer 播的順序同一套索引），幾何只補名稱表裡的未知碼，
- * 並分辨「橫彎鈎／橫折彎鈎」。這樣物品順序才會跟動畫一致。
+ * 老師加生字時：每一件物品對應動畫的第 n 筆路徑，不能拿另一套筆序的名稱
+ * 按索引硬套。開源名稱用來訂正／改配，幾何對不上的就維持中線判斷。
  */
 export function fillStrokeTypes(
   medians: Median[],
@@ -267,19 +266,71 @@ export function fillStrokeTypes(
 }
 
 /**
- * 筆數對得上時，開源名稱就是這一筆叫什麼；幾何不再整字否決。
- * 「必」這類順序衝突已在 verified-strokes 鎖死，不會被覆蓋。
+ * 用開源名稱訂正幾何，但物品仍按動畫筆序出現。
+ *
+ *   1. 筆數相同：同一索引若外形相容，用名稱訂正（複合筆常被幾何看成開頭那一段）
+ *   2. 名稱表的未知碼（`.`）維持幾何，例如「必」第二筆臥鈎
+ *   3. 對不上的名稱改配到尚未標定、外形相符的另一筆（「必」的撇與點順序不同）
+ *
+ * 絕不按另一套筆序整列覆蓋，否則水滴會出現在撇的路徑上。
  */
 function applyOfficialNames(types: StrokeId[], locked: boolean[], char?: string) {
   if (!char) return;
   const official = officialStrokeTypes(char);
-  if (!official || official.length !== types.length) return;
+  if (!official?.length) return;
 
-  for (let i = 0; i < types.length; i += 1) {
-    const want = official[i];
-    if (!want || locked[i]) continue;
-    // 橫斜鈎在 cnchar 裡兼指乙（橫彎鈎）與九（橫折彎鈎）；幾何能分就聽幾何。
-    if (want === 'hengwangou' && types[i] === 'hengzhewangou') continue;
-    types[i] = want;
+  const n = types.length;
+  const taken = types.map((_, i) => locked[i]);
+  const used = official.map(() => false);
+
+  if (official.length === n) {
+    for (let i = 0; i < n; i += 1) {
+      if (taken[i]) continue;
+      const want = official[i];
+      if (!want) {
+        taken[i] = true;
+        used[i] = true;
+        continue;
+      }
+      if (officialFitsGeometry(types[i], want)) {
+        types[i] = want;
+        taken[i] = true;
+        used[i] = true;
+      }
+    }
+  }
+
+  const freeMedians: number[] = [];
+  for (let i = 0; i < n; i += 1) {
+    if (!taken[i]) freeMedians.push(i);
+  }
+  const freeNames: { index: number; want: StrokeId }[] = [];
+  for (let j = 0; j < official.length; j += 1) {
+    const want = official[j];
+    if (used[j] || !want) continue;
+    freeNames.push({ index: j, want });
+  }
+
+  while (freeMedians.length && freeNames.length) {
+    let bestI = -1;
+    let bestJ = -1;
+    let bestCost = Infinity;
+    for (let a = 0; a < freeMedians.length; a += 1) {
+      const i = freeMedians[a];
+      for (let b = 0; b < freeNames.length; b += 1) {
+        const { index: j, want } = freeNames[b];
+        if (!officialFitsReordered(types[i], want)) continue;
+        const cost = (types[i] === want ? 0 : 10) + Math.abs(i - j);
+        if (cost < bestCost) {
+          bestCost = cost;
+          bestI = a;
+          bestJ = b;
+        }
+      }
+    }
+    if (bestI < 0) break;
+    const i = freeMedians.splice(bestI, 1)[0];
+    const picked = freeNames.splice(bestJ, 1)[0];
+    types[i] = picked.want;
   }
 }

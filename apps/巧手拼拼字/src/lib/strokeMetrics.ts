@@ -88,9 +88,10 @@ export function objectSize(
   const w = slot.width ?? slot.extent;
   const h = slot.height ?? slot.extent;
   if (id === 'dian') {
-    // 水滴要保持尖上圓下，不能按墨跡外框拉成斜橢圓。
+    // 水滴保持正方形、尖上圓下；點的墨跡外框很小，太小會看成斜圓點。
     const shrink = STROKE_BY_ID[id].drawScale ?? 1;
-    const s = clampScale(Math.max(w / box.w, h / box.h) * shrink);
+    const raw = Math.max(w / box.w, h / box.h, slot.extent ?? 0);
+    const s = clampScale(Math.max(raw * shrink, 0.12));
     return { sx: s, sy: s };
   }
   return { sx: clampScale(w / box.w), sy: clampScale(h / box.h) };
@@ -134,10 +135,10 @@ export function sampleCount(id: StrokeId): number {
 }
 
 /**
- * 物品被畫出來的角度。水滴圖尖朝上（−90°），畫面上不再另轉。
+ * 物品被畫出來的角度。水滴圖本身尖朝上（12 點鐘），畫面上永遠不再轉。
  */
 export function baseAngleFor(id: StrokeId, variantKey?: string): number {
-  if (id === 'dian') return -90;
+  if (id === 'dian') return 0;
   if (variantKey) {
     const variant = STROKE_BY_ID[id].variants?.find((v) => v.key === variantKey);
     if (variant?.baseAngle !== undefined) return variant.baseAngle;

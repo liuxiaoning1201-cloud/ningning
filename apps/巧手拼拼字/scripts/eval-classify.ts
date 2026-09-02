@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 import bundled from '../src/data/chars.json';
 import { classifyMedian, describeMedian, fillStrokeTypes } from '../src/lib/classifyStroke';
+import { hitsSlot, slotsForChar } from '../src/lib/geometry';
+import { renderRotation } from '../src/lib/strokeMetrics';
 import type { CharData, Median } from '../src/types';
 
 const chars = bundled as unknown as Record<string, CharData>;
@@ -113,9 +115,15 @@ for (const [ch, expect] of [
 const bi = chars['必'];
 if (bi) {
   const locked = fillStrokeTypes(bi.medians, bi.strokeTypes, '必').join(',');
+  const unlocked = fillStrokeTypes(bi.medians, null, '必').join(',');
   const expect = 'dian,wogou,pie,dian,dian';
   process.stdout.write(`必 人工鎖定 ${locked === expect ? 'OK' : 'FAIL'} ${locked}\n`);
-  if (locked !== expect) process.exitCode = 1;
+  process.stdout.write(`必 老師加生字 ${unlocked === expect ? 'OK' : 'FAIL'} ${unlocked}\n`);
+  if (locked !== expect || unlocked !== expect) process.exitCode = 1;
+  if (bi.source !== 'override') {
+    process.stdout.write('必 應為港標 override：點、臥鈎、撇、點、點\n');
+    process.exitCode = 1;
+  }
 }
 
 const yong = chars['永'];
@@ -126,4 +134,34 @@ if (yong) {
     process.stdout.write('永 應為點、橫直鈎、…、撇、捺\n');
     process.exitCode = 1;
   }
+}
+
+let teacherMiss = 0;
+for (const data of Object.values(chars)) {
+  if (!data.verified) continue;
+  const expect = data.strokeTypes.filter(Boolean).join(',');
+  const got = fillStrokeTypes(data.medians, null, data.char).join(',');
+  if (got !== expect) {
+    teacherMiss += 1;
+    process.stdout.write(`生字 ${data.char} 自動=${got} 人工=${expect}\n`);
+  }
+}
+process.stdout.write(`已核對字當生字重跑，不符 ${teacherMiss} 個\n`);
+if (teacherMiss) process.exitCode = 1;
+
+if (renderRotation('dian', 49) !== 0 || renderRotation('dian', -90) !== 0 || renderRotation('dian', 180) !== 0) {
+  process.stdout.write('點的畫面旋轉應永遠是 0\n');
+  process.exitCode = 1;
+} else {
+  process.stdout.write('點直立 OK\n');
+}
+
+const zhu = chars['主'];
+if (zhu) {
+  const slots = slotsForChar({ ...zhu, strokeTypes: fillStrokeTypes(zhu.medians, zhu.strokeTypes, '主') });
+  const dot = slots[0];
+  const onDot = hitsSlot(dot, dot.cx, dot.cy);
+  const onCenter = hitsSlot(dot, 0.5, 0.5);
+  process.stdout.write(`主 點槽位命中 ${onDot ? 'OK' : 'FAIL'} 中心不誤黏 ${onCenter ? 'FAIL' : 'OK'}\n`);
+  if (!onDot || onCenter) process.exitCode = 1;
 }

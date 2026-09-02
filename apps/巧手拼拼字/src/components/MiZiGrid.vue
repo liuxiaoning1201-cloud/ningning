@@ -129,8 +129,9 @@ const slotStyle = (slot: StrokeSlot) => {
 /**
  * 物品圖已經畫成該筆畫的樣子，所以套上去的旋轉是「這一筆的角度 − 物品被畫出來的角度」。
  * 直接用 piece.rot 去轉，折角類的物件會整個轉歪。
+ * 位置與大小在外層，旋轉在內層，彈跳動畫才不會把旋轉蓋掉。
  */
-const pieceStyle = (piece: Piece) => {
+const pieceWrapStyle = (piece: Piece) => {
   const w = piece.scale;
   const h = piece.scaleY ?? piece.scale;
   return {
@@ -138,8 +139,14 @@ const pieceStyle = (piece: Piece) => {
     top: `${(piece.y - h / 2) * 100}%`,
     width: `${w * 100}%`,
     height: `${h * 100}%`,
-    transform: `rotate(${renderRotation(piece.strokeId, piece.rot, piece.variantKey)}deg)`,
     zIndex: pieceLayer(piece.strokeId, piece.slotIndex ?? piece.seq),
+  };
+};
+
+const pieceImgStyle = (piece: Piece) => {
+  if (piece.strokeId === 'dian') return { transform: 'none' };
+  return {
+    transform: `rotate(${renderRotation(piece.strokeId, piece.rot, piece.variantKey)}deg)`,
   };
 };
 
@@ -185,22 +192,30 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
       :style="slotStyle(slot)"
     />
 
-    <img
+    <div
       v-for="piece in sortedPieces"
       :key="piece.id"
-      class="piece"
+      class="piece-wrap"
       :class="{
-        'is-selected': piece.id === selectedId,
-        'is-dragging': piece.id === draggingId,
-        'is-locked': readonly,
+        'is-dian': piece.strokeId === 'dian',
         'just-placed': piece.id === poppedId,
       }"
-      :style="pieceStyle(piece)"
-      :src="strokeImage(piece.strokeId, piece.variantKey)"
-      :alt="piece.strokeId"
-      draggable="false"
-      @pointerdown="onPiecePointerDown($event, piece)"
-    />
+      :style="pieceWrapStyle(piece)"
+    >
+      <img
+        class="piece"
+        :class="{
+          'is-selected': piece.id === selectedId,
+          'is-dragging': piece.id === draggingId,
+          'is-locked': readonly,
+        }"
+        :style="pieceImgStyle(piece)"
+        :src="strokeImage(piece.strokeId, piece.variantKey)"
+        :alt="piece.strokeId"
+        draggable="false"
+        @pointerdown="onPiecePointerDown($event, piece)"
+      />
+    </div>
 
     <div
       v-if="selectedPiece && !readonly"
@@ -208,8 +223,22 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
       :style="hudStyle"
       @pointerdown.stop
     >
-      <button type="button" title="左轉" @click.stop="emit('rotate', -15)">↺</button>
-      <button type="button" title="右轉" @click.stop="emit('rotate', 15)">↻</button>
+      <button
+        v-if="selectedPiece.strokeId !== 'dian'"
+        type="button"
+        title="左轉"
+        @click.stop="emit('rotate', -15)"
+      >
+        ↺
+      </button>
+      <button
+        v-if="selectedPiece.strokeId !== 'dian'"
+        type="button"
+        title="右轉"
+        @click.stop="emit('rotate', 15)"
+      >
+        ↻
+      </button>
       <button type="button" title="縮小" @click.stop="emit('scale', 0.82)">－</button>
       <button type="button" title="放大" @click.stop="emit('scale', 1.18)">＋</button>
       <button type="button" title="拿走" @click.stop="emit('delete')">✕</button>

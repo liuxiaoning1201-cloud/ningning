@@ -9,11 +9,11 @@ import type { CharData, Median, StrokeId } from '@/types';
  *
  * 隨 app 一起打包的 chars.json 是製作期跑 scripts/gen-char-data.mjs 產生的，
  * 已核對的筆畫標註離線可用。老師臨時加的字若不在包裡，即時打 CDN，
- * 再用幾何規則自動判每一筆是哪一種物品——不必人工複核才能練。
+ * 再依動畫中線分類、用開源名稱訂正——不必人工複核才能練。
  *
  * 來源順序：人工 override（對齊《小學學習字詞表》）→ animCJK ZhHant → makemeahanzi。
- * 筆畫名稱：筆數相同時以開源 cnchar 繁體筆順為準，與字卡動畫同一筆序；
- * 名稱表沒有的碼才用幾何補。人工核對過的字不會被覆蓋。
+ * 筆畫名稱：物品跟字卡動畫同一筆序；開源名稱只在同一條路徑上訂正，
+ * 或改配到外形相符的另一筆。人工核對過的字不會被覆蓋。
  */
 
 const BUNDLED = bundled as unknown as Record<string, CharData>;
