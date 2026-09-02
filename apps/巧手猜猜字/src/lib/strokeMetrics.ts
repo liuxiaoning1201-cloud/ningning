@@ -58,7 +58,7 @@ const CONTENT: Record<string, { w: number; h: number }> = {
   hengpie: { w: 0.773, h: 0.984 },
   hengpiewangou: { w: 0.635, h: 0.852 },
   hengwangou: { w: 0.855, h: 0.98 },
-  hengzhewangou: { w: 0.883, h: 0.982 },
+  hengzhewangou: { w: 0.988, h: 0.928 },
   henggou: { w: 0.98, h: 0.328 },
   zhizheng: { w: 0.98, h: 0.922 },
   zhizhengzhi: { w: 0.602, h: 0.984 },

@@ -169,7 +169,7 @@ export const STROKES: StrokeDef[] = [
     material: '金屬水管',
     stage: 3,
     examples: ['丸', '九'],
-    hint: '先一小段橫，右轉折向下，再彎向右，尾端上鈎。鵝頸水龍頭就是這個形。',
+    hint: '先一小段橫，右轉折向下，再彎向右，出水口和水滴朝上鈎。只有鵝頸水管，橫上沒有擰把手。',
   },
   {
     id: 'henggou',
