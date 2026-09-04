@@ -11,6 +11,14 @@ import { classifyMedian, describeMedian, fillStrokeTypes } from '../src/lib/clas
 import { mergeSplitEarRadical } from '../src/lib/earRadical';
 import { mergeSplitWalkingNa } from '../src/lib/walkingRadical';
 import { applyStrokeLocks, resetStrokeLocksForTests, setStrokeLock } from '../src/lib/strokeLocks';
+import {
+  applyStrokeLayout,
+  ensureStrokeLayout,
+  inkStrokePaths,
+  insertLayoutItem,
+  removeLayoutItem,
+  resetStrokeLayoutsForTests,
+} from '../src/lib/strokeLayouts';
 import { hitsSlot, slotsForChar } from '../src/lib/geometry';
 import { renderRotation } from '../src/lib/strokeMetrics';
 import type { CharData, Median, StrokeId } from '../src/types';
@@ -320,4 +328,34 @@ if (kouLocked[1] !== 'hengpie') {
   process.stdout.write('老師鎖定 口第二筆 橫撇 OK\n');
 }
 resetStrokeLocksForTests();
+
+resetStrokeLayoutsForTests();
+const kouAuto = autoTypes(kou);
+ensureStrokeLayout('口', kouAuto);
+insertLayoutItem('口', kouAuto.length - 1, 'dian');
+const kouPlus = applyStrokeLayout({ ...kou, strokeTypes: kouAuto });
+if (
+  kouPlus.strokeTypes.length !== kouAuto.length + 1 ||
+  kouPlus.strokeTypes.at(-1) !== 'dian' ||
+  kouPlus.synthetic?.at(-1) !== true ||
+  kouPlus.strokes.at(-1) !== '' ||
+  inkStrokePaths(kouPlus).length !== kou.strokes.length
+) {
+  process.stdout.write(`老師加筆 FAIL ${kouPlus.strokeTypes.join(',')}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('老師加筆 口 +點 OK\n');
+}
+const kouPlusSlots = slotsForChar(kouPlus);
+if (kouPlusSlots.length !== kouPlus.medians.length || !Number.isFinite(kouPlusSlots.at(-1)?.cx ?? NaN)) {
+  process.stdout.write('老師加筆 槽位 FAIL\n');
+  process.exitCode = 1;
+}
+if (!removeLayoutItem('口', 1) || applyStrokeLayout({ ...kou, strokeTypes: kouAuto }).strokeTypes.length !== 3) {
+  process.stdout.write('老師刪筆 FAIL\n');
+  process.exitCode = 1;
+} else {
+  process.stdout.write('老師刪筆 口 剩 3 筆 OK\n');
+}
+resetStrokeLayoutsForTests();
 

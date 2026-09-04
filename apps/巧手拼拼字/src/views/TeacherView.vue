@@ -2,11 +2,12 @@
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import CharCard from '@/components/CharCard.vue';
 import StrokePicker from '@/components/StrokePicker.vue';
+import { STROKE_BY_ID, strokeImage, strokeName } from '@/data/strokes';
 import { loadChar } from '@/lib/charData';
 import { extractHan, keepHkChars, parseImportFile } from '@/lib/importChars';
 import { useSettings } from '@/stores/settings';
+import { useStrokeLayouts } from '@/stores/strokeLayouts';
 import { useStrokeLocks } from '@/stores/strokeLocks';
 import { useWordbooks } from '@/stores/wordbooks';
 import type { CharData, StrokeId } from '@/types';
@@ -15,6 +16,7 @@ const router = useRouter();
 const books = useWordbooks();
 const settings = useSettings();
 const locks = useStrokeLocks();
+const layouts = useStrokeLayouts();
 
 const openId = ref(books.active?.id ?? '');
 const newBookName = ref('');
@@ -28,48 +30,81 @@ const reviewChar = ref('');
 const reviewData = ref<CharData | null>(null);
 const reviewError = ref('');
 const reviewLoading = ref(false);
-const reviseIndex = ref<number | null>(null);
-const pinInput = ref('');
-const pinError = ref('');
-const newPin = ref('');
 
-function submitPin() {
-  if (settings.unlockTeacher(pinInput.value)) {
-    pinInput.value = '';
-    pinError.value = '';
-    return;
-  }
-  pinError.value = '密碼不對';
-}
+type PickerState = { kind: 'revise'; index: number } | { kind: 'insert'; after: number };
+const picker = ref<PickerState | null>(null);
 
-function saveNewPin() {
-  if (!settings.setTeacherPin(newPin.value)) {
-    toast('請輸入四位數字');
-    return;
-  }
-  newPin.value = '';
-  toast('已更新老師密碼');
-}
+const reviewLayout = computed(() => (reviewChar.value ? layouts.layoutFor(reviewChar.value) : null));
 
 const reviewLocked = computed(() =>
   reviewChar.value ? Object.keys(locks.locksFor(reviewChar.value)).map((i) => Number(i)) : []
 );
 
-const reviseCurrent = computed(() =>
-  reviseIndex.value === null ? null : (reviewData.value?.strokeTypes[reviseIndex.value] ?? null)
+const reviewDirty = computed(
+  () => Boolean(reviewLayout.value) || reviewLocked.value.length > 0
 );
+
+const pickerCurrent = computed(() => {
+  if (picker.value?.kind !== 'revise' || !reviewData.value) return null;
+  return reviewData.value.strokeTypes[picker.value.index] ?? null;
+});
+
+const pickerTitle = computed(() => {
+  if (!picker.value) return '改成哪一件物品？';
+  if (picker.value.kind === 'insert') {
+    return picker.value.after < 0
+      ? `在「${reviewChar.value}」最前面加一筆`
+      : `在「${reviewChar.value}」第 ${picker.value.after + 1} 筆後面加一筆`;
+  }
+  return `改「${reviewChar.value}」第 ${picker.value.index + 1} 筆`;
+});
+
+const pickerHint = computed(() =>
+  picker.value?.kind === 'insert'
+    ? '選一件物品加進練習題。這一筆沒有墨跡，格子裡要靠物品本身來拼。'
+    : '改這一筆用哪一件物品。加一筆、刪一筆用旁邊的＋－。'
+);
+
+const pickerClearable = computed(() => {
+  if (picker.value?.kind !== 'revise') return false;
+  const item = reviewLayout.value?.items[picker.value.index];
+  if (item) return item.from != null && Boolean(item.auto);
+  return true;
+});
+
+function rowAdded(index: number): boolean {
+  return reviewLayout.value?.items[index]?.from == null;
+}
+
+function rowEdited(index: number): boolean {
+  const item = reviewLayout.value?.items[index];
+  if (item) {
+    if (item.from == null) return false;
+    if (item.auto && item.type !== item.auto) return true;
+    return reviewLocked.value.includes(item.from);
+  }
+  return reviewLocked.value.includes(index);
+}
 
 async function loadReview(ch: string) {
   const one = [...ch].find((c) => c.length === 1) ?? '';
+  const switching = one !== reviewChar.value;
   reviewChar.value = one;
-  reviewData.value = null;
   reviewError.value = '';
+  if (switching) {
+    reviewData.value = null;
+    picker.value = null;
+  }
   if (!one) return;
-  reviewLoading.value = true;
+  if (!reviewData.value) reviewLoading.value = true;
   try {
     const loaded = await loadChar(one);
-    if (!loaded) reviewError.value = `找不到「${one}」的筆順資料`;
-    else reviewData.value = loaded;
+    if (!loaded) {
+      reviewError.value = `找不到「${one}」的筆順資料`;
+      if (switching) reviewData.value = null;
+    } else {
+      reviewData.value = loaded;
+    }
   } finally {
     reviewLoading.value = false;
   }
@@ -83,27 +118,52 @@ watch(
       reviewChar.value = '';
       reviewData.value = null;
       reviewError.value = '';
+      picker.value = null;
     }
   }
 );
 
-async function applyRevise(id: StrokeId) {
-  if (!reviewChar.value || reviseIndex.value === null) return;
-  locks.lock(reviewChar.value, reviseIndex.value, id);
-  reviseIndex.value = null;
-  await loadReview(reviewChar.value);
+async function applyPick(id: StrokeId) {
+  const ch = reviewChar.value;
+  const data = reviewData.value;
+  const state = picker.value;
+  if (!ch || !data || !state) return;
+  if (state.kind === 'insert') {
+    layouts.insert(ch, state.after, id, data.strokeTypes);
+  } else if (layouts.has(ch)) {
+    layouts.setType(ch, state.index, id, data.strokeTypes);
+  } else {
+    locks.lock(ch, state.index, id);
+  }
+  picker.value = null;
+  await loadReview(ch);
 }
 
-async function clearRevise() {
-  if (!reviewChar.value || reviseIndex.value === null) return;
-  locks.unlock(reviewChar.value, reviseIndex.value);
-  reviseIndex.value = null;
-  await loadReview(reviewChar.value);
+async function clearPick() {
+  const ch = reviewChar.value;
+  const state = picker.value;
+  if (!ch || state?.kind !== 'revise') return;
+  if (layouts.has(ch)) layouts.restoreType(ch, state.index);
+  else locks.unlock(ch, state.index);
+  picker.value = null;
+  await loadReview(ch);
+}
+
+async function removeStroke(index: number) {
+  const ch = reviewChar.value;
+  const data = reviewData.value;
+  if (!ch || !data) return;
+  if (!layouts.remove(ch, index, data.strokeTypes)) {
+    toast('至少留一筆');
+    return;
+  }
+  await loadReview(ch);
 }
 
 async function resetReviewChar() {
   if (!reviewChar.value) return;
   locks.unlockChar(reviewChar.value);
+  layouts.clearChar(reviewChar.value);
   await loadReview(reviewChar.value);
   toast(`已還原「${reviewChar.value}」的自動判斷`);
 }
@@ -197,7 +257,11 @@ async function onPickFile(event: Event) {
   try {
     const parsed = await parseImportFile(file);
     if (parsed.books?.length) {
-      const packed = JSON.stringify({ books: parsed.books });
+      const packed = JSON.stringify({
+        books: parsed.books,
+        strokeLocks: parsed.strokeLocks,
+        strokeLayouts: parsed.strokeLayouts,
+      });
       const { books: n, chars } = books.importJson(packed);
       toast(`匯入 ${n} 本新字簿、共 ${chars} 字`);
     } else {
@@ -219,47 +283,15 @@ async function onPickFile(event: Event) {
   <div class="page">
     <header class="page-head wrap">
       <button class="btn btn-ghost btn-sm" @click="router.push('/')">← 回首頁</button>
-      <h1>老師設定</h1>
-      <button
-        v-if="settings.teacherUnlocked"
-        class="btn btn-ghost btn-sm"
-        type="button"
-        @click="settings.lockTeacher()"
-      >
-        鎖上
-      </button>
+      <h1>設定</h1>
     </header>
 
-    <div v-if="!settings.teacherUnlocked" class="page-body wrap">
-      <div class="card teacher-gate">
-        <div class="card-title">請老師先開鎖</div>
-        <p class="hint" style="margin-bottom: 12px">
-          改字簿、改筆畫只給老師用。學生在練習裡看不到這些按鈕。
-        </p>
-        <div class="row">
-          <input
-            v-model="pinInput"
-            class="text-input"
-            type="password"
-            inputmode="numeric"
-            maxlength="4"
-            placeholder="四位數字"
-            autocomplete="off"
-            @keyup.enter="submitPin"
-          />
-          <button class="btn btn-sky btn-sm" type="button" @click="submitPin">進入</button>
-        </div>
-        <p v-if="pinError" class="hint" style="color: var(--peach-deep); margin-top: 8px">{{ pinError }}</p>
-        <p class="hint" style="margin-top: 10px">第一次用，密碼是 2468。進去後可在「顯示」改掉。</p>
-      </div>
-    </div>
-
-    <div v-else class="page-body wrap">
+    <div class="page-body wrap">
       <div class="grid-2">
         <div class="card">
           <div class="card-title">字簿</div>
           <p class="hint" style="margin-bottom: 10px">
-            點一本就用這本上課。判斷錯了就點那個字改物品。按 × 拿走字。
+            點一本就用這本上課。要改筆畫就點那個字；種類不對可以改，少了或多了用＋－。
           </p>
 
           <ul class="book-fold">
@@ -303,19 +335,64 @@ async function onPickFile(event: Event) {
                   正在取「{{ reviewChar }}」的筆順…
                 </p>
                 <p v-else-if="reviewError" class="hint" style="margin-top: 12px">{{ reviewError }}</p>
-                <div v-else-if="reviewData && b.chars.includes(reviewChar)" class="book-review">
-                  <div v-if="reviewLocked.length" class="row" style="margin-bottom: 8px">
+                <div v-else-if="reviewData && b.chars.includes(reviewChar)" class="stroke-editor">
+                  <div class="stroke-editor-head">
+                    <span class="stroke-editor-glyph">{{ reviewChar }}</span>
+                    <div>
+                      <div class="card-title" style="margin: 0">修改筆畫</div>
+                      <p class="hint">
+                        點一筆改種類。＋在後面加一筆、－刪掉。練習會照這裡的筆數出題。
+                      </p>
+                    </div>
+                  </div>
+                  <div v-if="reviewDirty" class="row" style="margin-bottom: 8px">
                     <button class="btn btn-ghost btn-sm" type="button" @click="resetReviewChar">
                       還原「{{ reviewChar }}」的自動判斷
                     </button>
                   </div>
-                  <CharCard
-                    :data="reviewData"
-                    :show-stroke-list="true"
-                    :editable="true"
-                    :locked-indexes="reviewLocked"
-                    @revise="reviseIndex = $event"
-                  />
+                  <button class="btn btn-ghost btn-sm stroke-editor-prepend" type="button" @click="picker = { kind: 'insert', after: -1 }">
+                    ＋ 在最前面加一筆
+                  </button>
+                  <ol class="stroke-list">
+                    <li
+                      v-for="(id, i) in reviewData.strokeTypes"
+                      :key="i"
+                      class="is-edit stroke-editor-row"
+                      :class="{ 'is-locked': rowEdited(i) || rowAdded(i) }"
+                    >
+                      <button
+                        class="stroke-list-btn"
+                        type="button"
+                        :title="`改第 ${i + 1} 筆`"
+                        @click="picker = { kind: 'revise', index: i }"
+                      >
+                        <span class="idx">{{ i + 1 }}</span>
+                        <img v-if="id" :src="strokeImage(id)" :alt="STROKE_BY_ID[id].objectName" />
+                        <span>{{ strokeName(id) }}</span>
+                        <span v-if="id" style="color: var(--ink-faint)">{{ STROKE_BY_ID[id].objectName }}</span>
+                        <span v-if="rowAdded(i)" class="pill pill-ready">加的</span>
+                        <span v-else-if="rowEdited(i)" class="pill pill-ready">已改</span>
+                      </button>
+                      <div class="stroke-editor-ops">
+                        <button
+                          type="button"
+                          title="在這筆後面加一筆"
+                          @click="picker = { kind: 'insert', after: i }"
+                        >
+                          ＋
+                        </button>
+                        <button
+                          class="is-del"
+                          type="button"
+                          title="刪掉這一筆"
+                          :disabled="reviewData.strokeTypes.length <= 1"
+                          @click="removeStroke(i)"
+                        >
+                          －
+                        </button>
+                      </div>
+                    </li>
+                  </ol>
                 </div>
 
                 <div class="row" style="margin-top: 10px">
@@ -386,21 +463,6 @@ async function onPickFile(event: Event) {
               <input v-model="settings.state.mascot" type="checkbox" />
               <span class="hint">顯示奶茶小精靈</span>
             </label>
-            <label class="field-label" for="teacher-pin" style="margin-top: 14px">老師密碼</label>
-            <div class="row">
-              <input
-                id="teacher-pin"
-                v-model="newPin"
-                class="text-input"
-                type="password"
-                inputmode="numeric"
-                maxlength="4"
-                placeholder="改成新的四位數字"
-                autocomplete="off"
-                @keyup.enter="saveNewPin"
-              />
-              <button class="btn btn-ghost btn-sm" type="button" @click="saveNewPin">儲存</button>
-            </div>
           </div>
         </div>
       </div>
@@ -422,12 +484,14 @@ async function onPickFile(event: Event) {
     </div>
 
     <StrokePicker
-      v-if="reviseIndex !== null"
-      :current="reviseCurrent"
-      :title="`改「${reviewChar}」第 ${reviseIndex + 1} 筆`"
-      @pick="applyRevise"
-      @clear="clearRevise"
-      @close="reviseIndex = null"
+      v-if="picker"
+      :current="pickerCurrent"
+      :title="pickerTitle"
+      :hint="pickerHint"
+      :allow-clear="pickerClearable"
+      @pick="applyPick"
+      @clear="clearPick"
+      @close="picker = null"
     />
 
     <div v-if="message" class="toast">{{ message }}</div>

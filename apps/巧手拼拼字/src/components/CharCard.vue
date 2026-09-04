@@ -29,10 +29,19 @@ let writer: HanziWriter | null = null;
  * 用自己的資料餵 hanzi-writer，不讓它去 CDN 抓內地筆順。
  * charDataLoader 直接回傳我們已經挑好來源的 strokes 與 medians。
  */
+function inkStrokes() {
+  return props.data.strokes
+    .map((d, i) => ({ d, median: props.data.medians[i], skip: !d || props.data.synthetic?.[i] }))
+    .filter((row) => !row.skip);
+}
+
 function mount() {
   const el = stage.value;
   if (!el) return;
   el.innerHTML = '';
+  writer = null;
+  const ink = inkStrokes();
+  if (!ink.length) return;
   const size = el.clientWidth || 200;
 
   writer = HanziWriter.create(el, props.data.char, {
@@ -47,8 +56,8 @@ function mount() {
     strokeAnimationSpeed: 1,
     delayBetweenStrokes: 320,
     charDataLoader: () => ({
-      strokes: props.data.strokes,
-      medians: props.data.medians,
+      strokes: ink.map((row) => row.d),
+      medians: ink.map((row) => row.median),
     }),
   });
   writer.animateCharacter();
@@ -59,7 +68,7 @@ function replay() {
 }
 
 watch(
-  () => [props.data.char, props.data.strokes.length] as const,
+  () => [props.data.char, props.data.strokes.join('\0'), props.data.synthetic?.join(',')] as const,
   () => mount(),
   { immediate: false }
 );

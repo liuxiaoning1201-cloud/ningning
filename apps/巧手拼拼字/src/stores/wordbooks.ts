@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 
 import { forgetChar, verifiedChars } from '@/lib/charData';
+import { getStrokeLayoutMap, mergeStrokeLayoutMap } from '@/lib/strokeLayouts';
 import { getStrokeLockMap, mergeStrokeLockMap } from '@/lib/strokeLocks';
 import type { Wordbook } from '@/types';
 
@@ -125,7 +126,13 @@ export const useWordbooks = defineStore('wordbooks', () => {
   function exportJson(ids?: string[]): string {
     const picked = ids?.length ? books.value.filter((b) => ids.includes(b.id)) : books.value;
     return JSON.stringify(
-      { app: '巧手拼拼字', version: 2, books: picked, strokeLocks: getStrokeLockMap() },
+      {
+        app: '巧手拼拼字',
+        version: 2,
+        books: picked,
+        strokeLocks: getStrokeLockMap(),
+        strokeLayouts: getStrokeLayoutMap(),
+      },
       null,
       2
     );
@@ -133,11 +140,19 @@ export const useWordbooks = defineStore('wordbooks', () => {
 
   /** 匯入時合併同名字簿，不覆蓋老師手上已有的內容。 */
   function importJson(text: string): { books: number; chars: number } {
-    const parsed = JSON.parse(text) as { books?: Wordbook[]; strokeLocks?: Record<string, Record<string, string>> };
+    const parsed = JSON.parse(text) as {
+      books?: Wordbook[];
+      strokeLocks?: Record<string, Record<string, string>>;
+      strokeLayouts?: Parameters<typeof mergeStrokeLayoutMap>[0];
+    };
     if (!Array.isArray(parsed.books)) throw new Error('檔案裡找不到 books');
     if (parsed.strokeLocks) {
       mergeStrokeLockMap(parsed.strokeLocks as Parameters<typeof mergeStrokeLockMap>[0]);
       for (const ch of Object.keys(parsed.strokeLocks)) forgetChar(ch);
+    }
+    if (parsed.strokeLayouts) {
+      mergeStrokeLayoutMap(parsed.strokeLayouts);
+      for (const ch of Object.keys(parsed.strokeLayouts)) forgetChar(ch);
     }
 
     let bookCount = 0;

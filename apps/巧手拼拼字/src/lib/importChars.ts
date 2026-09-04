@@ -83,10 +83,18 @@ export interface ParsedImport {
   /** 單一份生字表 */
   chars: string[];
   suggestedName?: string;
+  strokeLocks?: Record<string, Record<string, string>>;
+  strokeLayouts?: Record<string, { items: unknown[] }>;
 }
 
 function fromJson(text: string): ParsedImport {
-  const parsed = JSON.parse(text) as { books?: WordbookLike[]; chars?: unknown; name?: string } | string[];
+  const parsed = JSON.parse(text) as {
+    books?: WordbookLike[];
+    chars?: unknown;
+    name?: string;
+    strokeLocks?: Record<string, Record<string, string>>;
+    strokeLayouts?: Record<string, { items: unknown[] }>;
+  } | string[];
   if (Array.isArray(parsed)) {
     const chars = parsed.flatMap((v) => (typeof v === 'string' ? extractHan(v) : []));
     return { chars };
@@ -98,7 +106,12 @@ function fromJson(text: string): ParsedImport {
         name: b.name as string,
         chars: extractHan(Array.isArray(b.chars) ? b.chars.join('') : String(b.chars ?? '')),
       }));
-    return { books, chars: books.flatMap((b) => b.chars) };
+    return {
+      books,
+      chars: books.flatMap((b) => b.chars),
+      strokeLocks: parsed.strokeLocks,
+      strokeLayouts: parsed.strokeLayouts,
+    };
   }
   const raw = parsed.chars;
   const chars = extractHan(Array.isArray(raw) ? raw.join('') : String(raw ?? text));

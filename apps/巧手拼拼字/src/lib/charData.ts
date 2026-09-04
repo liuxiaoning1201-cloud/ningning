@@ -2,6 +2,7 @@ import bundled from '@/data/chars.json';
 import hkCharset from '@/data/hkCharset.json';
 import { fillStrokeTypes } from '@/lib/classifyStroke';
 import { mergeSplitEarRadical } from '@/lib/earRadical';
+import { applyStrokeLayout } from '@/lib/strokeLayouts';
 import { applyStrokeLocks } from '@/lib/strokeLocks';
 import { mergeSplitWalkingNa } from '@/lib/walkingRadical';
 import { isStrokeId } from '@/data/strokes';
@@ -66,10 +67,11 @@ function finish(data: CharData): CharData {
     })
   );
   const existing = applyStrokeLocks(merged.char, merged.strokeTypes, merged.medians.length);
-  return {
+  const classified: CharData = {
     ...merged,
     strokeTypes: fillStrokeTypes(merged.medians, existing, merged.char),
   };
+  return applyStrokeLayout(classified);
 }
 
 /** 老師改過筆畫後，下次 loadChar 要重新跑分類。 */

@@ -82,6 +82,11 @@ export interface CharData {
   source: CharSource;
   /** 筆畫標註是否經人工覈核 */
   verified: boolean;
+  /**
+   * 老師插入、沒有對應墨跡的筆。字影與筆順動畫不畫這一筆，
+   * 練習槽位仍在。
+   */
+  synthetic?: boolean[];
 }
 
 /** 由 median 推導出的目標槽位，米字格內的正規化座標（0–1）。 */

@@ -5,6 +5,8 @@ import type { StrokeId } from '@/types';
 defineProps<{
   current?: StrokeId | null;
   title?: string;
+  hint?: string;
+  allowClear?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -21,7 +23,9 @@ const emit = defineEmits<{
         <h2>{{ title ?? '改成哪一件物品？' }}</h2>
         <button class="btn btn-ghost btn-sm" type="button" @click="emit('close')">取消</button>
       </div>
-      <p class="hint" style="margin-bottom: 12px">只改這一筆的名稱，筆順仍跟字卡動畫走。</p>
+      <p class="hint" style="margin-bottom: 12px">
+        {{ hint ?? '改這一筆用哪一件物品。' }}
+      </p>
 
       <div class="picker-section">基本 6 件</div>
       <div class="picker-grid">
@@ -55,7 +59,13 @@ const emit = defineEmits<{
         </button>
       </div>
 
-      <button class="btn btn-ghost" style="width: 100%; margin-top: 14px" type="button" @click="emit('clear')">
+      <button
+        v-if="allowClear !== false"
+        class="btn btn-ghost"
+        style="width: 100%; margin-top: 14px"
+        type="button"
+        @click="emit('clear')"
+      >
         還原這一筆的自動判斷
       </button>
     </div>

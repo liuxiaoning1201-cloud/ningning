@@ -10,6 +10,7 @@ import StrokePouch from '@/components/StrokePouch.vue';
 import { usePuzzle } from '@/composables/usePuzzle';
 import { STROKE_BY_ID } from '@/data/strokes';
 import { canPlay } from '@/lib/charData';
+import { inkStrokePaths } from '@/lib/strokeLayouts';
 import { celebrateStars } from '@/lib/celebrate';
 import { useSettings } from '@/stores/settings';
 import { useWordbooks } from '@/stores/wordbooks';
@@ -101,7 +102,7 @@ const mascotMessage = computed(() => {
   return '依筆順，把物品拖到那一筆所在的位置；種類、位置、順序都對才會黏住。';
 });
 
-const ghostPaths = computed(() => (settings.state.ghost && data.value ? data.value.strokes : []));
+const ghostPaths = computed(() => (settings.state.ghost && data.value ? inkStrokePaths(data.value) : []));
 </script>
 
 <template>
