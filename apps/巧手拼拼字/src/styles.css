@@ -473,7 +473,8 @@ textarea.text-input {
 }
 
 .piece-hud button:disabled {
-  opacity: 0.32;
+  opacity: 0.55;
+  color: #8b958f;
   cursor: not-allowed;
 }
 
