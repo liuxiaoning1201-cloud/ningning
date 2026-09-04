@@ -89,7 +89,7 @@ export default {
 };
 
 async function generateAiWords(env, topic, count) {
-  const aiProxyUrl = env.AI_PROXY_URL || 'https://zykongjian.pages.dev/api/ai/deepseek';
+  const aiProxyUrl = env.AI_PROXY_URL || 'https://qingyiu.com/api/ai/deepseek';
 
   const prompt = `你是「誰是臥底」遊戲的專業出題助手。
 
@@ -110,7 +110,7 @@ async function generateAiWords(env, topic, count) {
     headers: {
       'Content-Type': 'application/json',
       // 讓 Pages Function 的 Origin 白名單識別為本平台流量。
-      'Origin': 'https://zykongjian.pages.dev',
+      'Origin': 'https://qingyiu.com',
     },
     body: JSON.stringify({
       app: 'spy-game-ai-words',

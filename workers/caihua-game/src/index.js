@@ -147,13 +147,13 @@ async function generateLearnCard(env, word) {
 
 // ─── 統一呼叫平台 DeepSeek 代理 ───
 async function callDeepSeek(env, payload) {
-  const aiProxyUrl = env.AI_PROXY_URL || 'https://zykongjian.pages.dev/api/ai/deepseek';
+  const aiProxyUrl = env.AI_PROXY_URL || 'https://qingyiu.com/api/ai/deepseek';
   const resp = await fetch(aiProxyUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       // 讓 Pages Function 的 Origin 白名單識別為本平台流量。
-      Origin: 'https://zykongjian.pages.dev',
+      Origin: 'https://qingyiu.com',
     },
     body: JSON.stringify({ model: 'deepseek-chat', ...payload }),
   });

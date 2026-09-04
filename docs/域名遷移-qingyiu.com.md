@@ -40,7 +40,7 @@ npm run pages:deploy
 - `https://qingyiu.com`
 - `https://www.qingyiu.com`
 
-舊網域 `zykongjian.com` / `zykongjian.pages.dev` 可暫時保留，方便過渡。
+Google 登入已改為在 `qingyiu.com` 直接執行，不再導向 `zykongjian.pages.dev`。未把上述來源加入 Console 時，登入會出現 `origin_mismatch`。
 
 ## 四、Cloudflare Turnstile（若有開人機驗證）
 

@@ -494,7 +494,7 @@ async function joinByUnifiedCode() {
         return;
       }
       joinError.value =
-        "此碼不是有效的房間。在 qingyiu.com 或 zykongjian.pages.dev 上請使用教師提供的「六位數競賽碼」。小組合作房間需本機伺服器。";
+        "此碼不是有效的房間。在 qingyiu.com 上請使用教師提供的「六位數競賽碼」。小組合作房間需本機伺服器。";
       return;
     }
 
