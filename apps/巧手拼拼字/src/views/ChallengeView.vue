@@ -45,6 +45,8 @@ const grid = ref<{ hitTest: (x: number, y: number) => { x: number; y: number; in
   null
 );
 
+const selectedStrokeId = computed(() => pieces.value.find((p) => p.id === selectedId.value)?.strokeId ?? null);
+
 const chars = computed(() => books.activeChars.filter(canPlay));
 const current = computed(() => chars.value[index.value] ?? '');
 
@@ -127,6 +129,7 @@ const mascotMood = computed(() => {
           <ObjectToolbar
             :available="available"
             :has-selection="!!selectedId"
+            :can-rotate="selectedStrokeId !== 'dian'"
             @drop="onToolDrop"
             @rotate="rotate($event)"
             @scale="scale($event)"

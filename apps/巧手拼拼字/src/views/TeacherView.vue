@@ -199,7 +199,55 @@ async function onPickFile(event: Event) {
     </header>
 
     <div class="page-body wrap">
-      <div class="grid-2">
+      <div class="card revise-card" id="revise-strokes">
+        <div class="card-title">自訂修改筆畫</div>
+        <p class="hint" style="margin-bottom: 10px">
+          自動判斷錯了，點那一筆換成正確的物品。只改這個字，下次開啟仍然記得。練習頁的筆順清單也可以改。
+        </p>
+        <div class="char-chips" style="margin-bottom: 10px">
+          <button
+            v-for="ch in books.books.find((b) => b.id === openId)?.chars ?? []"
+            :key="ch"
+            class="char-chip"
+            :class="{ 'is-on': ch === reviewChar }"
+            type="button"
+            @click="loadReview(ch)"
+          >
+            {{ ch }}
+          </button>
+        </div>
+        <div class="row" style="margin-bottom: 10px">
+          <input
+            v-model="reviewChar"
+            class="text-input"
+            style="flex: 1; max-width: 120px"
+            maxlength="2"
+            placeholder="字"
+            @keyup.enter="loadReview(reviewChar)"
+          />
+          <button class="btn btn-sky btn-sm" type="button" @click="loadReview(reviewChar)">查看</button>
+          <button
+            v-if="reviewLocked.length"
+            class="btn btn-ghost btn-sm"
+            type="button"
+            @click="resetReviewChar"
+          >
+            還原這一字
+          </button>
+        </div>
+        <p v-if="reviewLoading" class="hint">正在取筆順…</p>
+        <p v-else-if="reviewError" class="hint">{{ reviewError }}</p>
+        <CharCard
+          v-else-if="reviewData"
+          :data="reviewData"
+          :show-stroke-list="true"
+          :editable="true"
+          :locked-indexes="reviewLocked"
+          @revise="reviseIndex = $event"
+        />
+      </div>
+
+      <div class="grid-2" style="margin-top: 14px">
         <div class="card">
           <div class="card-title">字簿</div>
           <p class="hint" style="margin-bottom: 10px">點一本就用這本上課。要拿走某個字，按字旁邊的 ×。</p>
@@ -285,54 +333,6 @@ async function onPickFile(event: Event) {
             </p>
 
             <button class="btn btn-mint" style="width: 100%; margin-top: 14px" @click="createBook">建立字簿</button>
-          </div>
-
-          <div class="card">
-            <div class="card-title">核對筆畫</div>
-            <p class="hint" style="margin-bottom: 10px">
-              發現物品叫錯，點那一筆換成正確的。只改這個字，下次開啟仍然記得。
-            </p>
-            <div class="char-chips" style="margin-bottom: 10px">
-              <button
-                v-for="ch in books.books.find((b) => b.id === openId)?.chars ?? []"
-                :key="ch"
-                class="char-chip"
-                :class="{ 'is-on': ch === reviewChar }"
-                type="button"
-                @click="loadReview(ch)"
-              >
-                {{ ch }}
-              </button>
-            </div>
-            <div class="row" style="margin-bottom: 10px">
-              <input
-                v-model="reviewChar"
-                class="text-input"
-                style="flex: 1; max-width: 120px"
-                maxlength="2"
-                placeholder="字"
-                @keyup.enter="loadReview(reviewChar)"
-              />
-              <button class="btn btn-sky btn-sm" type="button" @click="loadReview(reviewChar)">查看</button>
-              <button
-                v-if="reviewLocked.length"
-                class="btn btn-ghost btn-sm"
-                type="button"
-                @click="resetReviewChar"
-              >
-                還原這一字
-              </button>
-            </div>
-            <p v-if="reviewLoading" class="hint">正在取筆順…</p>
-            <p v-else-if="reviewError" class="hint">{{ reviewError }}</p>
-            <CharCard
-              v-else-if="reviewData"
-              :data="reviewData"
-              :show-stroke-list="true"
-              :editable="true"
-              :locked-indexes="reviewLocked"
-              @revise="reviseIndex = $event"
-            />
           </div>
 
           <div class="card">

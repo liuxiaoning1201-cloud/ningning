@@ -123,9 +123,9 @@ export function fitToSlot(id: StrokeId, slot: StrokeSlot, variantKey?: string) {
   };
 }
 
-/** 後寫的筆疊在上面；橫直再高一層，避免被羽毛擋住。 */
+/** 後寫的筆疊在上面；水滴再高一層，避免被大橫蓋住點不到。 */
 export function pieceLayer(id: StrokeId, order: number): number {
-  const boost = id === 'heng' || id === 'zhi' || id === 'ti' ? 3 : id === 'pie' || id === 'na' ? 0 : 1;
+  const boost = id === 'dian' ? 8 : id === 'heng' || id === 'zhi' || id === 'ti' ? 3 : id === 'pie' || id === 'na' ? 0 : 1;
   return (order + 1) * 4 + boost;
 }
 

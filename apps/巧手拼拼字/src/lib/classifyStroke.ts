@@ -171,6 +171,29 @@ export function describeMedian(median: Median): StrokeShape {
   };
 }
 
+/**
+ * 走之底的平捺幾乎躺平，容易看成「一」。
+ * 真橫又細又直（一、三、土）；平捺較厚、中線有起伏，或先頓再走。
+ */
+export function isPingNaShape(s: StrokeShape): boolean {
+  if (s.boxW < 580 || s.span < 580 || s.boxH < 105) return false;
+  if (Math.abs(s.startDeg) > 24) return false;
+  if (/[qvut]/.test(s.collapsed)) return false;
+  if (s.collapsed.startsWith('v') || s.collapsed.startsWith('p')) return false;
+  if (!s.collapsed.startsWith('h')) return false;
+  return s.pathLen > s.span * 1.012 || s.collapsed.includes('n') || s.collapsed.length >= 3;
+}
+
+/** 走之底平捺被拆開再黏回：先短頓再長走，末段仍幾乎水平。 */
+function isMergedPingNa(s: StrokeShape): boolean {
+  if (s.boxW < 700 || s.boxH < 105) return false;
+  if (Math.abs(s.endDeg) > 18) return false;
+  if (!/h$/.test(s.collapsed)) return false;
+  if (/[qut]/.test(s.collapsed)) return false;
+  if (s.boxW < s.boxH * 2.4) return false;
+  return s.lastLen > 180 && s.lastDx > 120;
+}
+
 /** 橫直（曲尺）vs 橫撇（三角旗）：看折後那一段，不要只看方向字母。 */
 function pickHengzhiOrHengpie(s: StrokeShape): StrokeId {
   const lastH = s.endDeg;
@@ -180,7 +203,9 @@ function pickHengzhiOrHengpie(s: StrokeShape): StrokeId {
   const absDy = Math.abs(s.lastDy) || 1;
   const fallRatio = s.lastLen / firstLen;
 
-  // 口、日：折後接近垂直
+  // 走之底那一折又短又往左下，不要用口框的「近垂直」收成曲尺
+  if (s.pathLen < 380 && s.lastDx < 0 && (fallRatio >= 0.45 || aspect >= 0.7)) return 'hengpie';
+  // 口、日：折後接近垂直、路徑夠長
   if (lastH >= 70 && lastH <= 112 && absDx < absDy * 0.55) return 'hengzhi';
   // 了、又：折後明顯長撇
   if (lastH >= 132) return 'hengpie';
@@ -211,7 +236,8 @@ function scoreShape(s: StrokeShape): StrokeId {
     if (s.startDeg >= 105 && aspect < 3) return 'pie';
     return 'dian';
   }
-  if (c === 'h') return 'heng';
+  if (c === 'h' || c === 'hnh' || /^h+n?h+$/.test(c)) return isPingNaShape(s) ? 'na' : 'heng';
+  if (isMergedPingNa(s)) return 'na';
   if (c === 'v' || c === 'u') return 'zhi';
   if (c === 't' || c === 'ht') return 'ti';
 
@@ -328,6 +354,7 @@ export function fillStrokeTypes(
   /**
    * 口框：直 + 折 + 橫，中間那折是橫直（曲尺），不是橫撇（三角旗）。
    * 「豆」「頭」「員」的口都是這個鄰居關係；「了」「又」後面不是橫，不會被改。
+   * 走之底是點 + 折 + 捺，不要套這條。
    */
   for (let i = 1; i < types.length - 1; i += 1) {
     if (locked[i]) continue;
@@ -335,8 +362,35 @@ export function fillStrokeTypes(
     if (types[i] === 'hengpie' || types[i] === 'henggou') types[i] = 'hengzhi';
   }
 
+  applyWalkingRadicalNames(types, locked, medians);
+
   applyOfficialNames(types, locked, char);
   return types;
+}
+
+/**
+ * 走之底：點之後是橫撇，最後一筆是捺（常幾乎躺平）。
+ * 字末三筆，或尚未黏合的四筆（點、折、短頓、長橫）。
+ */
+function applyWalkingRadicalNames(types: StrokeId[], locked: boolean[], medians: Median[]) {
+  const n = types.length;
+  const mark = (fold: number, last: number) => {
+    const lastS = describeMedian(medians[last]);
+    const lastLooksNa = types[last] === 'na' || isPingNaShape(lastS);
+    if (!lastLooksNa) return;
+    if (!locked[fold] && (types[fold] === 'hengzhi' || types[fold] === 'hengpie' || types[fold] === 'henggou')) {
+      types[fold] = 'hengpie';
+    }
+    if (!locked[last]) types[last] = 'na';
+  };
+
+  if (n >= 3 && types[n - 3] === 'dian') mark(n - 2, n - 1);
+
+  if (n >= 4 && types[n - 4] === 'dian') {
+    const head = describeMedian(medians[n - 2]);
+    const shortHead = head.span < 280 && (types[n - 2] === 'dian' || types[n - 2] === 'zhi' || types[n - 2] === 'pie');
+    if (shortHead) mark(n - 3, n - 1);
+  }
 }
 
 /**

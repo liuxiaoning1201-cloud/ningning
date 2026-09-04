@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import bundled from '../src/data/chars.json';
 import { classifyMedian, describeMedian, fillStrokeTypes } from '../src/lib/classifyStroke';
 import { mergeSplitEarRadical } from '../src/lib/earRadical';
+import { mergeSplitWalkingNa } from '../src/lib/walkingRadical';
 import { applyStrokeLocks, resetStrokeLocksForTests, setStrokeLock } from '../src/lib/strokeLocks';
 import { hitsSlot, slotsForChar } from '../src/lib/geometry';
 import { renderRotation } from '../src/lib/strokeMetrics';
@@ -24,14 +25,16 @@ function loadFixture(name: string): CharData {
     medians: Median[];
   };
   const blank = Array.from({ length: raw.strokes.length }, () => null);
-  return mergeSplitEarRadical({
-    char: raw.char,
-    strokes: raw.strokes,
-    medians: raw.medians,
-    strokeTypes: blank,
-    source: raw.source,
-    verified: false,
-  });
+  return mergeSplitWalkingNa(
+    mergeSplitEarRadical({
+      char: raw.char,
+      strokes: raw.strokes,
+      medians: raw.medians,
+      strokeTypes: blank,
+      source: raw.source,
+      verified: false,
+    })
+  );
 }
 
 function autoTypes(data: CharData): StrokeId[] {
@@ -257,6 +260,50 @@ if (na.medians.length !== 6 || naTypes[4] !== 'hengpiewangou' || naTypes[5] !== 
   process.exitCode = 1;
 } else {
   process.stdout.write('那 右耳 OK\n');
+}
+
+const jin = loadFixture('進');
+if (jin.medians.length !== 11) {
+  process.stdout.write(`進 走之底應黏成 11 筆，得到 ${jin.medians.length}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('進 黏平捺 OK\n');
+}
+const jinTypes = autoTypes(jin);
+expectTypes('進', jinTypes, [
+  'pie',
+  'zhi',
+  'dian',
+  'heng',
+  'heng',
+  'heng',
+  'zhi',
+  'heng',
+  'dian',
+  'hengpie',
+  'na',
+]);
+if (jinTypes[8] !== 'dian' || jinTypes[9] !== 'hengpie' || jinTypes[10] !== 'na') {
+  process.stdout.write('進 走之底應為點、橫撇、捺\n');
+  process.exitCode = 1;
+}
+
+const zhiChar = loadFixture('之');
+expectTypes('之', autoTypes(zhiChar), ['dian', 'hengpie', 'na']);
+
+const zhe = loadFixture('這');
+if (zhe.medians.length !== 10) {
+  process.stdout.write(`這 走之底應黏成 10 筆，得到 ${zhe.medians.length}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('這 黏平捺 OK\n');
+}
+const zheTypes = autoTypes(zhe);
+if (zheTypes.at(-3) !== 'dian' || zheTypes.at(-2) !== 'hengpie' || zheTypes.at(-1) !== 'na') {
+  process.stdout.write(`這 走之底 FAIL ${zheTypes.join(',')}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('這 走之底 點、橫撇、捺 OK\n');
 }
 
 resetStrokeLocksForTests();

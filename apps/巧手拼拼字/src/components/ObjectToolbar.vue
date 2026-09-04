@@ -11,6 +11,8 @@ const props = defineProps<{
   hintId?: StrokeId | null;
   /** 目前選中的物件，旋轉與縮放按鈕作用在它身上 */
   hasSelection?: boolean;
+  /** 水滴保持尖上圓下，轉鈕仍在但不可用 */
+  canRotate?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -66,10 +68,20 @@ function endDrag(event: PointerEvent) {
   <div class="toolbar">
     <!-- 調整鈕永遠貼在格子底下，不要跟一排工具擠到最下面 -->
     <div class="tool-actions">
-      <button class="btn btn-ghost btn-icon" :disabled="!hasSelection" title="向左轉 15 度" @click="emit('rotate', -15)">
+      <button
+        class="btn btn-ghost btn-icon"
+        :disabled="!hasSelection || canRotate === false"
+        :title="canRotate === false ? '水滴保持尖上圓下，不用轉角度' : '向左轉 15 度'"
+        @click="emit('rotate', -15)"
+      >
         ↺
       </button>
-      <button class="btn btn-ghost btn-icon" :disabled="!hasSelection" title="向右轉 15 度" @click="emit('rotate', 15)">
+      <button
+        class="btn btn-ghost btn-icon"
+        :disabled="!hasSelection || canRotate === false"
+        :title="canRotate === false ? '水滴保持尖上圓下，不用轉角度' : '向右轉 15 度'"
+        @click="emit('rotate', 15)"
+      >
         ↻
       </button>
       <button class="btn btn-ghost btn-icon" :disabled="!hasSelection" title="縮小" @click="emit('scale', 0.82)">

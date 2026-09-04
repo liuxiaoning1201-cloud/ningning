@@ -92,6 +92,8 @@ function onToolDrop(payload: { strokeId: StrokeId; variantKey?: string; clientX:
         : '這一筆已經拼好了。';
 }
 
+const selectedStrokeId = computed(() => pieces.value.find((p) => p.id === selectedId.value)?.strokeId ?? null);
+
 const nextStrokeLabel = computed(() => {
   const id = enabledOnly.value;
   return id ? `${STROKE_BY_ID[id].name}（${STROKE_BY_ID[id].objectName}）` : '全部拼完了';
@@ -181,6 +183,7 @@ async function clearRevise() {
             :available="available"
             :hint-id="enabledOnly"
             :has-selection="!!selectedId"
+            :can-rotate="selectedStrokeId !== 'dian'"
             @drop="onToolDrop"
             @rotate="rotate($event)"
             @scale="scale($event)"

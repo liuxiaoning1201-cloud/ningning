@@ -13,7 +13,7 @@ const ZHHANT = (ch: string) =>
 const MMAH = (ch: string) =>
   `https://cdn.jsdelivr.net/npm/hanzi-writer-data@latest/${encodeURIComponent(ch)}.json`;
 
-const CHARS = ['豆', '陰', '陽', '乃', '那', '又', '了', '山', '去', '口'];
+const CHARS = ['豆', '陰', '陽', '乃', '那', '又', '了', '山', '去', '口', '進', '這', '之'];
 
 await mkdir(OUT, { recursive: true });
 

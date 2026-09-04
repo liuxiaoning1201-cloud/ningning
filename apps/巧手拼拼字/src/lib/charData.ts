@@ -3,6 +3,7 @@ import hkCharset from '@/data/hkCharset.json';
 import { fillStrokeTypes } from '@/lib/classifyStroke';
 import { mergeSplitEarRadical } from '@/lib/earRadical';
 import { applyStrokeLocks } from '@/lib/strokeLocks';
+import { mergeSplitWalkingNa } from '@/lib/walkingRadical';
 import { isStrokeId } from '@/data/strokes';
 import type { CharData, Median, StrokeId } from '@/types';
 
@@ -58,10 +59,12 @@ function sanitizeTypes(input: unknown, count: number): (StrokeId | null)[] {
 
 /** 人工標註保留，缺的用幾何自動補齊，練習模式才能立刻鎖筆順。 */
 function finish(data: CharData): CharData {
-  const merged = mergeSplitEarRadical({
-    ...data,
-    strokeTypes: sanitizeTypes(data.strokeTypes, data.strokes.length),
-  });
+  const merged = mergeSplitWalkingNa(
+    mergeSplitEarRadical({
+      ...data,
+      strokeTypes: sanitizeTypes(data.strokeTypes, data.strokes.length),
+    })
+  );
   const existing = applyStrokeLocks(merged.char, merged.strokeTypes, merged.medians.length);
   return {
     ...merged,

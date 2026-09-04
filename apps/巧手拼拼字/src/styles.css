@@ -168,6 +168,10 @@ h4 {
   padding: 18px;
 }
 
+.revise-card {
+  box-shadow: 0 0 0 2px var(--sky-deep), var(--shadow);
+}
+
 .card-title {
   font-family: var(--font-title);
   font-size: 1.05rem;
@@ -443,7 +447,7 @@ textarea.text-input {
   transform: translate(-50%, 6px);
   display: flex;
   gap: 2px;
-  z-index: 12;
+  z-index: 200;
   background: var(--card);
   border-radius: 999px;
   padding: 3px 5px;
@@ -466,6 +470,11 @@ textarea.text-input {
 
 .piece-hud button:active {
   background: rgba(51, 64, 58, 0.08);
+}
+
+.piece-hud button:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
 }
 
 .grid-lines {
@@ -517,7 +526,7 @@ textarea.text-input {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .piece-wrap.is-dian .piece {
