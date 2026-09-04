@@ -1,12 +1,13 @@
 import bundled from '@/data/chars.json';
 import hkCharset from '@/data/hkCharset.json';
+import { isStrokeId } from '@/data/strokes';
+import { mapPool, readRawChar, writeRawChar, type RawCharRecord } from '@/lib/charCache';
 import { fillStrokeTypes } from '@/lib/classifyStroke';
 import { mergeSplitEarRadical } from '@/lib/earRadical';
 import { applyStrokeLayout } from '@/lib/strokeLayouts';
 import { applyStrokeLocks } from '@/lib/strokeLocks';
 import { mergeSplitWalkingNa } from '@/lib/walkingRadical';
-import { isStrokeId } from '@/data/strokes';
-import type { CharData, Median, StrokeId } from '@/types';
+import type { CharData, CharSource, Median, StrokeId } from '@/types';
 
 /**
  * 字形筆順資料的取用層。
@@ -93,12 +94,16 @@ async function fetchRemote(ch: string): Promise<CharData | null> {
       if (!res.ok) continue;
       const raw = (await res.json()) as { strokes?: string[]; medians?: Median[] };
       if (!raw.strokes?.length || raw.strokes.length !== raw.medians?.length) continue;
-      return finish({
+      const record: RawCharRecord = {
         char: ch,
         strokes: raw.strokes,
         medians: raw.medians,
+        source: source as CharSource,
+      };
+      await writeRawChar(record);
+      return finish({
+        ...record,
         strokeTypes: sanitizeTypes(null, raw.strokes.length),
-        source,
         verified: false,
       });
     } catch {
@@ -108,15 +113,30 @@ async function fetchRemote(ch: string): Promise<CharData | null> {
   return null;
 }
 
+function finishRecord(record: { char: string; strokes: string[]; medians: Median[]; source: CharSource; strokeTypes?: unknown; verified?: boolean }): CharData {
+  return finish({
+    char: record.char,
+    strokes: record.strokes,
+    medians: record.medians,
+    strokeTypes: sanitizeTypes(record.strokeTypes, record.strokes.length),
+    source: record.source,
+    verified: Boolean(record.verified),
+  });
+}
+
 export async function loadChar(ch: string): Promise<CharData | null> {
   if (cache.has(ch)) return cache.get(ch) ?? null;
 
   const local = BUNDLED[ch];
   if (local) {
-    const data = finish({
-      ...local,
-      strokeTypes: sanitizeTypes(local.strokeTypes, local.strokes.length),
-    });
+    const data = finishRecord(local);
+    cache.set(ch, data);
+    return data;
+  }
+
+  const stored = await readRawChar(ch);
+  if (stored) {
+    const data = finishRecord(stored);
     cache.set(ch, data);
     return data;
   }
@@ -124,6 +144,27 @@ export async function loadChar(ch: string): Promise<CharData | null> {
   const remote = await fetchRemote(ch);
   cache.set(ch, remote);
   return remote;
+}
+
+/**
+ * 建字簿或進練習前，把整本字認完。已打包或已快取的幾乎不等待。
+ */
+export async function prefetchChars(
+  chars: string[],
+  onProgress?: (done: number, total: number) => void
+): Promise<void> {
+  const unique = [...new Set(chars.filter((c) => [...c].length === 1).map((c) => [...c][0]))];
+  let done = 0;
+  const total = unique.length;
+  if (!total) {
+    onProgress?.(0, 0);
+    return;
+  }
+  await mapPool(unique, 5, async (ch) => {
+    await loadChar(ch);
+    done += 1;
+    onProgress?.(done, total);
+  });
 }
 
 export type CharReadiness = 'ready' | 'pending' | 'missing' | 'unknown';

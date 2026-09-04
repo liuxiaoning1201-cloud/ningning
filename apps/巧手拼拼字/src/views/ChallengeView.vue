@@ -9,7 +9,7 @@ import ObjectToolbar from '@/components/ObjectToolbar.vue';
 import StrokePouch from '@/components/StrokePouch.vue';
 import { usePuzzle } from '@/composables/usePuzzle';
 import { strokeName } from '@/data/strokes';
-import { canPlay } from '@/lib/charData';
+import { canPlay, prefetchChars } from '@/lib/charData';
 import { celebrateStars } from '@/lib/celebrate';
 import { useWordbooks } from '@/stores/wordbooks';
 import type { StrokeId } from '@/types';
@@ -30,8 +30,7 @@ const {
   setChar,
   drop,
   move,
-  rotate,
-  scale,
+  applyTransform,
   removeSelected,
   clear,
   check,
@@ -45,8 +44,6 @@ const grid = ref<{ hitTest: (x: number, y: number) => { x: number; y: number; in
   null
 );
 
-const selectedStrokeId = computed(() => pieces.value.find((p) => p.id === selectedId.value)?.strokeId ?? null);
-
 const chars = computed(() => books.activeChars.filter(canPlay));
 const current = computed(() => chars.value[index.value] ?? '');
 
@@ -58,9 +55,14 @@ async function loadCurrent() {
 
 onMounted(loadCurrent);
 watch(current, loadCurrent);
-watch(chars, () => {
-  if (index.value >= chars.value.length) index.value = 0;
-});
+watch(
+  chars,
+  (list) => {
+    if (index.value >= list.length) index.value = 0;
+    prefetchChars(list);
+  },
+  { immediate: true }
+);
 
 function step(delta: number) {
   if (!chars.value.length) return;
@@ -120,18 +122,14 @@ const mascotMood = computed(() => {
             :popped-id="poppedId"
             @move="move($event.id, $event.x, $event.y)"
             @select="selectedId = $event"
-            @rotate="rotate($event)"
-            @scale="scale($event)"
+            @transform="applyTransform"
             @delete="removeSelected()"
           />
 
           <ObjectToolbar
             :available="available"
             :has-selection="!!selectedId"
-            :can-rotate="selectedStrokeId !== 'dian'"
             @drop="onToolDrop"
-            @rotate="rotate($event)"
-            @scale="scale($event)"
             @delete="removeSelected()"
             @clear="clear()"
           />

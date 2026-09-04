@@ -9,7 +9,7 @@ import ObjectToolbar from '@/components/ObjectToolbar.vue';
 import StrokePouch from '@/components/StrokePouch.vue';
 import { usePuzzle } from '@/composables/usePuzzle';
 import { STROKE_BY_ID } from '@/data/strokes';
-import { canPlay } from '@/lib/charData';
+import { canPlay, prefetchChars } from '@/lib/charData';
 import { inkStrokePaths } from '@/lib/strokeLayouts';
 import { celebrateStars } from '@/lib/celebrate';
 import { useSettings } from '@/stores/settings';
@@ -36,8 +36,7 @@ const {
   setChar,
   drop,
   move,
-  rotate,
-  scale,
+  applyTransform,
   removeSelected,
   clear,
 } = usePuzzle({ snap: true });
@@ -59,9 +58,14 @@ async function loadCurrent() {
 
 onMounted(loadCurrent);
 watch(current, loadCurrent);
-watch(chars, () => {
-  if (index.value >= chars.value.length) index.value = 0;
-});
+watch(
+  chars,
+  (list) => {
+    if (index.value >= list.length) index.value = 0;
+    prefetchChars(list);
+  },
+  { immediate: true }
+);
 watch(finished, (ok) => {
   if (ok) celebrateStars();
 });
@@ -88,8 +92,6 @@ function onToolDrop(payload: { strokeId: StrokeId; variantKey?: string; clientX:
         ? '拖到這一筆所在的位置才會黏住。'
         : '這一筆已經拼好了。';
 }
-
-const selectedStrokeId = computed(() => pieces.value.find((p) => p.id === selectedId.value)?.strokeId ?? null);
 
 const nextStrokeLabel = computed(() => {
   const id = enabledOnly.value;
@@ -144,8 +146,7 @@ const ghostPaths = computed(() => (settings.state.ghost && data.value ? inkStrok
             :reject-tick="rejectTick"
             @move="move($event.id, $event.x, $event.y)"
             @select="selectedId = $event"
-            @rotate="rotate($event)"
-            @scale="scale($event)"
+            @transform="applyTransform"
             @delete="removeSelected()"
           />
 
@@ -153,10 +154,7 @@ const ghostPaths = computed(() => (settings.state.ghost && data.value ? inkStrok
             :available="available"
             :hint-id="enabledOnly"
             :has-selection="!!selectedId"
-            :can-rotate="selectedStrokeId !== 'dian'"
             @drop="onToolDrop"
-            @rotate="rotate($event)"
-            @scale="scale($event)"
             @delete="removeSelected()"
             @clear="clear()"
           />

@@ -26,15 +26,25 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'move', payload: { id: string; x: number; y: number }): void;
   (e: 'select', id: string | null): void;
-  (e: 'rotate', deg: number): void;
-  (e: 'scale', factor: number): void;
+  (e: 'transform', payload: { id: string; scale?: number; scaleY?: number; rot?: number }): void;
   (e: 'delete'): void;
 }>();
 
-const frame = ref<HTMLElement | null>(null);
-const draggingId = ref<string | null>(null);
+type Drag =
+  | { kind: 'move'; id: string }
+  | {
+      kind: 'resize';
+      id: string;
+      mode: 'se' | 'ne' | 'sw' | 'nw' | 'e' | 's';
+      startDist: number;
+      startW: number;
+      startH: number;
+    }
+  | { kind: 'rotate'; id: string; startAngle: number; startRot: number };
 
-/** 事件座標 → 米字格內的 0–1 正規化座標。 */
+const frame = ref<HTMLElement | null>(null);
+const drag = ref<Drag | null>(null);
+
 function toLocal(event: PointerEvent | DragEvent): { x: number; y: number } | null {
   const el = frame.value;
   if (!el) return null;
@@ -56,10 +66,6 @@ function containsPoint(piece: Piece, x: number, y: number) {
   return x >= piece.x - w / 2 && x <= piece.x + w / 2 && y >= piece.y - h / 2 && y <= piece.y + h / 2;
 }
 
-/**
- * 圖層疊在一起時，不要只聽 DOM 最上層那件（大橫會蓋住水滴）。
- * 指標底下有多件，就揀面積最小的；一樣大再揀離中心較近的。
- */
 function pickPieceAt(x: number, y: number): Piece | null {
   const hits = props.pieces.filter((piece) => containsPoint(piece, x, y));
   if (!hits.length) return null;
@@ -74,6 +80,14 @@ function pickPieceAt(x: number, y: number): Piece | null {
   return hits[0];
 }
 
+function pointerAngle(piece: Piece, local: { x: number; y: number }) {
+  return (Math.atan2(local.y - piece.y, local.x - piece.x) * 180) / Math.PI;
+}
+
+function clampSize(n: number) {
+  return Math.min(1.08, Math.max(0.05, n));
+}
+
 function onFramePointerDown(event: PointerEvent) {
   if (props.readonly) return;
   const local = toLocal(event);
@@ -84,26 +98,90 @@ function onFramePointerDown(event: PointerEvent) {
     return;
   }
   emit('select', hit.id);
-  draggingId.value = hit.id;
+  drag.value = { kind: 'move', id: hit.id };
+  frame.value?.setPointerCapture(event.pointerId);
+}
+
+function startResize(event: PointerEvent, mode: 'se' | 'ne' | 'sw' | 'nw' | 'e' | 's') {
+  event.stopPropagation();
+  const piece = selectedPiece.value;
+  const local = toLocal(event);
+  if (!piece || !local) return;
+  const { w, h } = pieceBox(piece);
+  drag.value = {
+    kind: 'resize',
+    id: piece.id,
+    mode,
+    startDist: Math.hypot(local.x - piece.x, local.y - piece.y) || 0.04,
+    startW: w,
+    startH: h,
+  };
+  frame.value?.setPointerCapture(event.pointerId);
+}
+
+function startRotate(event: PointerEvent) {
+  event.stopPropagation();
+  const piece = selectedPiece.value;
+  const local = toLocal(event);
+  if (!piece || !local || piece.strokeId === 'dian') return;
+  drag.value = {
+    kind: 'rotate',
+    id: piece.id,
+    startAngle: pointerAngle(piece, local),
+    startRot: piece.rot,
+  };
   frame.value?.setPointerCapture(event.pointerId);
 }
 
 function onPointerMove(event: PointerEvent) {
-  if (!draggingId.value) return;
+  const current = drag.value;
+  if (!current) return;
   const local = toLocal(event);
   if (!local) return;
-  emit('move', {
-    id: draggingId.value,
-    x: Math.min(1, Math.max(0, local.x)),
-    y: Math.min(1, Math.max(0, local.y)),
+  if (current.kind === 'move') {
+    emit('move', {
+      id: current.id,
+      x: Math.min(1, Math.max(0, local.x)),
+      y: Math.min(1, Math.max(0, local.y)),
+    });
+    return;
+  }
+  const piece = props.pieces.find((p) => p.id === current.id);
+  if (!piece) return;
+  if (current.kind === 'rotate') {
+    const ang = pointerAngle(piece, local);
+    emit('transform', { id: piece.id, rot: current.startRot + (ang - current.startAngle) });
+    return;
+  }
+  if (current.mode === 'e') {
+    emit('transform', {
+      id: piece.id,
+      scale: clampSize(Math.abs(local.x - piece.x) * 2),
+      scaleY: current.startH,
+    });
+    return;
+  }
+  if (current.mode === 's') {
+    emit('transform', {
+      id: piece.id,
+      scale: current.startW,
+      scaleY: clampSize(Math.abs(local.y - piece.y) * 2),
+    });
+    return;
+  }
+  const dist = Math.hypot(local.x - piece.x, local.y - piece.y);
+  const factor = dist / current.startDist;
+  emit('transform', {
+    id: piece.id,
+    scale: clampSize(current.startW * factor),
+    scaleY: clampSize(current.startH * factor),
   });
 }
 
 function onPointerUp() {
-  draggingId.value = null;
+  drag.value = null;
 }
 
-/** 把螢幕座標換成格子裡的 0–1。工具欄拖放用這個判斷黏不黏。 */
 function hitTest(clientX: number, clientY: number): { x: number; y: number; inside: boolean } | null {
   const el = frame.value;
   if (!el) return null;
@@ -129,22 +207,21 @@ watch(
 
 const selectedPiece = computed(() => props.pieces.find((p) => p.id === props.selectedId) ?? null);
 
-const hudStyle = computed(() => {
+const xfStyle = computed(() => {
   const piece = selectedPiece.value;
   if (!piece) return {};
-  const h = piece.scaleY ?? piece.scale;
+  const { w, h } = pieceBox(piece);
   return {
-    left: `${Math.min(88, Math.max(12, piece.x * 100))}%`,
-    top: `${Math.min(90, (piece.y + h / 2) * 100 + 2)}%`,
+    left: `${(piece.x - w / 2) * 100}%`,
+    top: `${(piece.y - h / 2) * 100}%`,
+    width: `${w * 100}%`,
+    height: `${h * 100}%`,
   };
 });
 
 const ghostViewBox = '0 0 1024 1024';
-
-/** makemeahanzi 座標系要翻 y 才能疊在格子上。 */
 const ghostTransform = 'translate(0, 900) scale(1, -1)';
 
-/** 槽位提示照這一筆真正要擺的物品大小畫。 */
 const slotStyle = (slot: StrokeSlot) => {
   const w = slot.width || Math.max(slot.extent, 0.14);
   const h = slot.height || Math.max(slot.extent, 0.14);
@@ -156,11 +233,6 @@ const slotStyle = (slot: StrokeSlot) => {
   };
 };
 
-/**
- * 物品圖已經畫成該筆畫的樣子，所以套上去的旋轉是「這一筆的角度 − 物品被畫出來的角度」。
- * 直接用 piece.rot 去轉，折角類的物件會整個轉歪。
- * 位置與大小在外層，旋轉在內層，彈跳動畫才不會把旋轉蓋掉。
- */
 const pieceWrapStyle = (piece: Piece) => {
   const w = piece.scale;
   const h = piece.scaleY ?? piece.scale;
@@ -193,7 +265,6 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
   >
-    <!-- 米字格：外框、田字十字、再加兩條斜線 -->
     <svg class="grid-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
       <rect x="1" y="1" width="98" height="98" fill="none" stroke="var(--grid-line)" stroke-width="1.2" />
       <line x1="50" y1="1" x2="50" y2="99" stroke="var(--grid-guide)" stroke-width="0.8" stroke-dasharray="4 3" />
@@ -229,6 +300,7 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
       :class="{
         'is-dian': piece.strokeId === 'dian',
         'just-placed': piece.id === poppedId,
+        'is-dim': piece.id !== selectedId,
       }"
       :style="pieceWrapStyle(piece)"
     >
@@ -236,7 +308,7 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
         class="piece"
         :class="{
           'is-selected': piece.id === selectedId,
-          'is-dragging': piece.id === draggingId,
+          'is-dragging': drag?.kind === 'move' && drag.id === piece.id,
           'is-locked': readonly,
         }"
         :style="pieceImgStyle(piece)"
@@ -246,31 +318,29 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
       />
     </div>
 
-    <div
-      v-if="selectedPiece && !readonly"
-      class="piece-hud"
-      :style="hudStyle"
-      @pointerdown.stop
-    >
+    <div v-if="selectedPiece && !readonly" class="xf" :style="xfStyle" @pointerdown.stop>
       <button
+        class="xf-del"
         type="button"
-        :title="selectedPiece.strokeId === 'dian' ? '水滴保持尖上圓下，不用轉角度' : '左轉'"
-        :disabled="selectedPiece.strokeId === 'dian'"
-        @click.stop="selectedPiece.strokeId === 'dian' ? undefined : emit('rotate', -15)"
+        title="拿走"
+        @click.stop="emit('delete')"
+        @pointerdown.stop
       >
-        ↺
+        ×
       </button>
       <button
+        v-if="selectedPiece.strokeId !== 'dian'"
+        class="xf-rot"
         type="button"
-        :title="selectedPiece.strokeId === 'dian' ? '水滴保持尖上圓下，不用轉角度' : '右轉'"
-        :disabled="selectedPiece.strokeId === 'dian'"
-        @click.stop="selectedPiece.strokeId === 'dian' ? undefined : emit('rotate', 15)"
-      >
-        ↻
-      </button>
-      <button type="button" title="縮小" @click.stop="emit('scale', 0.82)">－</button>
-      <button type="button" title="放大" @click.stop="emit('scale', 1.18)">＋</button>
-      <button type="button" title="拿走" @click.stop="emit('delete')">✕</button>
+        title="拖動來轉角度"
+        @pointerdown="startRotate"
+      />
+      <button class="xf-h xf-nw" type="button" title="等比例縮放" @pointerdown="startResize($event, 'nw')" />
+      <button class="xf-h xf-ne" type="button" title="等比例縮放" @pointerdown="startResize($event, 'ne')" />
+      <button class="xf-h xf-sw" type="button" title="等比例縮放" @pointerdown="startResize($event, 'sw')" />
+      <button class="xf-h xf-se" type="button" title="等比例縮放" @pointerdown="startResize($event, 'se')" />
+      <button class="xf-h xf-e" type="button" title="拉寬" @pointerdown="startResize($event, 'e')" />
+      <button class="xf-h xf-s" type="button" title="拉高" @pointerdown="startResize($event, 's')" />
     </div>
   </div>
 </template>

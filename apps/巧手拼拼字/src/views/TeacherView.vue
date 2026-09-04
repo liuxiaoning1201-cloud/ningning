@@ -4,8 +4,10 @@ import { useRouter } from 'vue-router';
 
 import StrokePicker from '@/components/StrokePicker.vue';
 import { STROKE_BY_ID, strokeImage, strokeName } from '@/data/strokes';
+import { issueLabel } from '@/lib/charIssues';
 import { loadChar } from '@/lib/charData';
 import { extractHan, keepHkChars, parseImportFile } from '@/lib/importChars';
+import { useCharPrep } from '@/stores/charPrep';
 import { useSettings } from '@/stores/settings';
 import { useStrokeLayouts } from '@/stores/strokeLayouts';
 import { useStrokeLocks } from '@/stores/strokeLocks';
@@ -17,6 +19,7 @@ const books = useWordbooks();
 const settings = useSettings();
 const locks = useStrokeLocks();
 const layouts = useStrokeLayouts();
+const prep = useCharPrep();
 
 const openId = ref(books.active?.id ?? '');
 const newBookName = ref('');
@@ -177,6 +180,24 @@ function toast(text: string) {
 }
 
 const activeId = computed(() => books.active?.id ?? '');
+const openChars = computed(() => books.books.find((b) => b.id === openId.value)?.chars ?? []);
+const openIssues = computed(() => prep.issues.filter((issue) => openChars.value.includes(issue.char)));
+
+watch(
+  () => [openId.value, openChars.value.join('')],
+  () => {
+    if (openChars.value.length) prep.prepare(openChars.value);
+    else prep.reset();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => [locks.map, layouts.map],
+  () => {
+    prep.refreshIssues();
+  }
+);
 
 function toggleBook(id: string) {
   openId.value = openId.value === id ? '' : id;
@@ -294,6 +315,24 @@ async function onPickFile(event: Event) {
           <p class="hint" style="margin-bottom: 10px">
             點一本就用這本上課。要改筆畫就點那個字；種類不對可以改，少了或多了用＋－。
           </p>
+          <p v-if="prep.running" class="hint" style="margin-bottom: 10px">{{ prep.progressText }}</p>
+          <div v-if="openIssues.length" class="issue-box">
+            <div class="card-title">請老師確認</div>
+            <p class="hint">系統對這些字沒有把握，或你改過。點進去改種類或增減筆畫。</p>
+            <div class="char-chips" style="margin-top: 8px">
+              <button
+                v-for="issue in openIssues"
+                :key="issue.char"
+                class="issue-chip"
+                type="button"
+                :class="{ 'is-on': issue.char === reviewChar }"
+                @click="loadReview(issue.char)"
+              >
+                {{ issue.char }}
+                <span class="pill">{{ issueLabel(issue.kind) }}</span>
+              </button>
+            </div>
+          </div>
 
           <ul class="book-fold">
             <li v-for="b in books.books" :key="b.id" :class="{ 'is-open': b.id === openId, 'is-on': b.id === activeId }">
@@ -315,7 +354,7 @@ async function onPickFile(event: Event) {
                     v-for="ch in b.chars"
                     :key="ch"
                     class="char-chip"
-                    :class="{ 'is-on': ch === reviewChar }"
+                    :class="{ 'is-on': ch === reviewChar, 'is-issue': openIssues.some((issue) => issue.char === ch) }"
                   >
                     <button
                       class="char-chip-hit"

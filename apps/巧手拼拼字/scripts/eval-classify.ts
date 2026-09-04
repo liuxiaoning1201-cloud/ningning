@@ -20,7 +20,8 @@ import {
   resetStrokeLayoutsForTests,
 } from '../src/lib/strokeLayouts';
 import { hitsSlot, slotsForChar } from '../src/lib/geometry';
-import { renderRotation } from '../src/lib/strokeMetrics';
+import { inspectChar, unusedOfficialNames } from '../src/lib/charIssues';
+import { defaultObjectScale, fitToSlot, objectSize, renderRotation, sizeForCharStroke } from '../src/lib/strokeMetrics';
 import type { CharData, Median, StrokeId } from '../src/types';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -358,4 +359,80 @@ if (!removeLayoutItem('口', 1) || applyStrokeLayout({ ...kou, strokeTypes: kouA
   process.stdout.write('老師刪筆 口 剩 3 筆 OK\n');
 }
 resetStrokeLayoutsForTests();
+
+const kouIssue = inspectChar({ ...kou, strokeTypes: kouAuto, char: '口' });
+if (kouIssue) {
+  process.stdout.write(`口不該進例外清單 ${kouIssue.kind} ${kouIssue.detail}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('口 不在例外清單 OK\n');
+}
+const bundledGui = (bundled as Record<string, CharData>)['龜'];
+if (!bundledGui?.strokes || bundledGui.strokes.length < 12) {
+  process.stdout.write('小學字包應含龜 FAIL\n');
+  process.exitCode = 1;
+} else {
+  process.stdout.write(`小學字包 龜 ${bundledGui.strokes.length} 筆 OK\n`);
+}
+const leftover = unusedOfficialNames('口', ['zhi', 'na', 'dian']);
+if (!leftover.includes('hengzhi')) {
+  process.stdout.write(`衝突偵測 FAIL ${leftover.join(',')}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('例外清單 口橫直對不上 OK\n');
+}
+
+const kouSlots = slotsForChar({ ...kou, strokeTypes: kouAuto });
+const freeBoot = sizeForCharStroke('zhiwangou', kouSlots, 0.8, 0.8);
+const genericBoot = defaultObjectScale('zhiwangou');
+if (!(freeBoot.sx <= genericBoot + 0.001 && freeBoot.sy <= genericBoot + 0.001)) {
+  process.stdout.write(`未吸附大小應跟字走 FAIL slot=${freeBoot.sx},${freeBoot.sy} generic=${genericBoot}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write(
+    `未吸附大小跟口的槽位走 OK ${freeBoot.sx.toFixed(3)}x${freeBoot.sy.toFixed(3)} < ${genericBoot.toFixed(3)}\n`
+  );
+}
+const zhiFit = sizeForCharStroke('zhi', kouSlots, kouSlots[0].cx, kouSlots[0].cy);
+const zhiInk = objectSize(kouSlots[0], 'zhi');
+if (Math.abs(zhiFit.sx - zhiInk.sx) > 0.001 || Math.abs(zhiFit.sy - zhiInk.sy) > 0.001) {
+  process.stdout.write(`同種類應貼墨跡 FAIL ${zhiFit.sx},${zhiFit.sy} vs ${zhiInk.sx},${zhiInk.sy}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('同種類物品貼該筆墨跡 OK\n');
+}
+
+const guiData = (bundled as Record<string, CharData>)['龜'];
+if (guiData) {
+  const guiTypes = fillStrokeTypes(guiData.medians, guiData.strokeTypes, '龜');
+  const guiSlots = slotsForChar({ ...guiData, strokeTypes: guiTypes });
+  const bootSlot = guiSlots.find((s) => s.strokeId === 'zhiwangou');
+  const bootFree = sizeForCharStroke('zhiwangou', guiSlots, 0.2, 0.2);
+  const bootLong = Math.max(bootFree.sx, bootFree.sy);
+  if (bootLong >= 0.28) {
+    process.stdout.write(`龜未吸附長靴太大 FAIL ${bootFree.sx.toFixed(3)}x${bootFree.sy.toFixed(3)}\n`);
+    process.exitCode = 1;
+  } else {
+    process.stdout.write(`龜未吸附長靴 ${bootFree.sx.toFixed(3)}x${bootFree.sy.toFixed(3)} OK\n`);
+  }
+  if (bootSlot) {
+    const snapped = fitToSlot('zhiwangou', bootSlot);
+    const ink = objectSize(bootSlot, 'zhiwangou');
+    if (Math.abs(snapped.scale - ink.sx) > 0.001 || Math.abs((snapped.scaleY ?? snapped.scale) - ink.sy) > 0.001) {
+      process.stdout.write(`龜吸附長靴應跟墨跡 FAIL snap=${snapped.scale},${snapped.scaleY} ink=${ink.sx},${ink.sy}\n`);
+      process.exitCode = 1;
+    } else {
+      process.stdout.write(`龜吸附長靴跟墨跡 ${ink.sx.toFixed(3)}x${ink.sy.toFixed(3)} OK\n`);
+    }
+    const aspectFree = bootFree.sx / Math.max(bootFree.sy, 0.001);
+    const aspectInk = ink.sx / Math.max(ink.sy, 0.001);
+    if (Math.abs(aspectFree - aspectInk) > 0.05) {
+      process.stdout.write(`龜長靴長寬比應相符 FAIL free=${aspectFree.toFixed(3)} ink=${aspectInk.toFixed(3)}\n`);
+      process.exitCode = 1;
+    }
+  } else {
+    process.stdout.write('龜應有直彎鈎 FAIL\n');
+    process.exitCode = 1;
+  }
+}
 

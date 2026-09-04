@@ -103,7 +103,64 @@ export function objectScale(slot: Pick<StrokeSlot, 'length' | 'extent' | 'width'
   return Math.max(sx, sy);
 }
 
-/** 挑戰模式尚未對上槽位時的預設大小。 */
+function charSpanOf(slots: StrokeSlot[], fallback = 0.2): number {
+  const extents = slots.map((s) => Math.max(s.width || 0, s.height || 0, s.extent || 0)).filter((n) => n > 0);
+  if (!extents.length) return fallback;
+  extents.sort((a, b) => a - b);
+  return extents[Math.floor(extents.length / 2)];
+}
+
+/** 十筆以上才壓最長邊，短字（口、一）維持跟墨跡一樣大。 */
+function packBusyCharSize(size: { sx: number; sy: number }, slots: StrokeSlot[]): { sx: number; sy: number } {
+  if (slots.length < 10) return size;
+  const cap = Math.min(0.26, Math.max(0.14, charSpanOf(slots) * 1.3));
+  const longest = Math.max(size.sx, size.sy, 0.01);
+  if (longest <= cap) return size;
+  const factor = cap / longest;
+  return { sx: size.sx * factor, sy: size.sy * factor };
+}
+
+/**
+ * 尚未吸附時的預設大小。
+ * 有同種類空槽：先跟該筆墨跡外框相符（口的直仍是那一豎）。
+ * 十多筆的字再把過大的物件壓低，避免長靴一放就佔格子三分之一；
+ * 練習吸附請走 fitToSlot，仍跟該筆墨跡走。
+ * 沒有同種類：用這個字槽位的中位大小當上限。
+ */
+export function sizeForCharStroke(
+  id: StrokeId,
+  slots: StrokeSlot[],
+  x: number,
+  y: number,
+  taken: Set<number> = new Set(),
+  variantKey?: string
+): { sx: number; sy: number } {
+  const same = slots.filter((s) => !taken.has(s.index) && s.strokeId === id);
+  if (same.length) {
+    let best = same[0];
+    let bestDist = Infinity;
+    for (const slot of same) {
+      const d = Math.hypot(slot.cx - x, slot.cy - y);
+      if (d < bestDist) {
+        bestDist = d;
+        best = slot;
+      }
+    }
+    return packBusyCharSize(objectSize(best, id, variantKey), slots);
+  }
+
+  const typical = metricFor(id);
+  const charSpan = charSpanOf(slots, typical.extent);
+  const extent = Math.min(typical.extent, Math.max(0.1, charSpan * 1.15));
+  const size = objectSize({ length: extent, extent, width: extent, height: extent }, id, variantKey);
+  const cap = Math.min(0.34, Math.max(0.12, charSpan * 1.25));
+  const longest = Math.max(size.sx, size.sy, 0.01);
+  const fitted =
+    longest <= cap ? size : { sx: size.sx * (cap / longest), sy: size.sy * (cap / longest) };
+  return packBusyCharSize(fitted, slots);
+}
+
+/** 沒有字槽時才用的後備大小。 */
 export function defaultObjectScale(id: StrokeId): number {
   const m = metricFor(id);
   return Math.min(0.34, objectScale({ length: m.extent, extent: m.extent, width: m.extent, height: m.extent }, id));

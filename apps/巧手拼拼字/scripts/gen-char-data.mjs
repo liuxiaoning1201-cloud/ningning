@@ -17,7 +17,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PENDING_CHARS, VERIFIED_STROKES } from './verified-strokes.mjs';
+import { PENDING_CHARS, PRIMARY_BUNDLE, VERIFIED_STROKES } from './verified-strokes.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OVERRIDES = resolve(HERE, 'overrides');
@@ -220,7 +220,7 @@ function strokeMetrics(chars) {
 // ── 主流程 ──
 
 async function main() {
-  const wanted = [...new Set([...Object.keys(VERIFIED_STROKES), ...PENDING_CHARS])];
+  const wanted = [...new Set([...Object.keys(VERIFIED_STROKES), ...PENDING_CHARS, ...PRIMARY_BUNDLE])];
   process.stdout.write(`處理 ${wanted.length} 字\n`);
 
   try {

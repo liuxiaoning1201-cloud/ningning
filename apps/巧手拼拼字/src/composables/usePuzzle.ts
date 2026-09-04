@@ -2,7 +2,7 @@ import { computed, ref, shallowRef } from 'vue';
 
 import { loadChar } from '@/lib/charData';
 import { judge, hitsSlot, nearestSlot, requiredStrokeIds, slotsForChar, TOLERANCE } from '@/lib/geometry';
-import { baseAngleFor, defaultObjectScale, fitToSlot } from '@/lib/strokeMetrics';
+import { baseAngleFor, fitToSlot, sizeForCharStroke } from '@/lib/strokeMetrics';
 import type { CharData, JudgeResult, Piece, StrokeId, StrokeSlot } from '@/types';
 
 let seq = 0;
@@ -143,13 +143,15 @@ export function usePuzzle(options: { snap: boolean }) {
       return { ok: true };
     }
 
+    const size = sizeForCharStroke(strokeId, slots.value, x, y, taken, variantKey);
     const piece: Piece = {
       id: nextPieceId(),
       strokeId,
       variantKey,
       x: Math.min(0.92, Math.max(0.08, x)),
       y: Math.min(0.92, Math.max(0.08, y)),
-      scale: defaultObjectScale(strokeId),
+      scale: size.sx,
+      scaleY: size.sy,
       rot: baseAngleFor(strokeId, variantKey),
       seq: pieces.value.length,
     };
@@ -205,6 +207,14 @@ export function usePuzzle(options: { snap: boolean }) {
     }
   }
 
+  function applyTransform(patch: { id: string; scale?: number; scaleY?: number; rot?: number }) {
+    const piece = pieces.value.find((p) => p.id === patch.id);
+    if (!piece) return;
+    if (patch.scale !== undefined) piece.scale = Math.min(1.08, Math.max(0.05, patch.scale));
+    if (patch.scaleY !== undefined) piece.scaleY = Math.min(1.08, Math.max(0.05, patch.scaleY));
+    if (patch.rot !== undefined && piece.strokeId !== 'dian') piece.rot = patch.rot;
+  }
+
   function removeSelected() {
     const piece = pieces.value.find((p) => p.id === selectedId.value);
     if (!piece) return;
@@ -249,6 +259,7 @@ export function usePuzzle(options: { snap: boolean }) {
     move,
     rotate,
     scale,
+    applyTransform,
     removeSelected,
     clear,
     check,
