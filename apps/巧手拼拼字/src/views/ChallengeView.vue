@@ -99,8 +99,7 @@ const mascotMood = computed(() => {
     <div class="page-body wrap">
       <MascotHint :mood="mascotMood" />
       <div v-if="!chars.length" class="card">
-        <p class="hint">字簿「{{ books.active?.name ?? '未選擇' }}」裡還沒有字。到設定裡貼生字即可。</p>
-        <button class="btn btn-sky btn-sm" style="margin-top: 10px" @click="router.push('/teacher')">去設定</button>
+        <p class="hint">字簿「{{ books.active?.name ?? '未選擇' }}」裡還沒有字。請老師在設定裡貼生字。</p>
       </div>
 
       <div v-else class="play">

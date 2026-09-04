@@ -1121,6 +1121,11 @@ button.char-chip {
   padding: 0;
 }
 
+.teacher-gate {
+  max-width: 380px;
+  margin: 48px auto 0;
+}
+
 .char-chip-x {
   position: absolute;
   top: -6px;

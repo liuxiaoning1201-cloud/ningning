@@ -6,22 +6,18 @@ import CharCard from '@/components/CharCard.vue';
 import MascotHint from '@/components/MascotHint.vue';
 import MiZiGrid from '@/components/MiZiGrid.vue';
 import ObjectToolbar from '@/components/ObjectToolbar.vue';
-import StrokePicker from '@/components/StrokePicker.vue';
 import StrokePouch from '@/components/StrokePouch.vue';
 import { usePuzzle } from '@/composables/usePuzzle';
 import { STROKE_BY_ID } from '@/data/strokes';
 import { canPlay } from '@/lib/charData';
 import { celebrateStars } from '@/lib/celebrate';
 import { useSettings } from '@/stores/settings';
-import { useStrokeLocks } from '@/stores/strokeLocks';
 import { useWordbooks } from '@/stores/wordbooks';
 import type { StrokeId } from '@/types';
 
 const router = useRouter();
 const books = useWordbooks();
 const settings = useSettings();
-const locks = useStrokeLocks();
-const reviseIndex = ref<number | null>(null);
 
 const {
   data,
@@ -106,29 +102,6 @@ const mascotMessage = computed(() => {
 });
 
 const ghostPaths = computed(() => (settings.state.ghost && data.value ? data.value.strokes : []));
-
-const lockedIndexes = computed(() => {
-  if (!current.value) return [];
-  return Object.keys(locks.locksFor(current.value)).map((i) => Number(i));
-});
-
-const reviseCurrent = computed(() =>
-  reviseIndex.value === null ? null : (data.value?.strokeTypes[reviseIndex.value] ?? null)
-);
-
-async function applyRevise(id: StrokeId) {
-  if (!current.value || reviseIndex.value === null) return;
-  locks.lock(current.value, reviseIndex.value, id);
-  reviseIndex.value = null;
-  await setChar(current.value);
-}
-
-async function clearRevise() {
-  if (!current.value || reviseIndex.value === null) return;
-  locks.unlock(current.value, reviseIndex.value);
-  reviseIndex.value = null;
-  await setChar(current.value);
-}
 </script>
 
 <template>
@@ -142,8 +115,7 @@ async function clearRevise() {
     <div class="page-body wrap">
       <MascotHint :mood="finished ? 'cheer' : rejectHint ? 'retry' : 'idle'" :message="mascotMessage" />
       <div v-if="!chars.length" class="card">
-        <p class="hint">字簿「{{ books.active?.name ?? '未選擇' }}」裡還沒有字。到設定裡貼生字即可。</p>
-        <button class="btn btn-sky btn-sm" style="margin-top: 10px" @click="router.push('/teacher')">去設定</button>
+        <p class="hint">字簿「{{ books.active?.name ?? '未選擇' }}」裡還沒有字。請老師在設定裡貼生字。</p>
       </div>
 
       <div v-else class="play">
@@ -153,9 +125,6 @@ async function clearRevise() {
             :data="data"
             :done-count="doneCount"
             :show-stroke-list="true"
-            :editable="true"
-            :locked-indexes="lockedIndexes"
-            @revise="reviseIndex = $event"
           />
           <p v-else-if="loading" class="card hint">正在取筆順資料…</p>
           <p v-else-if="error" class="card hint">{{ error }}</p>
@@ -215,15 +184,6 @@ async function clearRevise() {
         </div>
       </div>
     </div>
-
-    <StrokePicker
-      v-if="reviseIndex !== null"
-      :current="reviseCurrent"
-      :title="`改第 ${reviseIndex + 1} 筆`"
-      @pick="applyRevise"
-      @clear="clearRevise"
-      @close="reviseIndex = null"
-    />
 
     <div v-if="pouchOpen" class="overlay" @click.self="pouchOpen = false">
       <div class="overlay-card">

@@ -32,7 +32,7 @@ const menu = [
 
 <template>
   <div class="home">
-    <button class="home-gear" title="設定" @click="router.push('/teacher')">⚙</button>
+    <button class="home-gear" title="老師設定" @click="router.push('/teacher')">⚙</button>
 
     <div>
       <h1 class="home-logo">巧手拼拼字</h1>

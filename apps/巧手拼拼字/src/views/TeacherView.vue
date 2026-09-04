@@ -29,6 +29,27 @@ const reviewData = ref<CharData | null>(null);
 const reviewError = ref('');
 const reviewLoading = ref(false);
 const reviseIndex = ref<number | null>(null);
+const pinInput = ref('');
+const pinError = ref('');
+const newPin = ref('');
+
+function submitPin() {
+  if (settings.unlockTeacher(pinInput.value)) {
+    pinInput.value = '';
+    pinError.value = '';
+    return;
+  }
+  pinError.value = '密碼不對';
+}
+
+function saveNewPin() {
+  if (!settings.setTeacherPin(newPin.value)) {
+    toast('請輸入四位數字');
+    return;
+  }
+  newPin.value = '';
+  toast('已更新老師密碼');
+}
 
 const reviewLocked = computed(() =>
   reviewChar.value ? Object.keys(locks.locksFor(reviewChar.value)).map((i) => Number(i)) : []
@@ -198,15 +219,47 @@ async function onPickFile(event: Event) {
   <div class="page">
     <header class="page-head wrap">
       <button class="btn btn-ghost btn-sm" @click="router.push('/')">← 回首頁</button>
-      <h1>設定</h1>
+      <h1>老師設定</h1>
+      <button
+        v-if="settings.teacherUnlocked"
+        class="btn btn-ghost btn-sm"
+        type="button"
+        @click="settings.lockTeacher()"
+      >
+        鎖上
+      </button>
     </header>
 
-    <div class="page-body wrap">
+    <div v-if="!settings.teacherUnlocked" class="page-body wrap">
+      <div class="card teacher-gate">
+        <div class="card-title">請老師先開鎖</div>
+        <p class="hint" style="margin-bottom: 12px">
+          改字簿、改筆畫只給老師用。學生在練習裡看不到這些按鈕。
+        </p>
+        <div class="row">
+          <input
+            v-model="pinInput"
+            class="text-input"
+            type="password"
+            inputmode="numeric"
+            maxlength="4"
+            placeholder="四位數字"
+            autocomplete="off"
+            @keyup.enter="submitPin"
+          />
+          <button class="btn btn-sky btn-sm" type="button" @click="submitPin">進入</button>
+        </div>
+        <p v-if="pinError" class="hint" style="color: var(--peach-deep); margin-top: 8px">{{ pinError }}</p>
+        <p class="hint" style="margin-top: 10px">第一次用，密碼是 2468。進去後可在「顯示」改掉。</p>
+      </div>
+    </div>
+
+    <div v-else class="page-body wrap">
       <div class="grid-2">
         <div class="card">
           <div class="card-title">字簿</div>
           <p class="hint" style="margin-bottom: 10px">
-            點一本就用這本上課。點某個字可改筆畫物品；按字旁邊的 × 拿走。
+            點一本就用這本上課。判斷錯了就點那個字改物品。按 × 拿走字。
           </p>
 
           <ul class="book-fold">
@@ -333,6 +386,21 @@ async function onPickFile(event: Event) {
               <input v-model="settings.state.mascot" type="checkbox" />
               <span class="hint">顯示奶茶小精靈</span>
             </label>
+            <label class="field-label" for="teacher-pin" style="margin-top: 14px">老師密碼</label>
+            <div class="row">
+              <input
+                id="teacher-pin"
+                v-model="newPin"
+                class="text-input"
+                type="password"
+                inputmode="numeric"
+                maxlength="4"
+                placeholder="改成新的四位數字"
+                autocomplete="off"
+                @keyup.enter="saveNewPin"
+              />
+              <button class="btn btn-ghost btn-sm" type="button" @click="saveNewPin">儲存</button>
+            </div>
           </div>
         </div>
       </div>
