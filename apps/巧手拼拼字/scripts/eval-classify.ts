@@ -8,9 +8,35 @@ import { fileURLToPath } from 'node:url';
 
 import bundled from '../src/data/chars.json';
 import { classifyMedian, describeMedian, fillStrokeTypes } from '../src/lib/classifyStroke';
+import { mergeSplitEarRadical } from '../src/lib/earRadical';
+import { applyStrokeLocks, resetStrokeLocksForTests, setStrokeLock } from '../src/lib/strokeLocks';
 import { hitsSlot, slotsForChar } from '../src/lib/geometry';
 import { renderRotation } from '../src/lib/strokeMetrics';
-import type { CharData, Median } from '../src/types';
+import type { CharData, Median, StrokeId } from '../src/types';
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+function loadFixture(name: string): CharData {
+  const raw = JSON.parse(readFileSync(resolve(here, `fixtures/${name}.json`), 'utf8')) as {
+    char: string;
+    source: CharData['source'];
+    strokes: string[];
+    medians: Median[];
+  };
+  const blank = Array.from({ length: raw.strokes.length }, () => null);
+  return mergeSplitEarRadical({
+    char: raw.char,
+    strokes: raw.strokes,
+    medians: raw.medians,
+    strokeTypes: blank,
+    source: raw.source,
+    verified: false,
+  });
+}
+
+function autoTypes(data: CharData): StrokeId[] {
+  return fillStrokeTypes(data.medians, data.strokeTypes, data.char);
+}
 
 const chars = bundled as unknown as Record<string, CharData>;
 
@@ -39,7 +65,6 @@ for (const data of Object.values(chars)) {
 process.stdout.write(`已核對 ${total} 筆，命中 ${ok}（${((ok / total) * 100).toFixed(1)}%）\n`);
 for (const line of misses) process.stdout.write(`  ${line}\n`);
 
-const here = dirname(fileURLToPath(import.meta.url));
 const nan = JSON.parse(readFileSync(resolve(here, 'fixtures/nan.json'), 'utf8')) as {
   medians: Median[];
 };
@@ -165,3 +190,87 @@ if (zhu) {
   process.stdout.write(`主 點槽位命中 ${onDot ? 'OK' : 'FAIL'} 中心不誤黏 ${onCenter ? 'FAIL' : 'OK'}\n`);
   if (!onDot || onCenter) process.exitCode = 1;
 }
+
+function expectTypes(label: string, got: string[], expect: string[]) {
+  const okNow = got.join(',') === expect.join(',');
+  process.stdout.write(`${label} ${okNow ? 'OK' : 'FAIL'} ${got.join(',')}\n`);
+  if (!okNow) {
+    process.stdout.write(`  期望 ${expect.join(',')}\n`);
+    process.exitCode = 1;
+  }
+}
+
+const dou = loadFixture('豆');
+expectTypes('豆', autoTypes(dou), ['heng', 'zhi', 'hengzhi', 'heng', 'dian', 'pie', 'heng']);
+
+const you = loadFixture('又');
+expectTypes('又', autoTypes(you), ['hengpie', 'na']);
+
+const liao = loadFixture('了');
+expectTypes('了', autoTypes(liao), ['hengpie', 'zhigou']);
+
+const shan = loadFixture('山');
+expectTypes('山', autoTypes(shan), ['zhi', 'zhizheng', 'zhi']);
+
+const qu = loadFixture('去');
+expectTypes('去', autoTypes(qu), ['heng', 'zhi', 'heng', 'pieti', 'dian']);
+
+const kou = loadFixture('口');
+expectTypes('口 生字路徑', autoTypes(kou), ['zhi', 'hengzhi', 'heng']);
+
+const yin = loadFixture('陰');
+process.stdout.write(`陰 黏耳後 ${yin.medians.length} 筆\n`);
+if (yin.medians.length !== 10) {
+  process.stdout.write('陰 耳朵旁應黏成 10 筆\n');
+  process.exitCode = 1;
+}
+const yinTypes = autoTypes(yin);
+if (yinTypes[0] !== 'hengpiewangou') {
+  process.stdout.write(`陰 第一筆應為橫撇彎鈎，得到 ${yinTypes[0]}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('陰 第一筆 橫撇彎鈎 OK\n');
+}
+if (!yinTypes.includes('pieti')) {
+  process.stdout.write(`陰 應有撇趯，得到 ${yinTypes.join(',')}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('陰 撇趯 OK\n');
+}
+
+const yang = loadFixture('陽');
+if (yang.medians.length !== 11 || autoTypes(yang)[0] !== 'hengpiewangou') {
+  process.stdout.write(`陽 黏耳 FAIL ${yang.medians.length} ${autoTypes(yang).join(',')}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('陽 橫撇彎鈎 OK\n');
+}
+
+const nai = loadFixture('乃');
+expectTypes('乃', autoTypes(nai), ['hengpiewangou', 'pie']);
+
+const na = loadFixture('那');
+const naTypes = autoTypes(na);
+process.stdout.write(`那 黏耳後 ${na.medians.length} 筆 ${naTypes.join(',')}\n`);
+if (na.medians.length !== 6 || naTypes[4] !== 'hengpiewangou' || naTypes[5] !== 'zhi') {
+  process.stdout.write('那 右耳應為橫撇彎鈎、直\n');
+  process.exitCode = 1;
+} else {
+  process.stdout.write('那 右耳 OK\n');
+}
+
+resetStrokeLocksForTests();
+setStrokeLock('口', 1, 'hengpie');
+const kouLocked = fillStrokeTypes(
+  kou.medians,
+  applyStrokeLocks('口', kou.strokeTypes, kou.medians.length),
+  '口'
+);
+if (kouLocked[1] !== 'hengpie') {
+  process.stdout.write(`老師鎖定 FAIL ${kouLocked.join(',')}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('老師鎖定 口第二筆 橫撇 OK\n');
+}
+resetStrokeLocksForTests();
+

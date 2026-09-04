@@ -63,6 +63,13 @@ function encode(names) {
   let known = 0;
   for (const name of names) {
     if (name.includes('|')) {
+      const parts = name.split('|');
+      // 24 件裡沒有「橫折折折鈎」；阝／乃這一筆對耳機
+      if (parts.includes('横撇弯钩')) {
+        out += 'D';
+        known += 1;
+        continue;
+      }
       out += '.';
       continue;
     }

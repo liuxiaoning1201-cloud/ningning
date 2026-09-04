@@ -51,6 +51,9 @@ export function isNameUpgrade(geo: StrokeId, want: StrokeId): boolean {
   const upgrades: Partial<Record<StrokeId, StrokeId[]>> = {
     heng: ['hengzhi', 'hengzhigou', 'hengwangou', 'hengzhewangou', 'henggou', 'hengpie', 'hengpiewangou', 'ti'],
     hengwangou: ['hengzhewangou'],
+    hengpie: ['hengpiewangou'],
+    wogou: ['hengpiewangou'],
+    wangou: ['hengpiewangou'],
     zhi: ['zhigou', 'zhiwangou', 'zhizheng', 'zhiti', 'zhizhengzhi', 'zhizhengzhigou'],
     pie: ['hengpie', 'piedian', 'pieti'],
     na: ['xiegou'],
@@ -58,7 +61,13 @@ export function isNameUpgrade(geo: StrokeId, want: StrokeId): boolean {
   return upgrades[geo]?.includes(want) ?? false;
 }
 
-/** 只有點／直、點／捺這種楷書斜勢容易混的，才允許用開源名稱覆寫幾何結果。 */
+/** 同一條路徑上，楷書斜勢容易看成另一件物品的成對名稱。 */
+export function isConfusionPair(a: StrokeId, b: StrokeId): boolean {
+  const pair = new Set([a, b]);
+  return (pair.has('hengpie') && pair.has('hengzhi')) || (pair.has('pieti') && pair.has('zhizheng'));
+}
+
+/** 只有點／直、點／捺這種楷書斜勢容易混的，才允許改配到另一筆。 */
 export function isSoftStrokeSwap(a: StrokeId, b: StrokeId): boolean {
   const pair = new Set([a, b]);
   return (pair.has('dian') && pair.has('zhi')) || (pair.has('dian') && pair.has('na'));
@@ -72,6 +81,7 @@ export function officialFitsGeometry(geo: StrokeId, want: StrokeId | null): bool
   if (!want) return false;
   if (geo === want) return true;
   if (want === 'hengwangou' && geo === 'hengzhewangou') return false;
+  if (isConfusionPair(geo, want)) return true;
   return isNameUpgrade(geo, want);
 }
 

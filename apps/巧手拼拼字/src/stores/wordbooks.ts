@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 
-import { verifiedChars } from '@/lib/charData';
+import { forgetChar, verifiedChars } from '@/lib/charData';
+import { getStrokeLockMap, mergeStrokeLockMap } from '@/lib/strokeLocks';
 import type { Wordbook } from '@/types';
 
 /** 瀏覽器儲存鍵沿用舊名，以免老師已建的字簿消失。 */
@@ -123,13 +124,21 @@ export const useWordbooks = defineStore('wordbooks', () => {
 
   function exportJson(ids?: string[]): string {
     const picked = ids?.length ? books.value.filter((b) => ids.includes(b.id)) : books.value;
-    return JSON.stringify({ app: '巧手拼拼字', version: 1, books: picked }, null, 2);
+    return JSON.stringify(
+      { app: '巧手拼拼字', version: 2, books: picked, strokeLocks: getStrokeLockMap() },
+      null,
+      2
+    );
   }
 
   /** 匯入時合併同名字簿，不覆蓋老師手上已有的內容。 */
   function importJson(text: string): { books: number; chars: number } {
-    const parsed = JSON.parse(text) as { books?: Wordbook[] };
+    const parsed = JSON.parse(text) as { books?: Wordbook[]; strokeLocks?: Record<string, Record<string, string>> };
     if (!Array.isArray(parsed.books)) throw new Error('檔案裡找不到 books');
+    if (parsed.strokeLocks) {
+      mergeStrokeLockMap(parsed.strokeLocks as Parameters<typeof mergeStrokeLockMap>[0]);
+      for (const ch of Object.keys(parsed.strokeLocks)) forgetChar(ch);
+    }
 
     let bookCount = 0;
     let charCount = 0;

@@ -11,6 +11,14 @@ const props = defineProps<{
   doneCount?: number;
   /** 顯示逐筆的物品清單。挑戰模式要藏起來，否則等於送答案 */
   showStrokeList?: boolean;
+  /** 老師可點清單改物品 */
+  editable?: boolean;
+  /** 老師改過、已被鎖定的筆畫索引 */
+  lockedIndexes?: number[];
+}>();
+
+const emit = defineEmits<{
+  revise: [index: number];
 }>();
 
 const stage = ref<HTMLElement | null>(null);
@@ -51,7 +59,7 @@ function replay() {
 }
 
 watch(
-  () => props.data.char,
+  () => [props.data.char, props.data.strokes.length] as const,
   () => mount(),
   { immediate: false }
 );
@@ -99,19 +107,42 @@ onBeforeUnmount(() => {
         </svg>
       </button>
     </div>
-    <p class="charcard-hint">筆順依香港《小學學習字詞表》／《常用字字形表》</p>
+    <p class="charcard-hint">
+      筆順依香港《小學學習字詞表》／《常用字字形表》
+      <template v-if="editable">。點清單可改這一筆的物品。</template>
+    </p>
 
     <div v-if="showStrokeList" ref="listBox" class="stroke-list-box">
       <ol class="stroke-list">
         <li
           v-for="(id, i) in data.strokeTypes"
           :key="i"
-          :class="{ 'is-done': i < (doneCount ?? 0), 'is-next': i === (doneCount ?? 0) }"
+          :class="{
+            'is-done': i < (doneCount ?? 0),
+            'is-next': i === (doneCount ?? 0),
+            'is-locked': lockedIndexes?.includes(i),
+            'is-edit': editable,
+          }"
         >
-          <span class="idx">{{ i + 1 }}</span>
-          <img v-if="id" :src="strokeImage(id)" :alt="STROKE_BY_ID[id].objectName" />
-          <span>{{ strokeName(id) }}</span>
-          <span v-if="id" style="color: var(--ink-faint)">{{ STROKE_BY_ID[id].objectName }}</span>
+          <button
+            v-if="editable"
+            class="stroke-list-btn"
+            type="button"
+            :title="`改第 ${i + 1} 筆`"
+            @click="emit('revise', i)"
+          >
+            <span class="idx">{{ i + 1 }}</span>
+            <img v-if="id" :src="strokeImage(id)" :alt="STROKE_BY_ID[id].objectName" />
+            <span>{{ strokeName(id) }}</span>
+            <span v-if="id" style="color: var(--ink-faint)">{{ STROKE_BY_ID[id].objectName }}</span>
+            <span v-if="lockedIndexes?.includes(i)" class="pill pill-ready">已改</span>
+          </button>
+          <template v-else>
+            <span class="idx">{{ i + 1 }}</span>
+            <img v-if="id" :src="strokeImage(id)" :alt="STROKE_BY_ID[id].objectName" />
+            <span>{{ strokeName(id) }}</span>
+            <span v-if="id" style="color: var(--ink-faint)">{{ STROKE_BY_ID[id].objectName }}</span>
+          </template>
         </li>
       </ol>
     </div>

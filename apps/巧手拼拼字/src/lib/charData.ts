@@ -1,6 +1,8 @@
 import bundled from '@/data/chars.json';
 import hkCharset from '@/data/hkCharset.json';
 import { fillStrokeTypes } from '@/lib/classifyStroke';
+import { mergeSplitEarRadical } from '@/lib/earRadical';
+import { applyStrokeLocks } from '@/lib/strokeLocks';
 import { isStrokeId } from '@/data/strokes';
 import type { CharData, Median, StrokeId } from '@/types';
 
@@ -56,10 +58,24 @@ function sanitizeTypes(input: unknown, count: number): (StrokeId | null)[] {
 
 /** 人工標註保留，缺的用幾何自動補齊，練習模式才能立刻鎖筆順。 */
 function finish(data: CharData): CharData {
-  return {
+  const merged = mergeSplitEarRadical({
     ...data,
-    strokeTypes: fillStrokeTypes(data.medians, data.strokeTypes, data.char),
+    strokeTypes: sanitizeTypes(data.strokeTypes, data.strokes.length),
+  });
+  const existing = applyStrokeLocks(merged.char, merged.strokeTypes, merged.medians.length);
+  return {
+    ...merged,
+    strokeTypes: fillStrokeTypes(merged.medians, existing, merged.char),
   };
+}
+
+/** 老師改過筆畫後，下次 loadChar 要重新跑分類。 */
+export function forgetChar(ch: string): void {
+  cache.delete(ch);
+}
+
+export function forgetAllChars(): void {
+  cache.clear();
 }
 
 async function fetchRemote(ch: string): Promise<CharData | null> {

@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+import CharCard from '@/components/CharCard.vue';
+import StrokePicker from '@/components/StrokePicker.vue';
+import { loadChar } from '@/lib/charData';
 import { extractHan, keepHkChars, parseImportFile } from '@/lib/importChars';
 import { useSettings } from '@/stores/settings';
+import { useStrokeLocks } from '@/stores/strokeLocks';
 import { useWordbooks } from '@/stores/wordbooks';
+import type { CharData, StrokeId } from '@/types';
 
 const router = useRouter();
 const books = useWordbooks();
 const settings = useSettings();
+const locks = useStrokeLocks();
 
 const openId = ref(books.active?.id ?? '');
 const newBookName = ref('');
@@ -18,6 +24,65 @@ const message = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
 const exportOpen = ref(false);
 const exportIds = ref<string[]>([]);
+const reviewChar = ref('');
+const reviewData = ref<CharData | null>(null);
+const reviewError = ref('');
+const reviewLoading = ref(false);
+const reviseIndex = ref<number | null>(null);
+
+const reviewLocked = computed(() =>
+  reviewChar.value ? Object.keys(locks.locksFor(reviewChar.value)).map((i) => Number(i)) : []
+);
+
+const reviseCurrent = computed(() =>
+  reviseIndex.value === null ? null : (reviewData.value?.strokeTypes[reviseIndex.value] ?? null)
+);
+
+async function loadReview(ch: string) {
+  const one = [...ch].find((c) => c.length === 1) ?? '';
+  reviewChar.value = one;
+  reviewData.value = null;
+  reviewError.value = '';
+  if (!one) return;
+  reviewLoading.value = true;
+  try {
+    const loaded = await loadChar(one);
+    if (!loaded) reviewError.value = `找不到「${one}」的筆順資料`;
+    else reviewData.value = loaded;
+  } finally {
+    reviewLoading.value = false;
+  }
+}
+
+watch(
+  () => openId.value,
+  (id) => {
+    const book = books.books.find((b) => b.id === id);
+    if (book?.chars[0] && !reviewChar.value) loadReview(book.chars[0]);
+  },
+  { immediate: true }
+);
+
+async function applyRevise(id: StrokeId) {
+  if (!reviewChar.value || reviseIndex.value === null) return;
+  locks.lock(reviewChar.value, reviseIndex.value, id);
+  reviseIndex.value = null;
+  await loadReview(reviewChar.value);
+}
+
+async function clearRevise() {
+  if (!reviewChar.value || reviseIndex.value === null) return;
+  locks.unlock(reviewChar.value, reviseIndex.value);
+  reviseIndex.value = null;
+  await loadReview(reviewChar.value);
+}
+
+async function resetReviewChar() {
+  if (!reviewChar.value) return;
+  locks.unlockChar(reviewChar.value);
+  await loadReview(reviewChar.value);
+  toast(`已還原「${reviewChar.value}」的自動判斷`);
+}
 
 function toast(text: string) {
   message.value = text;
@@ -223,6 +288,54 @@ async function onPickFile(event: Event) {
           </div>
 
           <div class="card">
+            <div class="card-title">核對筆畫</div>
+            <p class="hint" style="margin-bottom: 10px">
+              發現物品叫錯，點那一筆換成正確的。只改這個字，下次開啟仍然記得。
+            </p>
+            <div class="char-chips" style="margin-bottom: 10px">
+              <button
+                v-for="ch in books.books.find((b) => b.id === openId)?.chars ?? []"
+                :key="ch"
+                class="char-chip"
+                :class="{ 'is-on': ch === reviewChar }"
+                type="button"
+                @click="loadReview(ch)"
+              >
+                {{ ch }}
+              </button>
+            </div>
+            <div class="row" style="margin-bottom: 10px">
+              <input
+                v-model="reviewChar"
+                class="text-input"
+                style="flex: 1; max-width: 120px"
+                maxlength="2"
+                placeholder="字"
+                @keyup.enter="loadReview(reviewChar)"
+              />
+              <button class="btn btn-sky btn-sm" type="button" @click="loadReview(reviewChar)">查看</button>
+              <button
+                v-if="reviewLocked.length"
+                class="btn btn-ghost btn-sm"
+                type="button"
+                @click="resetReviewChar"
+              >
+                還原這一字
+              </button>
+            </div>
+            <p v-if="reviewLoading" class="hint">正在取筆順…</p>
+            <p v-else-if="reviewError" class="hint">{{ reviewError }}</p>
+            <CharCard
+              v-else-if="reviewData"
+              :data="reviewData"
+              :show-stroke-list="true"
+              :editable="true"
+              :locked-indexes="reviewLocked"
+              @revise="reviseIndex = $event"
+            />
+          </div>
+
+          <div class="card">
             <div class="card-title">顯示</div>
             <label class="row" style="cursor: pointer">
               <input v-model="settings.state.ghost" type="checkbox" />
@@ -251,6 +364,15 @@ async function onPickFile(event: Event) {
         <button class="btn btn-mint" style="width: 100%; margin-top: 14px" @click="confirmExport">匯出已選</button>
       </div>
     </div>
+
+    <StrokePicker
+      v-if="reviseIndex !== null"
+      :current="reviseCurrent"
+      :title="`改「${reviewChar}」第 ${reviseIndex + 1} 筆`"
+      @pick="applyRevise"
+      @clear="clearRevise"
+      @close="reviseIndex = null"
+    />
 
     <div v-if="message" class="toast">{{ message }}</div>
   </div>

@@ -10,13 +10,14 @@ import type { Median, StrokeId } from '@/types';
  * 改配到外形相符的另一筆。漢字起筆常有一小段「入筆」斜勢，會先削掉再比對。
  */
 
-const GRID = 1024;
-
 type Dir = 'h' | 'n' | 'v' | 'p' | 'l' | 'q' | 'u' | 't';
 
 interface Seg {
   dir: Dir;
   len: number;
+  heading: number;
+  dx: number;
+  dy: number;
 }
 
 export interface StrokeShape {
@@ -31,6 +32,14 @@ export interface StrokeShape {
   /** 外框高／寬。用來把「難」裡短而高的直，跟「心」裡向下的點分開。 */
   boxW: number;
   boxH: number;
+  firstDeg: number;
+  firstDx: number;
+  firstLen: number;
+  lastDx: number;
+  lastDy: number;
+  lastLen: number;
+  /** 轉角最大的那一折（左折為負）。用來分撇趯與直橫。 */
+  turnDeg: number;
 }
 
 function toScreen([x, y]: [number, number]): [number, number] {
@@ -39,6 +48,17 @@ function toScreen([x, y]: [number, number]): [number, number] {
 
 function dist(a: [number, number], b: [number, number]): number {
   return Math.hypot(b[0] - a[0], b[1] - a[1]);
+}
+
+function heading(a: [number, number], b: [number, number]): number {
+  return (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+}
+
+function turnDelta(from: number, to: number): number {
+  let t = to - from;
+  while (t > 180) t -= 360;
+  while (t < -180) t += 360;
+  return t;
 }
 
 /** Ramer–Douglas–Peucker：找出折線的轉角。 */
@@ -68,8 +88,7 @@ function simplify(points: [number, number][], tolerance: number): [number, numbe
   ];
 }
 
-function direction(a: [number, number], b: [number, number]): Dir {
-  const deg = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+function direction(deg: number): Dir {
   if (deg >= -22 && deg <= 22) return 'h';
   if (deg > 22 && deg <= 68) return 'n';
   if (deg > 68 && deg <= 112) return 'v';
@@ -94,7 +113,6 @@ function stripLeadIn(segs: Seg[]): Seg[] {
   const first = segs[0];
   const ratio = first.len / total;
   if (first.dir === 'n' && ratio < 0.32) return segs.slice(1);
-  // 「也」橫直鈎起筆常是一小段挑，幾乎都可以削
   if (first.dir === 't' && segs.length >= 3) return segs.slice(1);
   if (first.dir === 't' && ratio < 0.28) return segs.slice(1);
   return segs;
@@ -105,7 +123,16 @@ export function describeMedian(median: Median): StrokeShape {
   const corners = simplify(pts, 42);
   const raw: Seg[] = [];
   for (let i = 0; i < corners.length - 1; i += 1) {
-    raw.push({ dir: direction(corners[i], corners[i + 1]), len: dist(corners[i], corners[i + 1]) });
+    const a = corners[i];
+    const b = corners[i + 1];
+    const deg = heading(a, b);
+    raw.push({
+      dir: direction(deg),
+      len: dist(a, b),
+      heading: deg,
+      dx: b[0] - a[0],
+      dy: b[1] - a[1],
+    });
   }
   const segs = stripLeadIn(raw);
   const total = segs.reduce((s, x) => s + x.len, 0) || 1;
@@ -113,8 +140,15 @@ export function describeMedian(median: Median): StrokeShape {
   const first = pts[0];
   const last = pts[pts.length - 1];
   const tail = segs[segs.length - 1];
+  const head = segs[0];
   const xs = pts.map((p) => p[0]);
   const ys = pts.map((p) => p[1]);
+
+  let turnDeg = 0;
+  for (let i = 1; i < segs.length; i += 1) {
+    const t = turnDelta(segs[i - 1].heading, segs[i].heading);
+    if (Math.abs(t) > Math.abs(turnDeg)) turnDeg = t;
+  }
 
   return {
     tokens,
@@ -125,65 +159,92 @@ export function describeMedian(median: Median): StrokeShape {
     pathLen: Math.round(total),
     boxW: Math.max(...xs) - Math.min(...xs),
     boxH: Math.max(...ys) - Math.min(...ys),
-    startDeg: (Math.atan2(last[1] - first[1], last[0] - first[0]) * 180) / Math.PI,
-    endDeg: tail
-      ? (Math.atan2(
-          corners[corners.length - 1][1] - corners[corners.length - 2][1],
-          corners[corners.length - 1][0] - corners[corners.length - 2][0]
-        ) *
-          180) /
-        Math.PI
-      : 0,
+    startDeg: heading(first, last),
+    endDeg: tail?.heading ?? 0,
+    firstDeg: head?.heading ?? 0,
+    firstDx: head?.dx ?? 0,
+    firstLen: head?.len ?? 0,
+    lastDx: tail?.dx ?? 0,
+    lastDy: tail?.dy ?? 0,
+    lastLen: tail?.len ?? 0,
+    turnDeg,
   };
+}
+
+/** 橫直（曲尺）vs 橫撇（三角旗）：看折後那一段，不要只看方向字母。 */
+function pickHengzhiOrHengpie(s: StrokeShape): StrokeId {
+  const lastH = s.endDeg;
+  const firstLen = Math.max(s.firstLen, 1);
+  const aspect = s.boxH / Math.max(s.boxW, 1);
+  const absDx = Math.abs(s.lastDx);
+  const absDy = Math.abs(s.lastDy) || 1;
+  const fallRatio = s.lastLen / firstLen;
+
+  // 口、日：折後接近垂直
+  if (lastH >= 70 && lastH <= 112 && absDx < absDy * 0.55) return 'hengzhi';
+  // 了、又：折後明顯長撇
+  if (lastH >= 132) return 'hengpie';
+  // 灰區：子旁（孔、好）尾段比口的右上折長；豆的口折又短又扁
+  if (fallRatio >= 0.5 || aspect >= 0.5) return 'hengpie';
+  return 'hengzhi';
+}
+
+/** 撇趯（畚箕）vs 直橫（沙發）：第一段有沒有明顯往左，轉角是銳角還是直角。 */
+function pickPietiOrZhizheng(s: StrokeShape): StrokeId {
+  if (s.firstDeg >= 105 || s.firstDx < -40 || s.turnDeg <= -115) return 'pieti';
+  return 'zhizheng';
+}
+
+/** 橫撇彎鈎（ㄋ／耳機）不是橫直鈎（7／衣帽鈎），也不是臥鈎（心／湯匙）。 */
+function isHengpiewangou(c: string): boolean {
+  if (!c.startsWith('h') || !/[qlut]$/.test(c) || c.length < 3) return false;
+  if (/^hv[p]?[ql]+$/.test(c) || /^hn?v[ql]+$/.test(c)) return false;
+  return /p/.test(c);
 }
 
 function scoreShape(s: StrokeShape): StrokeId {
   const c = s.collapsed;
   const span = s.span;
 
-  // 心、必裡向下的點很短，不要當成直
-  if (c === 'v' && span < 270) return 'dian';
+  if (c === 'v' && span < 270) {
+    const aspect = s.boxH / Math.max(s.boxW, 1);
+    if (s.startDeg >= 105 && aspect < 3) return 'pie';
+    return 'dian';
+  }
   if (c === 'h') return 'heng';
   if (c === 'v' || c === 'u') return 'zhi';
   if (c === 't' || c === 'ht') return 'ti';
 
-  // 撇：左下為主體。vp 是帶一點入筆的撇，不是雨傘（雨傘尾巴是 q/l 短鈎）
   if (c === 'p' || c === 'l') return span < 170 ? 'dian' : 'pie';
   if (c === 'vp') return span < 330 ? 'dian' : 'pie';
 
-  // 點 vs 捺 vs 帶斜勢的短直：楷書「口」左邊常略向右傾，方向會落在 n
   if (c === 'n' || c === 'np') {
     const aspect = s.boxH / Math.max(s.boxW, 1);
     if (aspect >= 1.65 && s.startDeg >= 55 && s.startDeg <= 115 && span < 320) return 'zhi';
     return span < 340 ? 'dian' : 'na';
   }
 
-  // 橫直：轉角常被收成一段斜（hnv）
-  if (/^hn?v$/.test(c)) return 'hengzhi';
-  if (c === 'hv') return 'hengzhi';
-
-  // 橫撇 vs 橫直鈎：尾巴長撇是旗，短鈎才是衣帽鈎
-  if (/^hvp+$/.test(c) || c === 'hp') return 'hengpie';
+  // 有鈎的複合筆先於「橫直／橫撇」，避免把ㄋ看成三角旗或衣帽鈎
   if (/^hv[p]?[ql]+$/.test(c) || /^nvl$/.test(c) || /^hn?v[ql]+$/.test(c)) return 'hengzhigou';
-  if (/^hp+[nv]*[ut]$/.test(c)) return 'hengpiewangou';
-  // 橫折彎鈎：有明顯下折再彎鈎（九、丸）；橫彎鈎：較平滑的乙
+  if (isHengpiewangou(c) || /^hp+[nv]*[ut]$/.test(c)) return 'hengpiewangou';
   if (/^hv+[nhtu]*[ut]$/.test(c) || c === 'hvnhu') return 'hengzhewangou';
   if (/^h[nv]+[ut]$/.test(c)) return 'hengwangou';
+
+  if (/^hn?v$/.test(c) || c === 'hv' || c === 'hp' || c === 'hnp' || /^hvp+$/.test(c) || /^hn?p+$/.test(c)) {
+    return pickHengzhiOrHengpie(s);
+  }
   if ((c === 'hp' || c === 'hv') && s.tailRatio < 35) return 'henggou';
   if (c === 'hq' || (c === 'hp' && s.tailRatio < 40)) return 'henggou';
 
-  if (c === 'vh') return 'zhizheng';
+  if (c === 'vh') return pickPietiOrZhizheng(s);
   if (c === 'vhv') return 'zhizhengzhi';
   if (/^vhv[lqp]+$/.test(c)) return 'zhizhengzhigou';
 
-  // 直鈎：下端短鈎向左，不是長撇
   if (c === 'vq' || c === 'vl' || /^v[p]?[ql]$/.test(c)) return 'zhigou';
   if (c === 'vt' || c === 'vht') return 'zhiti';
 
-  // 撇點：尖朝左，兩臂是撇再點（vn / pn），尾巴不會上翹
   if (c === 'vn' || c === 'pn' || /^p+n$/.test(c)) return 'piedian';
 
-  // 直彎鈎：靴筒直、靴頭橫再上翹。斜鈎是一條大斜再鈎。
   if (/^vh[ut]$/.test(c) || c === 'vnhtu') return 'zhiwangou';
   if (c === 'vnu' || c === 'nu' || c === 'ntu' || /^vn+u$/.test(c)) return 'xiegou';
   if (/^vn+[ht]?u$/.test(c)) return span > 700 ? 'xiegou' : 'zhiwangou';
@@ -192,14 +253,17 @@ function scoreShape(s: StrokeShape): StrokeId {
   if (c === 'nu' || c === 'nt') return span > 480 ? 'xiegou' : 'ti';
 
   if (c === 'nnhq' || c === 'nhq' || /^n+h?q$/.test(c)) return 'wogou';
-  if (s.pathLen > span * 1.35 && /q$/.test(c) && !c.startsWith('v')) return 'wogou';
+  if (s.pathLen > span * 1.35 && /q$/.test(c) && !c.startsWith('v') && !c.startsWith('h')) return 'wogou';
 
   if (c === 'nvq' || /^n?v?[nq]+[ql]$/.test(c)) return 'wangou';
 
-  if (c.startsWith('h') && /[ql]/.test(c)) return 'hengzhigou';
-  if (c.startsWith('h') && /p/.test(c)) return 'hengpie';
+  if (c.startsWith('h') && /[ql]/.test(c)) return isHengpiewangou(c) ? 'hengpiewangou' : 'hengzhigou';
+  if (c.startsWith('h') && /p/.test(c)) return pickHengzhiOrHengpie(s);
   if (c.startsWith('v') && /[ql]/.test(c)) return 'zhigou';
-  if (c.startsWith('v') && c.includes('h')) return /v.*h.*v/.test(c) ? 'zhizhengzhi' : 'zhizheng';
+  if (c.startsWith('v') && c.includes('h')) {
+    if (/v.*h.*v/.test(c)) return 'zhizhengzhi';
+    return pickPietiOrZhizheng(s);
+  }
   if (c.startsWith('p') && /[ht]/.test(c)) return 'pieti';
   if (c.startsWith('n') && /[ut]/.test(c) && span > 500) return 'xiegou';
 
@@ -259,6 +323,16 @@ export function fillStrokeTypes(
     if (types[i - 1] !== 'heng' || types[i + 1] !== 'hengzhi') continue;
     const s = describeMedian(medians[i]);
     if (s.boxH > s.boxW * 1.35 && s.startDeg > 40) types[i] = 'zhi';
+  }
+
+  /**
+   * 口框：直 + 折 + 橫，中間那折是橫直（曲尺），不是橫撇（三角旗）。
+   * 「豆」「頭」「員」的口都是這個鄰居關係；「了」「又」後面不是橫，不會被改。
+   */
+  for (let i = 1; i < types.length - 1; i += 1) {
+    if (locked[i]) continue;
+    if (types[i - 1] !== 'zhi' || types[i + 1] !== 'heng') continue;
+    if (types[i] === 'hengpie' || types[i] === 'henggou') types[i] = 'hengzhi';
   }
 
   applyOfficialNames(types, locked, char);
