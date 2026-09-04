@@ -70,7 +70,15 @@ npm run dev
 npm run build
 ```
 
-部署走站台的 `scripts/build.mjs`，輸出到 `dist/巧手拼拼字/`。舊路徑 `/巧手猜猜字/` 與 `/巧手猜猜畫/` 會轉到新網址。
+部署為獨立 Worker `qy-pinpinzi`（`qingyiu.com/巧手拼拼字/*`），不走站台 Pages 全量建構。
+
+```bash
+npm install
+npm run build:worker   # 產物在 .worker-dist/
+npx wrangler deploy
+```
+
+舊路徑 `/巧手猜猜字/` 與 `/巧手猜猜畫/` 仍由 Pages 301 轉到新網址。
 
 ## 還沒做
 
