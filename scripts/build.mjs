@@ -120,9 +120,8 @@ buildVueApp('手勢切水果學中文', {
   },
 });
 
-buildVueApp('巧手拼拼字', {
-  env: { VITE_BASE_PATH: '/巧手拼拼字/' },
-});
+// 巧手拼拼字（已畢業為獨立 Worker qy-pinpinzi，掛 qingyiu.com/巧手拼拼字/*）— 不再全量建構
+// 舊名轉址頁「巧手猜猜字／巧手猜猜畫」仍由上面 STATIC_APPS 複製進 Pages
 
 // 粵語學習網頁 — 掛在 /yueyu/ 子路徑
 buildVueApp('yueyu-learn/web', {
