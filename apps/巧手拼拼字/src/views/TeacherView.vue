@@ -73,7 +73,8 @@ const pickerClearable = computed(() => {
 });
 
 function rowAdded(index: number): boolean {
-  return reviewLayout.value?.items[index]?.from == null;
+  const item = reviewLayout.value?.items[index];
+  return item != null && item.from == null;
 }
 
 function rowEdited(index: number): boolean {
