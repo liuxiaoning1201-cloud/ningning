@@ -1,14 +1,21 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ningning",
-  "compatibility_date": "2026-03-10",
-  "observability": {
-    "enabled": true
-  },
-  "assets": {
-    "directory": "."
-  },
-  "compatibility_flags": [
-    "nodejs_compat"
-  ]
+  "name": "zykongjian",
+  "pages_build_output_dir": "dist",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ziyoukongjian-db",
+      "database_id": "e934c3e9-1744-47ac-b016-785efb04941d"
+    }
+  ],
+  "kv_namespaces": [
+    { "binding": "YUEYU_TRANSLATE_KV", "id": "eb30ebe61ea446c48b4f27b6415b4b39" },
+    { "binding": "YUEYU_RATE_LIMIT_KV", "id": "fea30266f24e4e64a90c2d48f32cb6a1" }
+  ],
+  "ai": { "binding": "AI" }
+  // R2 桶（TTS 音頻緩存）— 啟用 R2 後再解開：
+  // "r2_buckets": [
+  //   { "binding": "YUEYU_AUDIO", "bucket_name": "yueyu-audio" }
+  // ]
 }

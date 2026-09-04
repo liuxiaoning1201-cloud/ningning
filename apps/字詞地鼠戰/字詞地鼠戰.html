@@ -1,0 +1,2996 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>字詞地鼠戰</title>
+<!-- Tone.js 用於生成音效（defer：不阻塞首屏渲染；主程式在 window.onload 執行，順序安全） -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
+<!-- SheetJS 已改為匯入/匯出時按需動態載入，不在首屏下載 -->
+<style>
+/* ── 工具類（取代原 Tailwind CDN，僅包含本頁實際使用的類別） ── */
+*, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb; }
+html { line-height: 1.5; -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-size: inherit; font-weight: inherit; }
+button, input, textarea { font: inherit; color: inherit; margin: 0; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+button { cursor: pointer; background-color: transparent; padding: 0; text-transform: none; -webkit-appearance: button; }
+textarea { resize: vertical; }
+svg, video { display: block; vertical-align: middle; }
+
+.hidden { display: none !important; }
+.relative { position: relative; }
+.flex { display: flex; }
+.grid { display: grid; }
+.flex-1 { flex: 1 1 0%; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+.justify-items-center { justify-items: center; }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.space-x-2 > * + * { margin-left: 0.5rem; }
+.space-x-3 > * + * { margin-left: 0.75rem; }
+.space-x-4 > * + * { margin-left: 1rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
+.overflow-y-auto { overflow-y: auto; }
+
+.m-0 { margin: 0; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.my-4 { margin-top: 1rem; margin-bottom: 1rem; }
+.mr-2 { margin-right: 0.5rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 0.75rem; }
+.p-6 { padding: 1.5rem; }
+.p-8 { padding: 2rem; }
+.pl-4 { padding-left: 1rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.px-8 { padding-left: 2rem; padding-right: 2rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+
+.w-full { width: 100%; }
+.w-11\/12 { width: 91.666667%; }
+.h-4 { height: 1rem; }
+.min-h-screen { min-height: 100vh; }
+.max-w-sm { max-width: 24rem; }
+.max-w-md { max-width: 28rem; }
+.max-w-lg { max-width: 32rem; }
+.max-h-\[60vh\] { max-height: 60vh; }
+.max-h-\[80vh\] { max-height: 80vh; }
+.max-h-\[90vh\] { max-height: 90vh; }
+
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+.text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+.text-5xl { font-size: 3rem; line-height: 1; }
+.text-6xl { font-size: 3.75rem; line-height: 1; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+
+.text-white { color: #fff; }
+.text-red-500 { color: #ef4444; }
+.text-red-600 { color: #dc2626; }
+.text-orange-500 { color: #f97316; }
+.text-yellow-400 { color: #facc15; }
+.text-gray-300 { color: #d1d5db; }
+.text-green-500 { color: #22c55e; }
+.text-green-600 { color: #16a34a; }
+.text-blue-600 { color: #2563eb; }
+.text-blue-800 { color: #1e40af; }
+.text-slate-400 { color: #94a3b8; }
+.text-slate-500 { color: #64748b; }
+.text-slate-600 { color: #475569; }
+.text-slate-700 { color: #334155; }
+.text-slate-800 { color: #1e293b; }
+
+.bg-white { background-color: #fff; }
+.bg-blue-50 { background-color: #eff6ff; }
+.bg-blue-100 { background-color: #dbeafe; }
+.bg-blue-500 { background-color: #3b82f6; }
+.bg-green-500 { background-color: #22c55e; }
+.bg-orange-500 { background-color: #f97316; }
+.bg-purple-500 { background-color: #a855f7; }
+.bg-slate-500 { background-color: #64748b; }
+.bg-teal-500 { background-color: #14b8a6; }
+.bg-yellow-500 { background-color: #eab308; }
+.hover\:bg-blue-100:hover { background-color: #dbeafe; }
+.hover\:bg-blue-600:hover { background-color: #2563eb; }
+.hover\:bg-green-600:hover { background-color: #16a34a; }
+.hover\:bg-orange-600:hover { background-color: #ea580c; }
+.hover\:bg-purple-600:hover { background-color: #9333ea; }
+.hover\:bg-slate-600:hover { background-color: #475569; }
+.hover\:bg-teal-600:hover { background-color: #0d9488; }
+.hover\:bg-yellow-600:hover { background-color: #ca8a04; }
+
+.border { border-width: 1px; }
+.border-2 { border-width: 2px; }
+.border-blue-200 { border-color: #bfdbfe; }
+.border-sky-300 { border-color: #7dd3fc; }
+.border-slate-200 { border-color: #e2e8f0; }
+.border-slate-300 { border-color: #cbd5e1; }
+.rounded-md { border-radius: 0.375rem; }
+.rounded-lg { border-radius: 0.5rem; }
+.rounded-xl { border-radius: 0.75rem; }
+.shadow-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+.shadow-lg { box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+.transition { transition-property: color, background-color, border-color, opacity, box-shadow, transform, filter; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+
+@media (min-width: 768px) {
+    .md\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .md\:gap-6 { gap: 1.5rem; }
+}
+
+/* 自訂字體與基本樣式 */
+body {
+    font-family: 'KaiTi', 'BiauKai', 'DFKai-sb', '標楷體', sans-serif;
+    background:
+        radial-gradient(1200px 520px at 50% -80px, #c9e8fb 0%, transparent 70%),
+        linear-gradient(180deg, #7ec8ee 0%, #87CEEB 42%, #9fd6f2 100%);
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    overflow: hidden;
+    position: relative;
+}
+.sky-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+.cloud-band {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    width: max-content;
+    /* 開頁就停在「第二段已鋪滿畫面」的位置，再向右循環，不會從空白處突然湧入 */
+    transform: translate3d(-50%, 0, 0);
+    will-change: transform;
+}
+.cloud-band-back {
+    top: 6%;
+    opacity: 0.82;
+    animation: cloud-ltr 48s linear infinite;
+}
+.cloud-band-mid {
+    top: 18%;
+    opacity: 0.92;
+    animation: cloud-ltr 36s linear infinite;
+}
+.cloud-group {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+    box-sizing: border-box;
+    min-width: 100vw;
+    padding: 0 2vw;
+    gap: 1.5vw;
+}
+.cloud {
+    flex: 0 0 auto;
+    fill: url(#sky-cloud-fill);
+    filter: drop-shadow(0 10px 10px rgba(90, 130, 170, 0.18));
+}
+.cloud-sm { width: 120px; }
+.cloud-md { width: 180px; }
+.cloud-lg { width: 240px; }
+.cloud-xl { width: 280px; }
+.cloud-group .cloud:nth-child(odd) { margin-top: 10px; }
+.cloud-group .cloud:nth-child(3n) { margin-top: 26px; }
+.cloud-group .cloud:nth-child(4n) { margin-top: 4px; }
+@keyframes cloud-ltr {
+    from { transform: translate3d(-50%, 0, 0); }
+    to { transform: translate3d(0, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cloud-band {
+        animation: none;
+        transform: translate3d(-50%, 0, 0);
+    }
+}
+body::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 110px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><path d="M0 80 H 80 V 40 C 60 40, 60 60, 40 60 C 20 60, 20 40, 0 40 Z" fill="%234CAF50"/></svg>');
+    background-size: 80px 80px;
+    background-repeat: repeat-x;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* 遊戲容器，確保置中 */
+.game-container {
+    width: 100%;
+    max-width: 540px;
+    margin: auto;
+    padding: 1rem;
+    position: relative;
+    z-index: 1;
+}
+/* 地洞的樣式 */
+.hole {
+    width: 108px;
+    height: 112px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><path d="M0 50 C 20 20, 80 20, 100 50 Z" fill="%23A0522D" /><ellipse cx="50" cy="45" rx="48" ry="8" fill="%238B4513" /></svg>');
+    background-size: 110% 100px;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    position: relative;
+    overflow: hidden; /* 修改：將 overflow 設為 hidden，藏住動物 */
+}
+
+/* 動物的容器樣式 */
+.animal-container {
+    position: absolute;
+    bottom: 5px; /* 再次調整位置，讓動物更深入洞口 */
+    left: 50%;
+    transform: translateX(-50%) translateY(100%);
+    transition: transform 0.2s ease-out;
+    width: 96px;
+    height: 104px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    z-index: 5;
+}
+/* 動物冒出來的狀態 */
+.animal-container.up {
+    transform: translateX(-50%) translateY(0);
+}
+.animal-container.is-slow {
+    transition: transform 0.7s ease-out;
+}
+/* 地鼠形狀字牌 */
+.mole-glyph {
+    position: relative;
+    width: 86px;
+    height: 96px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+.mole-glyph-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 3px 2px rgba(62, 39, 35, 0.28));
+    pointer-events: none;
+}
+.mole-glyph-text {
+    position: absolute;
+    left: 50%;
+    top: 63%;
+    z-index: 2;
+    font-size: 32px;
+    font-weight: bold;
+    color: #2b1810;
+    line-height: 1;
+    width: 1.15em;
+    height: 1.15em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+    transform: translate(-50%, -50%) scale(0.88);
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.animal-container.up .mole-glyph-text {
+    transform: translate(-50%, -50%) scale(1);
+}
+.mole-glyph-lg {
+    width: 78px;
+    height: 88px;
+    margin: 0 auto;
+}
+.mole-glyph-lg .mole-glyph-text {
+    font-size: 30px;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.hud-voice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+.voice-btns {
+    display: flex;
+    gap: 8px;
+}
+.voice-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 50%;
+    color: #fffdf8;
+    font-weight: 800;
+    font-size: 15px;
+    line-height: 1;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1), filter 0.15s ease;
+}
+.voice-btn-mandarin {
+    background: linear-gradient(180deg, #f08a4b 0%, #e76f51 100%);
+    box-shadow: 0 3px 0 #c24b32;
+}
+.voice-btn-cantonese {
+    background: linear-gradient(180deg, #43c0b0 0%, #2a9d8f 100%);
+    box-shadow: 0 3px 0 #1b756b;
+}
+.voice-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+}
+.voice-btn:active {
+    transform: translateY(2px);
+    box-shadow: none;
+}
+.voice-btn.is-speaking {
+    animation: voice-pulse 0.9s ease-in-out infinite;
+}
+.voice-btn:disabled {
+    cursor: wait;
+    filter: saturate(0.75);
+}
+@keyframes voice-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+/* 敲擊動畫 */
+.whacked .mole-glyph {
+    transform: rotate(18deg) scale(0.9);
+    opacity: 0;
+    transition: transform 0.2s ease-in, opacity 0.2s ease-in;
+}
+.whacked::after {
+    content: '⭐️';
+    position: absolute;
+    top: 10px;
+    font-size: 30px;
+    animation: bonk 0.3s ease-out forwards;
+}
+@keyframes bonk {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+/* 錘子動畫 */
+.hammer {
+    position: absolute;
+    top: -40px;
+    left: 30px;
+    width: 80px;
+    height: 80px;
+    pointer-events: none;
+    z-index: 50;
+    animation: hammer-swing 0.4s ease-out forwards;
+}
+@keyframes hammer-swing {
+    0% { transform: rotate(60deg) scale(0.8); opacity: 0; }
+    30% { transform: rotate(30deg) scale(1); opacity: 1; }
+    60% { transform: rotate(-30deg) translate(20px, 40px); }
+    100% { transform: rotate(-30deg) translate(20px, 40px); opacity: 0; }
+}
+
+/* 分數跳動動畫 */
+.score-pop {
+    animation: pop 0.3s ease-out;
+}
+@keyframes pop {
+    50% { transform: scale(1.3); }
+}
+
+/* 分數彈出動畫 */
+.score-popup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    font-weight: bold;
+    animation: floatUp 0.8s ease-out forwards;
+    pointer-events: none;
+}
+@keyframes floatUp {
+    0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -150%) scale(1.2); opacity: 0; }
+}
+/* 設置彈窗的遮罩層 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+/* 技能按鈕樣式 */
+.skill-btn {
+    background-color: #10B981;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.2s;
+    box-shadow: 0 4px #059669;
+    border: none;
+}
+.skill-btn:disabled {
+    background-color: #9CA3AF;
+    color: #E5E7EB;
+    cursor: not-allowed;
+    box-shadow: 0 4px #6B7280;
+}
+.skill-btn:active:not(:disabled) {
+    transform: translateY(2px);
+    box-shadow: 0 2px #059669;
+}
+.skill-btn.is-slowing {
+    background-color: #0d9488;
+    box-shadow: 0 4px #0f766e;
+}
+/* 讀取中的 spinner */
+.loader {
+    border: 4px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 4px solid #3498db;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+/* 自定義題庫樣式 */
+#custom-library-list {
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    text-align: left;
+}
+.lib-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #eef2f7;
+}
+.lib-row:last-child { border-bottom: 0; }
+.lib-target {
+    flex: 0 0 auto;
+    min-width: 36px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #0f766e;
+    background: #ccfbf1;
+    border-radius: 8px;
+    padding: 0 8px;
+}
+.lib-chips {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+.lib-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    height: 32px;
+    padding: 0 4px 0 8px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #334155;
+}
+.lib-chip-x {
+    width: 22px;
+    height: 22px;
+    border: 0;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.lib-chip-x:hover { color: #dc2626; }
+.lib-add-input {
+    width: 36px;
+    height: 32px;
+    border: 1px dashed #94a3b8;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.05rem;
+    background: #fff;
+}
+.lib-row-new {
+    background: #f8fafc;
+    margin: 4px -4px 0;
+    padding: 8px 4px;
+    border-radius: 8px;
+    border: 1px dashed #cbd5e1;
+}
+.lib-target-input {
+    width: 40px;
+    height: 32px;
+    border: 1px dashed #0d9488;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f766e;
+    background: #fff;
+}
+.bank-picker-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.bank-select {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    padding: 0 0.5rem;
+    background: #fff;
+    color: #334155;
+    font-weight: 600;
+}
+.bank-add-btn {
+    flex: 0 0 40px;
+    height: 40px;
+    border: 1px solid #14b8a6;
+    border-radius: 0.5rem;
+    background: #ccfbf1;
+    color: #0f766e;
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+}
+.bank-add-btn:hover { background: #99f6e4; }
+.bank-mini-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 10px;
+    justify-content: flex-start;
+}
+.bank-mini-btn {
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.bank-mini-btn:hover { background: #e2e8f0; }
+.bank-mini-btn.is-danger { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+.lib-del-group {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 8px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.lib-row-readonly .lib-chip {
+    padding-right: 8px;
+}
+/* 地鼠探頭動畫樣式 - 首頁置中完整顯示 */
+.mole-animation {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    pointer-events: none;
+    z-index: 1;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: transparent;
+}
+
+.mole-animation video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center bottom;
+}
+
+#start-screen {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: min(92vw, 500px);
+    height: min(78vh, 620px);
+}
+
+#start-screen.hidden,
+#mode-selection-view.hidden,
+#game-screen.hidden,
+#game-over-screen.hidden {
+    display: none !important;
+}
+
+#mode-selection-view {
+    position: relative;
+    z-index: 1;
+}
+
+#start-screen,
+#mode-selection-view {
+    background: rgba(255, 252, 247, 0.82);
+    backdrop-filter: blur(8px);
+}
+
+#mode-selection-view {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.mode-card {
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    padding: 0.5rem;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.mode-main-btn {
+    box-shadow: 0 6px 14px rgba(30, 64, 175, 0.18);
+}
+
+.mode-settings-btn {
+    width: 52px;
+    height: 52px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+}
+
+.mode-settings-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 12px rgba(15, 23, 42, 0.15);
+}
+
+.similar-chip {
+    min-width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    border: 2px solid #cbd5e1;
+    background: #f8fafc;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #1e293b;
+    cursor: pointer;
+}
+.similar-chip.is-selected {
+    border-color: #0d9488;
+    background: #ccfbf1;
+    color: #115e59;
+}
+.ai-icon-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 10px;
+    border: 1px solid #c4b5fd;
+    background: linear-gradient(180deg, #ede9fe 0%, #ddd6fe 100%);
+    color: #5b21b6;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.ai-icon-btn:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+.ai-seed-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.ai-seed-input {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    padding: 0 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.375rem;
+    text-align: left;
+    font-size: 1.25rem;
+    letter-spacing: 0.12em;
+    ime-mode: active;
+}
+.ai-group {
+    text-align: left;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: #f8fafc;
+}
+.ai-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 6px;
+}
+.ai-group-head input {
+    width: 18px;
+    height: 18px;
+    accent-color: #0d9488;
+}
+.ai-group-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.practice-hint {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 80;
+    pointer-events: none;
+    animation: hint-fade 5s ease-in-out forwards;
+}
+.practice-hint-bubble {
+    position: relative;
+    max-width: 228px;
+    background: #fffdf6;
+    border: 2px solid #e8c36a;
+    border-radius: 18px 18px 18px 8px;
+    padding: 10px 46px 10px 12px;
+    color: #5c3d1e;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.4;
+    box-shadow: 0 6px 14px rgba(92, 61, 30, 0.12);
+}
+.practice-hint-mole {
+    position: absolute;
+    top: -16px;
+    right: -8px;
+    width: 46px;
+    height: 52px;
+    animation: mole-bob 0.9s ease-in-out infinite;
+}
+@keyframes mole-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+@keyframes hint-fade {
+    0% { opacity: 0; transform: translateY(-6px); }
+    8% { opacity: 1; transform: translateY(0); }
+    84% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-4px); }
+}
+.ai-wait {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    font-weight: 700;
+}
+.ai-wait-emoji {
+    font-size: 2rem;
+    animation: mole-bob 0.8s ease-in-out infinite;
+}
+
+.timed-duration-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.timed-duration-input {
+    width: 88px;
+    height: 44px;
+    text-align: center;
+    font-size: 1.25rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+}
+#ai-similar-results {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+}
+
+/* 響應式調整 */
+.game-hud {
+    flex-wrap: wrap;
+    gap: 0.4rem 0.6rem;
+    background: rgba(224, 242, 254, 0.88);
+}
+@media (max-width: 640px) {
+    #start-screen {
+        height: min(76vh, 560px);
+    }
+    .mole-animation {
+        border-radius: 0.65rem;
+    }
+    .game-hud {
+        padding: 0.55rem 0.4rem;
+    }
+    .mole-glyph-lg {
+        width: 68px;
+        height: 76px;
+    }
+    .mole-glyph-lg .mole-glyph-text {
+        font-size: 26px;
+    }
+}
+</style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+<div class="sky-layer" aria-hidden="true">
+    <svg width="0" height="0" style="position:absolute">
+        <defs>
+            <linearGradient id="sky-cloud-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="55%" stop-color="#f4f8fc"/>
+                <stop offset="100%" stop-color="#d7e4f2"/>
+            </linearGradient>
+        </defs>
+    </svg>
+    <div class="cloud-band cloud-band-back">
+        <div class="cloud-group">
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
+        <div class="cloud-group">
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
+    </div>
+    <div class="cloud-band cloud-band-mid">
+        <div class="cloud-group">
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
+        <div class="cloud-group">
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-sm" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-lg" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-md" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+            <svg class="cloud cloud-xl" viewBox="0 0 240 90"><ellipse cx="68" cy="54" rx="50" ry="26"/><ellipse cx="118" cy="40" rx="44" ry="32"/><ellipse cx="164" cy="52" rx="40" ry="24"/><ellipse cx="96" cy="60" rx="38" ry="18"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="game-container text-center">
+<h1 class="text-4xl font-bold text-slate-700 mb-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">字詞地鼠戰</h1>
+
+<!-- 遊戲主畫面 -->
+<div id="game-screen" class="hidden relative">
+<div id="practice-hint" class="practice-hint hidden">
+    <div class="practice-hint-bubble">
+        <svg class="practice-hint-mole" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <ellipse cx="28" cy="16" rx="12" ry="14" fill="#6D4C41"/>
+            <ellipse cx="72" cy="16" rx="12" ry="14" fill="#6D4C41"/>
+            <ellipse cx="28" cy="18" rx="7" ry="8" fill="#E8A598"/>
+            <ellipse cx="72" cy="18" rx="7" ry="8" fill="#E8A598"/>
+            <ellipse cx="50" cy="56" rx="40" ry="40" fill="#8D6E63"/>
+            <ellipse cx="50" cy="64" rx="26" ry="24" fill="#D7CCC8"/>
+            <circle cx="36" cy="28" r="5" fill="#3E2723"/>
+            <circle cx="64" cy="28" r="5" fill="#3E2723"/>
+            <circle cx="37.5" cy="26.5" r="1.6" fill="#EFEBE9"/>
+            <circle cx="65.5" cy="26.5" r="1.6" fill="#EFEBE9"/>
+        </svg>
+        連續擊中目標字三次，就可以到下一關喔！
+    </div>
+</div>
+<!-- 頂部控制欄 -->
+<div class="flex justify-between items-center mb-2">
+    <h2 id="game-mode-title" class="text-xl font-bold text-slate-700">遊戲中</h2>
+    <button id="save-quit-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition">離開遊戲</button>
+</div>
+<!-- 遊戲資訊欄 -->
+<div class="game-hud flex justify-around items-center rounded-lg p-3 mb-4 shadow-md border-2 border-sky-300">
+    <div class="hud-target">
+        <p class="text-lg text-slate-600">目標字</p>
+        <div class="mole-glyph mole-glyph-lg" aria-live="polite">
+            <svg class="mole-glyph-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <ellipse cx="28" cy="16" rx="12" ry="14" fill="#6D4C41"/>
+                <ellipse cx="72" cy="16" rx="12" ry="14" fill="#6D4C41"/>
+                <ellipse cx="28" cy="18" rx="7" ry="8" fill="#E8A598"/>
+                <ellipse cx="72" cy="18" rx="7" ry="8" fill="#E8A598"/>
+                <ellipse cx="50" cy="56" rx="40" ry="40" fill="#8D6E63"/>
+                <ellipse cx="50" cy="64" rx="26" ry="24" fill="#D7CCC8"/>
+                <circle cx="36" cy="28" r="5" fill="#3E2723"/>
+                <circle cx="64" cy="28" r="5" fill="#3E2723"/>
+                <circle cx="37.5" cy="26.5" r="1.6" fill="#EFEBE9"/>
+                <circle cx="65.5" cy="26.5" r="1.6" fill="#EFEBE9"/>
+            </svg>
+            <span id="target-char" class="mole-glyph-text">太</span>
+        </div>
+    </div>
+    <div class="hud-voice">
+        <p class="text-lg text-slate-600">讀音</p>
+        <div class="voice-btns">
+            <button type="button" id="pronounce-mandarin-btn" class="voice-btn voice-btn-mandarin" aria-label="普通話讀音">普</button>
+            <button type="button" id="pronounce-cantonese-btn" class="voice-btn voice-btn-cantonese" aria-label="粵語讀音">粵</button>
+        </div>
+    </div>
+    <div><p class="text-lg text-slate-600">分數</p><p id="score" class="text-3xl font-bold text-green-600">0</p></div>
+    <div id="timer-display"><p class="text-lg text-slate-600">時間</p><p id="timer" class="text-3xl font-bold text-red-600">60</p></div>
+    <div id="combo-display"><p class="text-lg text-slate-600">連擊</p><p id="combo" class="text-3xl font-bold text-orange-500">0</p></div>
+    <div id="hits-display"><p class="text-lg text-slate-600">命中</p><p id="hits" class="text-3xl font-bold text-blue-600">0 / 3</p></div>
+</div>
+
+<!-- 技能欄 -->
+<div id="skills-bar" class="flex justify-center space-x-4 mb-4">
+    <button id="skill-slow" class="skill-btn" disabled>🐢 減速 (<span id="skill-slow-tokens">0</span>)</button>
+</div>
+
+<!-- 遊戲九宮格 -->
+<div id="game-board" class="grid grid-cols-3 gap-4 md:gap-6 relative justify-items-center">
+</div>
+</div>
+
+<!-- 開始畫面 -->
+<div id="start-screen" class="p-6 rounded-xl shadow-lg relative">
+    <h2 class="text-2xl font-bold text-slate-800 mb-4">準備好了嗎？</h2>
+    <div class="mole-animation">
+        <video id="mole-intro-video" autoplay muted loop playsinline preload="auto" poster="assets/動畫效果/地鼠探頭_poster.jpg">
+            <source src="assets/動畫效果/地鼠探頭.mp4" type="video/mp4">
+        </video>
+    </div>
+    <button id="start-adventure-btn" class="w-full mt-3 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">開始闖關吧</button>
+</div>
+
+<div id="mode-selection-view" class="hidden p-6 rounded-xl shadow-lg relative">
+    <h2 class="text-2xl font-bold text-slate-800 mb-4">選擇模式</h2>
+    <div class="flex flex-col space-y-3">
+        <div class="mode-card flex items-center space-x-3">
+            <button id="practice-mode-btn" class="mode-main-btn flex-1 bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">闖關模式</button>
+            <button id="practice-settings-btn" class="mode-settings-btn text-slate-700 font-bold rounded-lg transition" aria-label="打開闖關設定">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+        </div>
+        <div class="mode-card flex items-center space-x-3">
+            <button id="timed-mode-btn" class="mode-main-btn flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg text-lg transition">計時模式</button>
+            <button id="timed-settings-btn" class="mode-settings-btn text-slate-700 font-bold rounded-lg transition" aria-label="打開計時設定">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+        </div>
+    </div>
+    <p class="text-slate-500 mt-4 text-lg">最高紀錄：<span id="high-score-start" class="font-bold">0</span></p>
+</div>
+
+<!-- 關卡選擇畫面 -->
+<div id="level-selection-screen" class="modal-overlay hidden">
+    <div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-lg text-center">
+        <h2 id="level-selection-title" class="text-2xl font-bold text-slate-800 mb-4">選擇關卡</h2>
+        <div id="level-grid" class="grid grid-cols-4 md:grid-cols-6 gap-3 max-h-[60vh] overflow-y-auto p-2">
+            <!-- 關卡按鈕將由 JS 動態生成 -->
+        </div>
+        <button id="close-level-selection-btn" class="mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition">返回</button>
+    </div>
+</div>
+
+<!-- 關卡結束/晉級彈窗 -->
+<div id="level-end-screen" class="modal-overlay hidden">
+    <div class="bg-white p-8 rounded-xl shadow-lg text-center w-11/12 max-w-sm">
+        <h2 id="level-end-title" class="text-3xl font-bold text-slate-800 mb-4"></h2>
+        <p id="level-end-score" class="text-xl text-slate-600 mb-6"></p>
+        <div class="flex flex-col space-y-3">
+            <button id="review-mistakes-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition">錯字回憶</button>
+            <button id="next-level-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">下一關</button>
+            <button id="end-game-btn" class="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">結束遊戲</button>
+        </div>
+    </div>
+</div>
+
+<!-- 錯字回憶彈窗 -->
+<div id="review-screen" class="modal-overlay hidden">
+     <div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-md text-left overflow-y-auto max-h-[80vh]">
+        <h2 class="text-2xl font-bold text-slate-800 mb-4 text-center">錯字回憶</h2>
+        <div id="review-score-block" class="hidden text-center mb-4">
+            <p class="text-slate-600">最終得分</p>
+            <p id="review-final-score" class="text-5xl font-extrabold text-yellow-500 mb-2">0</p>
+            <p id="review-high-score-msg" class="hidden text-green-500 font-bold text-lg mb-2">恭喜！刷新最高紀錄！</p>
+            <p class="text-slate-600 mb-2">最高紀錄：<span id="review-high-score">0</span></p>
+            <div id="review-stars" class="flex justify-center text-4xl mb-3"></div>
+        </div>
+        <div id="review-ai-feedback" class="hidden my-3 p-3 bg-blue-50 rounded-lg border border-blue-200 text-blue-800">
+            <div id="ai-feedback-loading" class="ai-wait">
+                <span class="ai-wait-emoji" aria-hidden="true">🐹</span>
+                <p>錯字正在趕來中…</p>
+            </div>
+            <p id="ai-feedback-text" class="hidden"></p>
+        </div>
+        <div id="mistakes-list" class="space-y-3"></div>
+        <button id="close-review-btn" class="w-full mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition">關閉</button>
+    </div>
+</div>
+
+<!-- 遊戲結束畫面 -->
+<div id="game-over-screen" class="modal-overlay hidden">
+    <div class="bg-white p-8 rounded-xl shadow-lg text-center w-11/12 max-w-sm">
+        <h2 class="text-3xl font-bold text-slate-800 mb-2">挑戰完成！</h2>
+        <p class="text-xl text-slate-600 mb-4">你的最終得分是：</p>
+        <p id="final-score" class="text-6xl font-extrabold text-yellow-500 mb-6">0</p>
+        <p id="new-high-score-msg" class="hidden text-green-500 font-bold text-lg mb-4">恭喜！刷新最高紀錄！</p>
+        <p class="text-slate-600 mb-4">最高紀錄：<span id="high-score-end">0</span></p>
+        <div id="stars" class="flex justify-center text-5xl mb-6"></div>
+        <button id="restart-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-lg text-xl transition">返回主選單</button>
+    </div>
+</div>
+
+<!-- 設定彈窗 -->
+<div id="settings-screen" class="modal-overlay hidden">
+<div class="bg-white p-6 rounded-xl shadow-lg w-11/12 max-w-md text-center overflow-y-auto max-h-[90vh]">
+<h2 class="text-2xl font-bold text-slate-800 mb-4">遊戲設定</h2>
+<div id="timed-duration-block" class="mb-4">
+    <h3 class="text-lg font-semibold text-slate-700 mb-3">計時比賽時長</h3>
+    <div class="timed-duration-row">
+        <input id="timed-duration-input" class="timed-duration-input" type="number" min="15" max="180" step="5" value="60" inputmode="numeric" aria-label="比賽時長秒數">
+        <span class="text-slate-600 font-bold">秒</span>
+    </div>
+    <p class="text-slate-500 text-sm mt-2">可設 15 到 180 秒，開始計時比賽時會套用。</p>
+</div>
+<hr id="timed-duration-divider" class="my-4 border-slate-200">
+<div class="mb-4 text-left">
+    <h3 class="text-lg font-semibold text-slate-700 mb-3 text-center">詞庫</h3>
+    <label class="text-sm text-slate-600 font-bold" for="active-bank-select">目前詞庫</label>
+    <div class="bank-picker-row">
+        <select id="active-bank-select" class="bank-select" aria-label="選擇目前詞庫"></select>
+        <button type="button" id="add-bank-btn" class="bank-add-btn" aria-label="新增詞庫" title="新增詞庫">＋</button>
+    </div>
+    <div class="flex space-x-2">
+        <button id="import-excel-btn" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition">導入</button>
+        <button id="export-excel-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">導出這份</button>
+    </div>
+    <input type="file" id="excel-upload-input" class="hidden" accept=".xlsx, .xls">
+    <div class="bank-mini-actions">
+        <button type="button" id="copy-bank-btn" class="bank-mini-btn">複製成新詞庫</button>
+        <button type="button" id="rename-bank-btn" class="bank-mini-btn">改名</button>
+        <button type="button" id="delete-bank-btn" class="bank-mini-btn is-danger">刪除詞庫</button>
+    </div>
+    <div id="custom-library-list"></div>
+    <p id="library-hint" class="text-slate-500 text-sm mt-2">最後一行可手動輸入目標字與形近字。</p>
+    <button id="commit-new-row-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition">將上述字添加到詞庫中</button>
+    <button id="play-library-btn" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>用這份詞庫開始挑戰</button>
+</div>
+<hr class="my-4 border-slate-200">
+<div class="mb-4">
+<h3 class="text-lg font-semibold text-slate-700 mb-3">AI 輔助生成形近字</h3>
+<div class="ai-seed-row mb-3">
+    <input id="ai-seed-char" class="ai-seed-input" lang="zh-Hant" placeholder="可輸入多個，如：抄池日" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="輸入一個或多個漢字">
+    <button type="button" id="ai-similar-btn" class="ai-icon-btn" aria-label="AI 生成形近字" title="AI 生成形近字">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z"/></svg>
+    </button>
+</div>
+<div id="ai-similar-results"></div>
+<p id="ai-similar-hint" class="text-slate-500 text-sm mt-2">輸入一個或多個漢字，可多次生成。形近字可為偏旁或部首相近。</p>
+<button id="ai-add-library-btn" class="w-full mt-3 bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-4 rounded-lg transition" disabled>加入目前詞庫</button>
+</div>
+<button id="close-settings-btn" class="mt-4 bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-8 rounded-lg text-lg transition">關閉</button>
+</div>
+</div>
+
+
+<script>
+// 立即執行函式以避免全域變數汙染
+(function() {
+    // 等待 DOM 完全載入
+    window.onload = function() {
+        // --- DOM 元素獲取 ---
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const settingsScreen = document.getElementById('settings-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const levelEndScreen = document.getElementById('level-end-screen');
+        const reviewScreen = document.getElementById('review-screen');
+        const levelSelectionScreen = document.getElementById('level-selection-screen');
+
+        const gameBoard = document.getElementById('game-board');
+        const moleIntroVideo = document.getElementById('mole-intro-video');
+        const startAdventureBtn = document.getElementById('start-adventure-btn');
+        const modeSelectionView = document.getElementById('mode-selection-view');
+        const modeSettingsBtns = document.querySelectorAll('.mode-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        // 模式選單
+        const practiceModeBtn = document.getElementById('practice-mode-btn');
+        const timedModeBtn = document.getElementById('timed-mode-btn');
+        const highScoreStartEl = document.getElementById('high-score-start');
+
+        // 遊戲畫面
+        const gameModeTitleEl = document.getElementById('game-mode-title');
+        const saveQuitBtn = document.getElementById('save-quit-btn');
+        const targetCharEl = document.getElementById('target-char');
+        const scoreEl = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer-display');
+        const timerEl = document.getElementById('timer');
+        const comboDisplay = document.getElementById('combo-display');
+        const comboEl = document.getElementById('combo');
+        const hitsDisplay = document.getElementById('hits-display');
+        const hitsEl = document.getElementById('hits');
+        const pronounceMandarinBtn = document.getElementById('pronounce-mandarin-btn');
+        const pronounceCantoneseBtn = document.getElementById('pronounce-cantonese-btn');
+        const skillSlowBtn = document.getElementById('skill-slow');
+        const skillSlowTokensEl = document.getElementById('skill-slow-tokens');
+        const skillsBar = document.getElementById('skills-bar');
+        const practiceHintEl = document.getElementById('practice-hint');
+        const practiceSettingsBtn = document.getElementById('practice-settings-btn');
+        const timedSettingsBtn = document.getElementById('timed-settings-btn');
+        const timedDurationInput = document.getElementById('timed-duration-input');
+        const timedDurationBlock = document.getElementById('timed-duration-block');
+        const timedDurationDivider = document.getElementById('timed-duration-divider');
+        const aiFeedbackLoading = document.getElementById('ai-feedback-loading');
+
+        // 關卡選擇畫面
+        const levelGrid = document.getElementById('level-grid');
+        const closeLevelSelectionBtn = document.getElementById('close-level-selection-btn');
+        const levelSelectionTitle = document.getElementById('level-selection-title');
+
+        // 結束與回顧畫面
+        const levelEndTitle = document.getElementById('level-end-title');
+        const levelEndScore = document.getElementById('level-end-score');
+        const reviewMistakesBtn = document.getElementById('review-mistakes-btn');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+        const endGameBtn = document.getElementById('end-game-btn');
+        const mistakesListEl = document.getElementById('mistakes-list');
+        const closeReviewBtn = document.getElementById('close-review-btn');
+        const reviewScoreBlock = document.getElementById('review-score-block');
+        const reviewFinalScoreEl = document.getElementById('review-final-score');
+        const reviewHighScoreMsgEl = document.getElementById('review-high-score-msg');
+        const reviewHighScoreEl = document.getElementById('review-high-score');
+        const reviewStarsEl = document.getElementById('review-stars');
+        const reviewAiFeedback = document.getElementById('review-ai-feedback');
+        const finalScoreEl = document.getElementById('final-score');
+        const newHighScoreMsgEl = document.getElementById('new-high-score-msg');
+        const highScoreEndEl = document.getElementById('high-score-end');
+        const starsEl = document.getElementById('stars');
+        const aiFeedbackText = document.getElementById('ai-feedback-text');
+        const aiSeedCharInput = document.getElementById('ai-seed-char');
+        const aiSimilarBtn = document.getElementById('ai-similar-btn');
+        const aiSimilarResults = document.getElementById('ai-similar-results');
+        const aiSimilarHint = document.getElementById('ai-similar-hint');
+        const aiAddLibraryBtn = document.getElementById('ai-add-library-btn');
+        
+        // 設定畫面
+        const customLibraryList = document.getElementById('custom-library-list');
+        const playLibraryBtn = document.getElementById('play-library-btn');
+        const commitNewRowBtn = document.getElementById('commit-new-row-btn');
+        const libraryHint = document.getElementById('library-hint');
+        const importExcelBtn = document.getElementById('import-excel-btn');
+        const exportExcelBtn = document.getElementById('export-excel-btn');
+        const excelUploadInput = document.getElementById('excel-upload-input');
+        const activeBankSelect = document.getElementById('active-bank-select');
+        const addBankBtn = document.getElementById('add-bank-btn');
+        const copyBankBtn = document.getElementById('copy-bank-btn');
+        const renameBankBtn = document.getElementById('rename-bank-btn');
+        const deleteBankBtn = document.getElementById('delete-bank-btn');
+
+        let holes = [];
+
+        // --- 遊戲狀態與設定 ---
+        let gameState = {};
+        let currentUser = null;
+        let gameData = {};
+        let timerId = null, animalIntervalId = null;
+        let allMistakesInGame = [];
+        let reviewClosesToMenu = false;
+        let aiGeneratedGroups = [];
+        let aiSeedComposing = false;
+        let newRowDraft = { target: '', distractors: [] };
+        let practiceHintTimer = null;
+        let slowSkillTimer = null;
+        const TIMED_DURATION_MIN = 15;
+        const TIMED_DURATION_MAX = 180;
+        const TIMED_DURATION_DEFAULT = 60;
+        const TIMED_HIT_POINTS = 15;
+        const TIMED_MISS_POINTS = 4;
+        const SLOW_TOKEN_SCORE = 30;
+        const SYSTEM_BANK_ID = 'sys-g4';
+        const SYSTEM_BANK_NAME = '四年級（系統）';
+
+        // --- 內建四年級關卡 ---
+        const gradeFourLevels = [
+            { target: '抄', distractors: ['沙', '妙', '紗'] }, { target: '沙', distractors: ['抄', '妙', '紗'] },
+            { target: '券', distractors: ['卷', '倦', '捲'] }, { target: '卷', distractors: ['券', '倦', '捲'] },
+            { target: '池', distractors: ['施', '弛', '馳'] }, { target: '施', distractors: ['池', '弛', '馳'] },
+            { target: '奄', distractors: ['掩', '淹', '庵'] }, { target: '掩', distractors: ['奄', '淹', '庵'] },
+            { target: '廷', distractors: ['延', '誕', '蜒'] }, { target: '延', distractors: ['廷', '誕', '蜒'] },
+            { target: '滔', distractors: ['稻', '蹈', '焰'] }, { target: '稻', distractors: ['滔', '蹈', '焰'] },
+            { target: '頒', distractors: ['頌', '領', '預'] }, { target: '頌', distractors: ['頒', '領', '預'] },
+            { target: '愉', distractors: ['偷', '喻', '輸'] }, { target: '偷', distractors: ['愉', '喻', '輸'] },
+            { target: '相', distractors: ['箱', '廂', '霜'] }, { target: '箱', distractors: ['相', '廂', '霜'] },
+            { target: '搖', distractors: ['遙', '瑤', '謠'] }, { target: '遙', distractors: ['搖', '瑤', '謠'] },
+            { target: '油', distractors: ['抽', '迪', '袖'] }, { target: '抽', distractors: ['油', '迪', '袖'] },
+            { target: '增', distractors: ['贈', '憎', '僧'] }, { target: '贈', distractors: ['增', '憎', '僧'] },
+            { target: '作', distractors: ['昨', '詐', '乍'] }, { target: '昨', distractors: ['作', '詐', '乍'] },
+            { target: '識', distractors: ['織', '職', '幟'] }, { target: '織', distractors: ['識', '職', '幟'] },
+            { target: '占', distractors: ['店', '佔', '沾'] }, { target: '店', distractors: ['占', '佔', '沾'] },
+            { target: '某', distractors: ['謀', '媒', '煤'] }, { target: '謀', distractors: ['某', '媒', '煤'] },
+            { target: '則', distractors: ['測', '側', '惻'] }, { target: '測', distractors: ['則', '側', '惻'] },
+            { target: '矣', distractors: ['唉', '埃', '挨'] }, { target: '唉', distractors: ['矣', '埃', '挨'] },
+            { target: '容', distractors: ['溶', '熔', '榕'] }, { target: '溶', distractors: ['容', '熔', '榕'] },
+            { target: '宗', distractors: ['綜', '淙', '崇'] }, { target: '綜', distractors: ['宗', '淙', '崇'] },
+            { target: '紙', distractors: ['低', '底', '抵'] }, { target: '低', distractors: ['紙', '底', '抵'] },
+            { target: '那', distractors: ['哪', '挪', '娜'] }, { target: '哪', distractors: ['那', '挪', '娜'] },
+            { target: '淑', distractors: ['椒', '寂', '督'] }, { target: '椒', distractors: ['淑', '寂', '督'] },
+            { target: '官', distractors: ['宮', '營', '侶'] }, { target: '宮', distractors: ['官', '營', '侶'] },
+            { target: '語', distractors: ['梧', '悟', '捂'] }, { target: '梧', distractors: ['語', '悟', '捂'] },
+            { target: '奴', distractors: ['努', '怒', '恕'] }, { target: '努', distractors: ['奴', '怒', '恕'] },
+            { target: '歡', distractors: ['勸', '觀', '灌'] }, { target: '勸', distractors: ['歡', '觀', '灌'] },
+            { target: '推', distractors: ['堆', '稚', '惟'] }, { target: '堆', distractors: ['推', '稚', '惟'] },
+            { target: '屈', distractors: ['掘', '倔', '崛'] }, { target: '掘', distractors: ['屈', '倔', '崛'] },
+            { target: '援', distractors: ['緩', '暖', '媛'] }, { target: '緩', distractors: ['援', '暖', '媛'] },
+            { target: '幻', distractors: ['幼', '拗', '坳'] }, { target: '幼', distractors: ['幻', '拗', '坳'] },
+            { target: '贊', distractors: ['讚', '鑽', '攢'] }, { target: '讚', distractors: ['贊', '鑽', '攢'] },
+            { target: '章', distractors: ['障', '彰', '蟑'] }, { target: '障', distractors: ['章', '彰', '蟑'] },
+            { target: '珠', distractors: ['株', '殊', '蛛'] }, { target: '株', distractors: ['珠', '殊', '蛛'] },
+            { target: '斬', distractors: ['漸', '嶄', '暫'] }, { target: '漸', distractors: ['斬', '嶄', '暫'] },
+            { target: '供', distractors: ['哄', '洪', '拱'] }, { target: '哄', distractors: ['供', '洪', '拱'] }
+        ];
+        
+        const MOLE_GLYPH_SVG = `<svg class="mole-glyph-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><ellipse cx="28" cy="16" rx="12" ry="14" fill="#6D4C41"/><ellipse cx="72" cy="16" rx="12" ry="14" fill="#6D4C41"/><ellipse cx="28" cy="18" rx="7" ry="8" fill="#E8A598"/><ellipse cx="72" cy="18" rx="7" ry="8" fill="#E8A598"/><ellipse cx="50" cy="56" rx="40" ry="40" fill="#8D6E63"/><ellipse cx="50" cy="64" rx="26" ry="24" fill="#D7CCC8"/><circle cx="36" cy="28" r="5" fill="#3E2723"/><circle cx="64" cy="28" r="5" fill="#3E2723"/><circle cx="37.5" cy="26.5" r="1.6" fill="#EFEBE9"/><circle cx="65.5" cy="26.5" r="1.6" fill="#EFEBE9"/></svg>`;
+
+        // 音效
+        let correctSound, incorrectSound, levelUpSound;
+        try {
+            correctSound = new Tone.Synth().toDestination();
+            incorrectSound = new Tone.Synth({ oscillator: { type: 'square' } }).toDestination();
+            levelUpSound = new Tone.Synth({ oscillator: { type: 'sawtooth' } }).toDestination();
+        } catch(e) { console.warn("Tone.js 初始化失敗，音效將被禁用。") }
+        
+        // 獲勝音效
+        const winnerSound = new Audio('assets/winner-game-sound-404167.mp3');
+        winnerSound.volume = 0.7; // 設置音量為 70%
+        const failClickSoundSrc = 'assets/audio/fail.mp3';
+        const successClickSoundSrc = 'assets/audio/success.mp3';
+
+        function playClickFeedbackSound(type) {
+            // 每次新建音訊實例，避免「只播第一次」或快速連點時被中斷。
+            const audio = new Audio(type === 'success' ? successClickSoundSrc : failClickSoundSrc);
+            audio.volume = type === 'success' ? 0.9 : 0.95;
+            audio.preload = 'auto';
+            audio.play().catch(() => {
+                // Fallback to synth if file playback is blocked by browser policy.
+                if (type === 'success' && correctSound) correctSound.triggerAttackRelease('C5', '8n');
+                if (type === 'fail' && incorrectSound) incorrectSound.triggerAttackRelease('A2', '8n');
+            });
+        }
+
+        const ttsBlobCache = new Map();
+        let currentTtsAudio = null;
+        let ttsRequestToken = 0;
+
+        function stopMicrosoftTts() {
+            if (currentTtsAudio) {
+                currentTtsAudio.onended = null;
+                currentTtsAudio.onerror = null;
+                currentTtsAudio.pause();
+                currentTtsAudio.removeAttribute('src');
+                currentTtsAudio.load();
+                currentTtsAudio = null;
+            }
+            [pronounceMandarinBtn, pronounceCantoneseBtn].forEach((btn) => {
+                if (!btn) return;
+                btn.classList.remove('is-speaking');
+                btn.disabled = false;
+            });
+        }
+
+        async function speakWithMicrosoft(text, lang, triggerBtn) {
+            const trimmed = String(text || '').trim();
+            if (!trimmed) return;
+
+            stopMicrosoftTts();
+            const requestId = ++ttsRequestToken;
+            if (triggerBtn) {
+                triggerBtn.disabled = true;
+                triggerBtn.classList.add('is-speaking');
+            }
+
+            const cacheKey = `${lang}::${trimmed}`;
+            try {
+                let blobUrl = ttsBlobCache.get(cacheKey);
+                if (!blobUrl) {
+                    const res = await fetch('/api/mole/tts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: trimmed, lang }),
+                    });
+                    if (!res.ok) {
+                        throw new Error(`tts ${res.status}`);
+                    }
+                    const buf = await res.arrayBuffer();
+                    const blob = new Blob([buf], { type: 'audio/mpeg' });
+                    blobUrl = URL.createObjectURL(blob);
+                    if (ttsBlobCache.size > 80) {
+                        const first = ttsBlobCache.keys().next().value;
+                        const oldUrl = ttsBlobCache.get(first);
+                        if (oldUrl) URL.revokeObjectURL(oldUrl);
+                        ttsBlobCache.delete(first);
+                    }
+                    ttsBlobCache.set(cacheKey, blobUrl);
+                }
+                if (requestId !== ttsRequestToken) return;
+
+                const audio = new Audio(blobUrl);
+                currentTtsAudio = audio;
+                audio.onended = () => {
+                    if (currentTtsAudio === audio) stopMicrosoftTts();
+                };
+                audio.onerror = () => {
+                    if (currentTtsAudio === audio) stopMicrosoftTts();
+                };
+                await audio.play();
+            } catch (err) {
+                console.warn('微軟語音朗讀失敗：', err);
+                if (requestId === ttsRequestToken) stopMicrosoftTts();
+            }
+        }
+
+        function speakCurrentTarget(lang = 'zh-CN', triggerBtn) {
+            const currentLevel = gameState.levelList?.[gameState.currentLevelIndex];
+            if (!currentLevel || !currentLevel.target) return;
+            const btn = triggerBtn || (lang === 'zh-HK' ? pronounceCantoneseBtn : pronounceMandarinBtn);
+            speakWithMicrosoft(currentLevel.target, lang, btn);
+        }
+        
+        // --- 核心遊戲邏輯 ---
+        
+        function createBoard() {
+            gameBoard.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const hole = document.createElement('div');
+                hole.classList.add('hole');
+                const animalContainer = document.createElement('div');
+                animalContainer.classList.add('animal-container');
+                animalContainer.innerHTML = `
+                    <div class="mole-glyph">
+                        ${MOLE_GLYPH_SVG}
+                        <span class="mole-glyph-text"></span>
+                    </div>
+                `;
+                hole.appendChild(animalContainer);
+                gameBoard.appendChild(hole);
+                animalContainer.addEventListener('click', handleWhack);
+            }
+        }
+
+        function startGame(mode, levels, startIndex = 0, options = {}) {
+            startScreen.classList.add('hidden');
+            modeSelectionView.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            allMistakesInGame = [];
+
+            let gameLevels = levels;
+            if (mode === 'timed') {
+                gameLevels = [...levels].sort(() => Math.random() - 0.5);
+            }
+
+            const timedDuration = getTimedDuration();
+            const bankMeta = getBankMeta();
+
+            gameState = {
+                mode: mode,
+                levelList: gameLevels,
+                sourceLevels: [...levels],
+                bankName: options.bankName || bankMeta.name,
+                weeklyPairs: options.weeklyPairs === true,
+                currentLevelIndex: startIndex,
+                score: 0,
+                combo: 0,
+                timeLeft: timedDuration,
+                timedDuration: timedDuration,
+                slowSkillTokens: 0,
+                slowSkillsUsed: 0,
+                slowActive: false,
+                correctHitsThisLevel: 0,
+                mistakesThisLevel: [],
+                gameSpeed: 1000,
+                peepDuration: 1480,
+                baseGameSpeed: 1000,
+                basePeepDuration: 1480,
+                peepIndex: 0,
+                targetPeepSlot: 1,
+                practiceHintShown: false,
+                isRunning: true,
+            };
+
+            if (mode === 'practice') {
+                timerDisplay.classList.add('hidden');
+                hitsDisplay.classList.remove('hidden');
+                comboDisplay.classList.add('hidden');
+                skillsBar.classList.add('hidden');
+                saveQuitBtn.textContent = '離開遊戲';
+            } else {
+                timerDisplay.classList.remove('hidden');
+                hitsDisplay.classList.add('hidden');
+                comboDisplay.classList.remove('hidden');
+                skillsBar.classList.remove('hidden');
+                gameModeTitleEl.textContent = `計時比賽 (${gameState.bankName})`;
+                saveQuitBtn.textContent = '儲存並離開';
+                applyTimedPace();
+                timerId = setInterval(updateTimer, 1000);
+            }
+
+            setupLevel();
+        }
+
+        function setupLevel() {
+            if (gameState.currentLevelIndex >= gameState.levelList.length) {
+                if (gameState.mode === 'timed') {
+                    gameState.currentLevelIndex = 0;
+                } else {
+                    endGame(false);
+                    return;
+                }
+            }
+            gameState.correctHitsThisLevel = 0;
+            gameState.mistakesThisLevel = [];
+            resetPeepSequence();
+            updateUI();
+            showPracticeHintIfNeeded();
+            setTimeout(speakCurrentTarget, 120);
+
+            restartPeepLoop();
+        }
+
+        function updateTimer() {
+            if (!gameState.isRunning) return;
+            gameState.timeLeft--;
+            if (gameState.timeLeft <= 0) {
+                clearInterval(timerId);
+                timerId = null;
+                endGame(false);
+                return;
+            }
+            applyTimedPace();
+            updateUI();
+        }
+
+        function handleWhack(e) {
+            if (!gameState.isRunning) return;
+            const animalContainer = e.currentTarget;
+            if (typeof Tone !== 'undefined' && correctSound && Tone.context.state !== 'running') Tone.context.resume();
+            if (!animalContainer.classList.contains('up')) return;
+            
+            animalContainer.classList.remove('up');
+            animalContainer.classList.add('whacked');
+            
+            const currentLevel = gameState.levelList[gameState.currentLevelIndex];
+            if (animalContainer.dataset.char === currentLevel.target) {
+                gameState.combo++;
+                const points = gameState.mode === 'timed' ? TIMED_HIT_POINTS : (10 + Math.min(gameState.combo, 10));
+                gameState.score += points;
+                gameState.correctHitsThisLevel++;
+                playClickFeedbackSound('success');
+                showScorePopup(`+${points}`, animalContainer, 'text-green-500');
+                showHammerAnimation(animalContainer);
+                
+                if (gameState.mode === 'practice' && gameState.correctHitsThisLevel >= 3) {
+                    showLevelEndScreen(false);
+                } else if (gameState.mode === 'timed') {
+                    syncSlowTokensFromScore();
+                    switchToNextTarget();
+                }
+
+            } else {
+                gameState.combo = 0;
+                const prevScore = gameState.score;
+                const penalty = gameState.mode === 'timed' ? TIMED_MISS_POINTS : 5;
+                gameState.score = Math.max(0, gameState.score - penalty);
+                const mistake = {
+                    target: currentLevel.target,
+                    wrong: animalContainer.dataset.char
+                };
+                gameState.mistakesThisLevel.push(mistake);
+                allMistakesInGame.push(mistake);
+
+                playClickFeedbackSound('fail');
+                showScorePopup(`-${penalty}`, animalContainer, 'text-red-500');
+
+                if (gameState.mode === 'timed') {
+                    syncSlowTokensFromScore();
+                    if (prevScore > 0 && gameState.score <= 0) {
+                        updateUI();
+                        endGame(false);
+                        return;
+                    }
+                }
+            }
+            updateUI();
+        }
+
+        function switchToNextTarget() {
+            gameState.currentLevelIndex++;
+            if (gameState.currentLevelIndex >= gameState.levelList.length) {
+                const source = gameState.sourceLevels && gameState.sourceLevels.length
+                    ? gameState.sourceLevels
+                    : getActivePlayableLevels();
+                gameState.levelList = [...source].sort(() => Math.random() - 0.5);
+                gameState.currentLevelIndex = 0;
+            }
+            setupLevel();
+        }
+        
+        function peep() {
+            if (!gameState.isRunning) return;
+            if (!holes || holes.length === 0) return;
+            const hole = holes[Math.floor(Math.random() * holes.length)];
+            const animalContainer = hole.querySelector('.animal-container');
+            const characterEl = animalContainer.querySelector('.mole-glyph-text');
+            const currentLevel = gameState.levelList[gameState.currentLevelIndex];
+            if (!currentLevel || !characterEl) return;
+            const char = pickPeepChar(currentLevel);
+
+            characterEl.textContent = char;
+            animalContainer.dataset.char = char;
+            animalContainer.classList.add('up');
+            animalContainer.classList.remove('whacked');
+            
+            setTimeout(() => {
+                if(animalContainer) animalContainer.classList.remove('up');
+            }, gameState.peepDuration);
+        }
+
+        function pickRandomDistractor(level) {
+            const list = level.distractors || [];
+            if (list.length === 0) return level.target;
+            return list[Math.floor(Math.random() * list.length)];
+        }
+
+        function resetPeepSequence() {
+            gameState.peepIndex = 0;
+            const roll = Math.random();
+            gameState.targetPeepSlot = roll < 0.2 ? 0 : (roll < 0.6 ? 1 : 2);
+        }
+
+        function pickPeepChar(level) {
+            if (gameState.mode !== 'timed') {
+                return Math.random() < 0.4 ? level.target : pickRandomDistractor(level);
+            }
+            const idx = gameState.peepIndex++;
+            if (idx === gameState.targetPeepSlot) return level.target;
+            if (idx < 3) return pickRandomDistractor(level);
+            return Math.random() < 0.32 ? level.target : pickRandomDistractor(level);
+        }
+
+        function restartPeepLoop() {
+            clearInterval(animalIntervalId);
+            animalIntervalId = setInterval(peep, gameState.gameSpeed);
+        }
+
+        function setMolePopSpeed(slow) {
+            document.querySelectorAll('.animal-container').forEach((el) => {
+                el.classList.toggle('is-slow', !!slow);
+            });
+        }
+
+        function applyTimedPace() {
+            if (gameState.mode !== 'timed') return;
+            const total = gameState.timedDuration || TIMED_DURATION_DEFAULT;
+            const elapsed = Math.max(0, total - (gameState.timeLeft || 0));
+            const p = Math.min(1, elapsed / Math.max(1, total));
+            const eased = Math.pow(p, 1.2);
+            const targetSpeed = Math.round(1000 - 380 * eased);
+            const targetPeep = Math.round(1480 - 540 * eased);
+            gameState.baseGameSpeed = targetSpeed;
+            gameState.basePeepDuration = targetPeep;
+            const nextSpeed = gameState.slowActive ? Math.round(targetSpeed * 2.4) : targetSpeed;
+            const nextPeep = gameState.slowActive ? Math.round(targetPeep * 1.8) : targetPeep;
+            const speedChanged = Math.abs((gameState.gameSpeed || 0) - nextSpeed) >= 20;
+            gameState.gameSpeed = nextSpeed;
+            gameState.peepDuration = nextPeep;
+            setMolePopSpeed(gameState.slowActive);
+            if (speedChanged && animalIntervalId) restartPeepLoop();
+        }
+
+        function syncSlowTokensFromScore() {
+            const earned = Math.floor((gameState.score || 0) / SLOW_TOKEN_SCORE);
+            gameState.slowSkillTokens = Math.max(0, earned - (gameState.slowSkillsUsed || 0));
+        }
+
+        function showPracticeHintIfNeeded() {
+            if (!practiceHintEl) return;
+            if (practiceHintTimer) {
+                clearTimeout(practiceHintTimer);
+                practiceHintTimer = null;
+            }
+            const shouldShow = gameState.mode === 'practice'
+                && !gameState.practiceHintShown
+                && gameState.currentLevelIndex === 0;
+            if (!shouldShow) {
+                practiceHintEl.classList.add('hidden');
+                return;
+            }
+            gameState.practiceHintShown = true;
+            practiceHintEl.classList.remove('hidden');
+            practiceHintEl.style.animation = 'none';
+            void practiceHintEl.offsetWidth;
+            practiceHintEl.style.animation = '';
+            practiceHintTimer = setTimeout(() => {
+                practiceHintEl.classList.add('hidden');
+                practiceHintTimer = null;
+            }, 5200);
+        }
+
+        function showLevelEndScreen(isTimeUp) {
+            clearInterval(animalIntervalId);
+            animalIntervalId = null;
+            if (isTimeUp) {
+                levelEndTitle.textContent = "時間到！";
+                nextLevelBtn.classList.add('hidden');
+            } else {
+                levelEndTitle.textContent = gameState.weeklyPairs
+                    ? `第 ${Math.floor(gameState.currentLevelIndex / 2) + 1} 關完成！`
+                    : `第 ${gameState.currentLevelIndex + 1} 關完成！`;
+                nextLevelBtn.classList.remove('hidden');
+                // 播放獲勝音效
+                winnerSound.currentTime = 0; // 重置到開頭
+                winnerSound.play().catch(e => console.warn("播放獲勝音效失敗:", e));
+            }
+            levelEndScore.textContent = `目前分數：${gameState.score}`;
+            reviewMistakesBtn.disabled = gameState.mistakesThisLevel.length === 0;
+            levelEndScreen.classList.remove('hidden');
+        }
+
+        function proceedToNextLevel() {
+            levelEndScreen.classList.add('hidden');
+            gameState.currentLevelIndex++;
+            setupLevel();
+        }
+
+        function endGame(isQuit) {
+            if (gameState) gameState.isRunning = false;
+            stopMicrosoftTts();
+            clearInterval(timerId);
+            timerId = null;
+            clearInterval(animalIntervalId);
+            animalIntervalId = null;
+            if (practiceHintEl) practiceHintEl.classList.add('hidden');
+            if (practiceHintTimer) {
+                clearTimeout(practiceHintTimer);
+                practiceHintTimer = null;
+            }
+            if (slowSkillTimer) {
+                clearTimeout(slowSkillTimer);
+                slowSkillTimer = null;
+            }
+            setMolePopSpeed(false);
+
+            gameScreen.classList.add('hidden');
+            levelEndScreen.classList.add('hidden');
+            
+            // Save skills before exiting
+            if (currentUser && gameData.users[currentUser]) {
+                gameData.users[currentUser].skillTokens = gameState.slowSkillTokens;
+            }
+
+            if (!isQuit) {
+                if (currentUser && gameData.users[currentUser]) {
+                    gameData.users[currentUser].savedTimedGame = null; // Clear saved game on normal finish
+                }
+                updateHighScore(gameState.score);
+                if (gameState.mode === 'practice') {
+                    winnerSound.currentTime = 0;
+                    winnerSound.play().catch(e => console.warn("播放獲勝音效失敗:", e));
+                }
+                openEndReview();
+            }
+            
+            saveGameData();
+
+            if(isQuit) {
+                showMainMenu();
+            }
+        }
+        
+        // --- UI 更新與輔助函式 ---
+
+        function updateUI() {
+            if (gameState.mode === 'timed') syncSlowTokensFromScore();
+            scoreEl.textContent = gameState.score;
+            scoreEl.classList.add('score-pop');
+            scoreEl.addEventListener('animationend', () => scoreEl.classList.remove('score-pop'), { once: true });
+
+            comboEl.textContent = gameState.combo;
+            skillSlowTokensEl.textContent = gameState.slowSkillTokens;
+            skillSlowBtn.disabled = gameState.mode !== 'timed' || gameState.slowSkillTokens <= 0 || gameState.slowActive;
+            skillSlowBtn.classList.toggle('is-slowing', !!gameState.slowActive);
+            
+            if (gameState.mode === 'practice') {
+                hitsEl.textContent = `${gameState.correctHitsThisLevel} / 3`;
+                const sourceLen = (gameState.sourceLevels && gameState.sourceLevels.length)
+                    ? gameState.sourceLevels.length
+                    : gameState.levelList.length;
+                const bankName = gameState.bankName || getBankMeta().name;
+                const totalWeeks = gameState.weeklyPairs
+                    ? Math.ceil(sourceLen / 2)
+                    : sourceLen;
+                const currentWeek = gameState.weeklyPairs
+                    ? Math.floor(gameState.currentLevelIndex / 2) + 1
+                    : gameState.currentLevelIndex + 1;
+                gameModeTitleEl.textContent = `闖關練習 (${bankName} - 第 ${currentWeek} / ${totalWeeks} 關)`;
+            } else {
+                timerEl.textContent = gameState.timeLeft;
+            }
+            const currentLevel = gameState.levelList[gameState.currentLevelIndex];
+            if(currentLevel) targetCharEl.textContent = currentLevel.target;
+        }
+
+        function activateSlowSkill() {
+            if (gameState.mode !== 'timed' || gameState.slowActive) return;
+            if (gameState.slowSkillTokens > 0) {
+                gameState.slowSkillsUsed = (gameState.slowSkillsUsed || 0) + 1;
+                gameState.slowActive = true;
+                syncSlowTokensFromScore();
+                applyTimedPace();
+                restartPeepLoop();
+                updateUI();
+
+                if (slowSkillTimer) clearTimeout(slowSkillTimer);
+                slowSkillTimer = setTimeout(() => {
+                    slowSkillTimer = null;
+                    if (!gameState.isRunning) return;
+                    gameState.slowActive = false;
+                    applyTimedPace();
+                    if (animalIntervalId) restartPeepLoop();
+                    updateUI();
+                }, 8000);
+            }
+        }
+
+        function showHammerAnimation(element) {
+            const hammer = document.createElement('div');
+            hammer.classList.add('hammer');
+            hammer.innerHTML = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(45 50 50)"><rect x="40" y="0" width="20" height="60" rx="5" fill="#A1887F"/><rect x="25" y="55" width="50" height="30" rx="8" fill="#795548"/></g></svg>`;
+            element.parentElement.appendChild(hammer);
+            hammer.addEventListener('animationend', () => hammer.remove());
+        }
+
+        function showScorePopup(text, element, colorClass) {
+            const popup = document.createElement('div');
+            popup.textContent = text;
+            popup.className = `score-popup ${colorClass}`;
+            element.parentElement.appendChild(popup);
+            popup.addEventListener('animationend', () => popup.remove());
+        }
+        
+        function displayStars(finalScore, container) {
+            const host = container || starsEl;
+            if (!host) return;
+            host.innerHTML = '';
+            let starCount = 0;
+            if (finalScore >= 300) starCount = 3;
+            else if (finalScore >= 150) starCount = 2;
+            else if (finalScore > 0) starCount = 1;
+            for (let i = 0; i < 3; i++) {
+                const star = document.createElement('span');
+                star.textContent = i < starCount ? '★' : '☆';
+                star.className = i < starCount ? 'text-yellow-400' : 'text-gray-300';
+                host.appendChild(star);
+            }
+        }
+        
+        // --- 學生用戶與數據管理 ---
+        
+        function loadGameData() {
+            gameData = JSON.parse(localStorage.getItem('whackACharGameData') || '{"users":{}}');
+        }
+        
+        function saveGameData() {
+            localStorage.setItem('whackACharGameData', JSON.stringify(gameData));
+        }
+
+        function ensureDefaultUser() {
+            if (!gameData.users) gameData.users = {};
+            currentUser = '玩家';
+            if (!gameData.users[currentUser]) {
+                gameData.users[currentUser] = {
+                    highScore: 0,
+                    customLibrary: {},
+                    libraries: {},
+                    activeLibraryId: SYSTEM_BANK_ID,
+                    skillTokens: 0,
+                    timedDuration: TIMED_DURATION_DEFAULT,
+                    savedTimedGame: null
+                };
+            }
+            migrateUserLibraries();
+            if (!Number.isFinite(Number(gameData.users[currentUser].timedDuration))) {
+                gameData.users[currentUser].timedDuration = TIMED_DURATION_DEFAULT;
+            }
+            saveGameData();
+        }
+
+        function clampTimedDuration(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return TIMED_DURATION_DEFAULT;
+            return Math.min(TIMED_DURATION_MAX, Math.max(TIMED_DURATION_MIN, Math.round(n)));
+        }
+
+        function getTimedDuration() {
+            return clampTimedDuration(gameData.users[currentUser]?.timedDuration);
+        }
+
+        function fillTimedDurationInput() {
+            if (timedDurationInput) timedDurationInput.value = String(getTimedDuration());
+        }
+
+        function saveTimedDurationFromInput() {
+            if (!timedDurationInput || !currentUser || !gameData.users[currentUser]) return;
+            const clamped = clampTimedDuration(timedDurationInput.value);
+            gameData.users[currentUser].timedDuration = clamped;
+            timedDurationInput.value = String(clamped);
+            saveGameData();
+        }
+
+        function showMainMenu() {
+            stopMicrosoftTts();
+            startScreen.classList.remove('hidden');
+            modeSelectionView.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            levelEndScreen.classList.add('hidden');
+            reviewScreen.classList.add('hidden');
+            updateHighScoreDisplay();
+
+            // Check for a saved timed game
+            if (gameData.users[currentUser]?.savedTimedGame) {
+                timedModeBtn.textContent = '繼續計時比賽';
+                timedModeBtn.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+                timedModeBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+            } else {
+                timedModeBtn.textContent = '計時比賽';
+                timedModeBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                timedModeBtn.classList.add('bg-orange-500', 'hover:bg-orange-600');
+            }
+        }
+
+        function updateHighScore(currentScore) {
+            const isNew = currentScore > (gameData.users[currentUser].highScore || 0);
+            if (isNew) {
+                gameData.users[currentUser].highScore = currentScore;
+                saveGameData();
+            }
+            newHighScoreMsgEl.classList.toggle('hidden', !isNew);
+            reviewHighScoreMsgEl.classList.toggle('hidden', !isNew);
+            updateHighScoreDisplay();
+        }
+
+        function updateHighScoreDisplay() {
+             const userHighScore = gameData.users[currentUser]?.highScore || 0;
+             highScoreStartEl.textContent = userHighScore;
+             highScoreEndEl.textContent = userHighScore;
+             if (reviewHighScoreEl) reviewHighScoreEl.textContent = userHighScore;
+        }
+        
+        // --- AI 識別與題庫（經 Cloudflare 後端安全代理） ---
+        
+        async function callDeepSeekAPI(prompt, wantJson) {
+            const body = {
+                app: 'word-mole',
+                model: 'deepseek-chat',
+                messages: [{ role: 'user', content: prompt }]
+            };
+            if (wantJson) body.response_format = { type: 'json_object' };
+            try {
+                const response = await fetch('/api/ai/deepseek', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+                if (!response.ok) {
+                    const errText = await response.text();
+                    console.error('DeepSeek API Error:', errText);
+                    throw new Error(`AI 請求失敗: ${response.status}`);
+                }
+                const result = await response.json();
+                const content = result.choices?.[0]?.message?.content?.trim();
+                if (!content) throw new Error('AI 未返回內容');
+                return content;
+            } catch (error) {
+                console.error('呼叫 DeepSeek API 失敗:', error);
+                throw error;
+            }
+        }
+        
+        async function getCharDefinitions(chars) {
+            const uniqueChars = [...new Set(chars)];
+            const prompt = `請為以下每個繁體中文字提供一個簡短的核心定義（15字以內）。以 JSON 物件格式返回，key 為漢字，value 為定義。漢字列表：${uniqueChars.join('、')}`;
+            try {
+                const jsonText = await callDeepSeekAPI(prompt, true);
+                return JSON.parse(jsonText);
+            } catch (error) {
+                return uniqueChars.reduce((obj, char) => {
+                    obj[char] = '查詢失敗';
+                    return obj;
+                }, {});
+            }
+        }
+        
+        async function getAIFeedback() {
+            reviewAiFeedback.classList.remove('hidden');
+            if (aiFeedbackLoading) aiFeedbackLoading.classList.remove('hidden');
+            aiFeedbackText.classList.add('hidden');
+            aiFeedbackText.textContent = '';
+            try {
+                const mistakeString = allMistakesInGame.length > 0
+                    ? `他在這些字上犯了錯：${[...new Set(allMistakesInGame.map(m => `「${m.target}」錯打成「${m.wrong}」`))].join('、')}。`
+                    : '他沒有犯任何錯誤。';
+                const prompt = `你是一個親切的遊戲動物夥伴。一個學生剛剛完成了「字詞地鼠戰」遊戲，請用繁體中文給他一段簡短（約 50 字）、有趣且充滿鼓勵的話。他的最終分數是：${gameState.score} 分。${mistakeString}請根據這些資訊給予個人化的回饋。例如，如果他錯了很多字，可以鼓勵他再接再厲；如果分數很高，可以大力稱讚。開頭可以用一些可愛的語氣詞，例如「哇喔！」或「嘿！你真棒！」。`;
+                const feedback = await callDeepSeekAPI(prompt, false);
+                aiFeedbackText.textContent = feedback;
+            } catch (error) {
+                aiFeedbackText.textContent = '哇！你真是太棒了，繼續努力喔！';
+            } finally {
+                if (aiFeedbackLoading) aiFeedbackLoading.classList.add('hidden');
+                aiFeedbackText.classList.remove('hidden');
+            }
+        }
+
+        function groupMistakes(mistakes) {
+            const map = new Map();
+            (mistakes || []).forEach((m) => {
+                if (!m || !m.target || !m.wrong) return;
+                if (!map.has(m.target)) map.set(m.target, []);
+                const list = map.get(m.target);
+                if (!list.includes(m.wrong)) list.push(m.wrong);
+            });
+            return [...map.entries()].map(([target, wrongs]) => ({ target, wrongs }));
+        }
+
+        async function renderMistakeList(mistakes) {
+            mistakesListEl.innerHTML = '<div class="loader mx-auto"></div>';
+            const grouped = groupMistakes(mistakes);
+            if (grouped.length === 0) {
+                const emptyMsg = (gameState.score || 0) <= 0
+                    ? '這局還沒有得分，再試一次吧！'
+                    : '沒有錯誤，表現很棒！';
+                mistakesListEl.innerHTML = `<p class="text-center text-slate-600">${emptyMsg}</p>`;
+                return;
+            }
+            const charsToDefine = new Set();
+            grouped.forEach((g) => {
+                charsToDefine.add(g.target);
+                g.wrongs.forEach((w) => charsToDefine.add(w));
+            });
+            const definitions = await getCharDefinitions(Array.from(charsToDefine));
+            mistakesListEl.innerHTML = '';
+            grouped.forEach((g) => {
+                const quotedWrongs = g.wrongs.map((w) => `「${w}」`).join('、');
+                const defLines = [
+                    `<p class="text-sm text-slate-600 pl-4">${g.target}: ${definitions[g.target] || '...'}</p>`,
+                    ...g.wrongs.map((w) => `<p class="text-sm text-slate-600 pl-4">${w}: ${definitions[w] || '...'}</p>`)
+                ].join('');
+                const div = document.createElement('div');
+                div.innerHTML = `<p class="font-bold">目標「${g.target}」，錯打成${quotedWrongs}</p>${defLines}`;
+                mistakesListEl.appendChild(div);
+            });
+        }
+
+        async function openEndReview() {
+            reviewClosesToMenu = true;
+            reviewScoreBlock.classList.remove('hidden');
+            reviewFinalScoreEl.textContent = gameState.score;
+            displayStars(gameState.score, reviewStarsEl);
+            closeReviewBtn.textContent = '返回主選單';
+            reviewScreen.classList.remove('hidden');
+            getAIFeedback();
+            await renderMistakeList(allMistakesInGame);
+        }
+
+        function getLevelsFromText(text) {
+            const lines = text.split('\n').filter(line => line.trim());
+            return lines.map(line => {
+                const parts = line.split(/[:：]/);
+                if(parts.length !== 2) return null;
+                const target = parts[0].trim();
+                const distractors = parts[1].trim().split(/[,，\s]+/).filter(Boolean);
+                if(target.length !== 1 || distractors.length === 0) return null;
+                return { target, distractors };
+            }).filter(Boolean);
+        }
+
+        function bindHanCommit(input, onCommit) {
+            let composing = false;
+            input.addEventListener('compositionstart', () => { composing = true; });
+            input.addEventListener('compositionend', () => {
+                composing = false;
+                onCommit();
+            });
+            input.addEventListener('input', () => {
+                if (!composing) onCommit();
+            });
+        }
+
+        function setLibraryHint(text, isError) {
+            if (!libraryHint) return;
+            libraryHint.textContent = text;
+            libraryHint.className = (isError ? 'text-red-500' : 'text-slate-500') + ' text-sm mt-2';
+        }
+
+        function getUserRecord() {
+            return gameData.users[currentUser];
+        }
+
+        function levelsArrayFromMap(map) {
+            return Object.values(map || {}).filter((level) =>
+                level && level.target && Array.isArray(level.distractors) && level.distractors.length > 0
+            );
+        }
+
+        function levelsMapFromArray(arr) {
+            const map = {};
+            (arr || []).forEach((level) => {
+                if (!level || !level.target) return;
+                map[level.target] = {
+                    target: level.target,
+                    distractors: [...new Set(level.distractors || [])].filter((c) => c && c !== level.target)
+                };
+            });
+            return map;
+        }
+
+        function migrateUserLibraries() {
+            const user = getUserRecord();
+            if (!user) return;
+            if (!user.libraries || typeof user.libraries !== 'object') user.libraries = {};
+            const old = user.customLibrary;
+            const oldHas = old && typeof old === 'object' && Object.keys(old).length > 0;
+            const hasCustom = Object.values(user.libraries).some((bank) => bank && bank.kind === 'custom');
+            if (oldHas && !hasCustom) {
+                user.libraries['custom-migrated'] = {
+                    id: 'custom-migrated',
+                    name: '我的詞庫',
+                    kind: 'custom',
+                    levels: { ...old }
+                };
+            }
+            const active = user.activeLibraryId;
+            const activeOk = active === SYSTEM_BANK_ID || (active && user.libraries[active]);
+            if (!activeOk) {
+                user.activeLibraryId = user.libraries['custom-migrated'] ? 'custom-migrated' : SYSTEM_BANK_ID;
+            }
+        }
+
+        function getActiveBankId() {
+            return getUserRecord()?.activeLibraryId || SYSTEM_BANK_ID;
+        }
+
+        function isSystemBank(id = getActiveBankId()) {
+            return id === SYSTEM_BANK_ID;
+        }
+
+        function getBankMeta(id = getActiveBankId()) {
+            if (id === SYSTEM_BANK_ID || !getUserRecord()?.libraries?.[id]) {
+                return { id: SYSTEM_BANK_ID, name: SYSTEM_BANK_NAME, kind: 'system' };
+            }
+            const bank = getUserRecord().libraries[id];
+            return { id: bank.id, name: bank.name || '未命名詞庫', kind: 'custom' };
+        }
+
+        function getBankLevelsById(id = getActiveBankId()) {
+            if (id === SYSTEM_BANK_ID) return gradeFourLevels.slice();
+            return levelsArrayFromMap(getUserRecord()?.libraries?.[id]?.levels);
+        }
+
+        function getActivePlayableLevels() {
+            return getBankLevelsById();
+        }
+
+        function getEditableLevelsMap() {
+            if (isSystemBank()) return null;
+            const user = getUserRecord();
+            const bank = user.libraries[getActiveBankId()];
+            if (!bank) return null;
+            if (!bank.levels || typeof bank.levels !== 'object') bank.levels = {};
+            return bank.levels;
+        }
+
+        function listAllBanks() {
+            const custom = Object.values(getUserRecord()?.libraries || {})
+                .filter((bank) => bank && bank.kind === 'custom')
+                .sort((a, b) => String(a.name).localeCompare(String(b.name), 'zh-Hant'));
+            return [
+                { id: SYSTEM_BANK_ID, name: SYSTEM_BANK_NAME, kind: 'system' },
+                ...custom.map((bank) => ({ id: bank.id, name: bank.name, kind: 'custom' }))
+            ];
+        }
+
+        function safeNamePart(name) {
+            return String(name || '詞庫').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40) || '詞庫';
+        }
+
+        function createCustomBank(name, levelsMap = {}, makeActive = true) {
+            const user = getUserRecord();
+            const id = 'custom-' + Date.now().toString(36);
+            user.libraries[id] = {
+                id,
+                name: String(name || '').trim() || '未命名詞庫',
+                kind: 'custom',
+                levels: { ...levelsMap }
+            };
+            if (makeActive) user.activeLibraryId = id;
+            saveGameData();
+            return id;
+        }
+
+        function setActiveBank(id) {
+            const user = getUserRecord();
+            if (id !== SYSTEM_BANK_ID && !user.libraries[id]) return;
+            user.activeLibraryId = id;
+            newRowDraft = { target: '', distractors: [] };
+            saveGameData();
+            refreshLibraryUI();
+        }
+
+        function refreshLibraryUI() {
+            const meta = getBankMeta();
+            const levels = getActivePlayableLevels();
+            const readOnly = meta.kind === 'system';
+
+            if (activeBankSelect) {
+                activeBankSelect.innerHTML = '';
+                listAllBanks().forEach((bank) => {
+                    const option = document.createElement('option');
+                    option.value = bank.id;
+                    const count = getBankLevelsById(bank.id).length;
+                    option.textContent = `${bank.name} · ${count} 題`;
+                    activeBankSelect.appendChild(option);
+                });
+                activeBankSelect.value = meta.id;
+            }
+
+            if (exportExcelBtn) exportExcelBtn.textContent = `導出：${meta.name}`;
+            if (renameBankBtn) renameBankBtn.classList.toggle('hidden', readOnly);
+            if (deleteBankBtn) deleteBankBtn.classList.toggle('hidden', readOnly);
+            if (commitNewRowBtn) commitNewRowBtn.classList.toggle('hidden', readOnly);
+            if (aiAddLibraryBtn) aiAddLibraryBtn.textContent = '加入目前詞庫';
+
+            customLibraryList.innerHTML = '';
+            if (readOnly) {
+                levels.forEach((level) => {
+                    customLibraryList.appendChild(buildLibraryRow(level, false, true));
+                });
+                setLibraryHint('這是系統詞庫，只能查看。要改字請先「複製成新詞庫」。', false);
+            } else {
+                const map = getEditableLevelsMap() || {};
+                Object.keys(map).forEach((key) => {
+                    customLibraryList.appendChild(buildLibraryRow(map[key], false, false));
+                });
+                customLibraryList.appendChild(buildLibraryRow({
+                    target: newRowDraft.target,
+                    distractors: [...newRowDraft.distractors]
+                }, true, false));
+                if (levels.length === 0 && !newRowDraft.target) {
+                    setLibraryHint('這份詞庫還是空的。最後一行可手動加字，或從系統詞庫複製。', false);
+                } else {
+                    setLibraryHint('最後一行可手動輸入目標字與形近字。', false);
+                }
+            }
+            playLibraryBtn.disabled = levels.length === 0;
+            updateAiAddBtn();
+        }
+
+        function loadCustomLibrary() {
+            refreshLibraryUI();
+        }
+
+        function buildLibraryRow(level, isNew, readOnly) {
+            const row = document.createElement('div');
+            row.className = 'lib-row' + (isNew ? ' lib-row-new' : '') + (readOnly ? ' lib-row-readonly' : '');
+
+            const chips = document.createElement('div');
+            chips.className = 'lib-chips';
+
+            if (isNew && !level.target) {
+                const targetInput = document.createElement('input');
+                targetInput.className = 'lib-target-input';
+                targetInput.placeholder = '字';
+                targetInput.setAttribute('lang', 'zh-Hant');
+                targetInput.setAttribute('aria-label', '輸入目標字');
+                targetInput.autocomplete = 'off';
+                targetInput.spellcheck = false;
+                bindHanCommit(targetInput, () => {
+                    const hans = uniqueHanChars(targetInput.value);
+                    if (hans.length === 0) return;
+                    newRowDraft.target = hans[0];
+                    if (hans.length > 1) {
+                        newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans.slice(1)])]
+                            .filter((c) => c !== newRowDraft.target);
+                    }
+                    refreshLibraryUI();
+                    const next = customLibraryList.querySelector('.lib-row-new .lib-add-input');
+                    if (next) next.focus();
+                });
+                row.appendChild(targetInput);
+            } else {
+                const targetBadge = document.createElement('span');
+                targetBadge.className = 'lib-target';
+                targetBadge.textContent = level.target;
+                row.appendChild(targetBadge);
+            }
+
+            (level.distractors || []).forEach((ch) => {
+                const chip = document.createElement('span');
+                chip.className = 'lib-chip';
+                const label = document.createElement('span');
+                label.textContent = ch;
+                chip.appendChild(label);
+                if (!readOnly) {
+                    const xBtn = document.createElement('button');
+                    xBtn.type = 'button';
+                    xBtn.className = 'lib-chip-x';
+                    xBtn.setAttribute('aria-label', `刪除 ${ch}`);
+                    xBtn.textContent = '×';
+                    xBtn.addEventListener('click', () => {
+                        if (isNew) {
+                            newRowDraft.distractors = newRowDraft.distractors.filter((c) => c !== ch);
+                            refreshLibraryUI();
+                        } else {
+                            removeLibraryChar(level.target, ch);
+                        }
+                    });
+                    chip.appendChild(xBtn);
+                }
+                chips.appendChild(chip);
+            });
+
+            if (!readOnly) {
+                const addInput = document.createElement('input');
+                addInput.className = 'lib-add-input';
+                addInput.placeholder = '+';
+                addInput.setAttribute('lang', 'zh-Hant');
+                addInput.setAttribute('aria-label', isNew ? '為新目標字新增形近字' : `為「${level.target}」新增形近字`);
+                addInput.autocomplete = 'off';
+                addInput.spellcheck = false;
+                bindHanCommit(addInput, () => {
+                    const hans = uniqueHanChars(addInput.value);
+                    if (hans.length === 0) return;
+                    if (isNew) {
+                        if (!newRowDraft.target) {
+                            newRowDraft.target = hans[0];
+                            newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans.slice(1)])]
+                                .filter((c) => c !== newRowDraft.target);
+                        } else {
+                            newRowDraft.distractors = [...new Set([...newRowDraft.distractors, ...hans])]
+                                .filter((c) => c !== newRowDraft.target);
+                        }
+                        refreshLibraryUI();
+                        const next = customLibraryList.querySelector('.lib-row-new .lib-add-input');
+                        if (next) next.focus();
+                    } else {
+                        addLibraryChars(level.target, hans.filter((c) => c !== level.target));
+                    }
+                });
+                chips.appendChild(addInput);
+            }
+            row.appendChild(chips);
+
+            if (!isNew && !readOnly) {
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'lib-del-group';
+                delBtn.textContent = '刪除';
+                delBtn.addEventListener('click', () => deleteLibraryGroup(level.target));
+                row.appendChild(delBtn);
+            }
+            return row;
+        }
+
+        function commitNewRowToLibrary() {
+            if (isSystemBank()) {
+                setLibraryHint('系統詞庫不能修改，請先複製成新詞庫。', true);
+                return;
+            }
+            const target = newRowDraft.target;
+            const distractors = [...new Set(newRowDraft.distractors)].filter((c) => c && c !== target);
+            if (!target || distractors.length === 0) {
+                setLibraryHint('請在最後一行輸入目標字，並至少加一個形近字。', true);
+                return;
+            }
+            saveLevelsToLibrary([{ target, distractors }], { merge: true });
+            newRowDraft = { target: '', distractors: [] };
+            refreshLibraryUI();
+            setLibraryHint('已加入目前詞庫。', false);
+            setTimeout(() => setLibraryHint('最後一行可手動輸入目標字與形近字。', false), 1800);
+        }
+
+        function addLibraryChars(target, chars) {
+            const library = getEditableLevelsMap();
+            if (!library) return;
+            const existing = library[target] || { target, distractors: [] };
+            const next = [...new Set([...existing.distractors, ...chars])].filter((c) => c && c !== target);
+            if (next.length === 0) return;
+            library[target] = { target, distractors: next };
+            saveGameData();
+            refreshLibraryUI();
+        }
+
+        function removeLibraryChar(target, ch) {
+            const library = getEditableLevelsMap();
+            if (!library) return;
+            const existing = library[target];
+            if (!existing) return;
+            const next = existing.distractors.filter((c) => c !== ch);
+            if (next.length === 0) delete library[target];
+            else library[target] = { target, distractors: next };
+            saveGameData();
+            refreshLibraryUI();
+        }
+
+        function deleteLibraryGroup(target) {
+            const library = getEditableLevelsMap();
+            if (!library) return;
+            delete library[target];
+            saveGameData();
+            refreshLibraryUI();
+        }
+
+        function saveLevelsToLibrary(levels, options = {}) {
+            if (!currentUser || !getUserRecord()) {
+                console.error('錯誤：沒有選擇目前使用者，無法儲存題庫。');
+                return false;
+            }
+            if (isSystemBank()) return false;
+            const library = getEditableLevelsMap();
+            if (!library) return false;
+            const merge = !!options.merge;
+            levels.forEach((level) => {
+                const existing = library[level.target];
+                if (!existing) {
+                    library[level.target] = {
+                        target: level.target,
+                        distractors: [...level.distractors]
+                    };
+                } else if (merge) {
+                    library[level.target] = {
+                        target: level.target,
+                        distractors: [...new Set([...existing.distractors, ...level.distractors])]
+                    };
+                }
+            });
+            saveGameData();
+            return true;
+        }
+
+        function promptBankName(defaultName) {
+            const name = window.prompt('請輸入詞庫名稱', defaultName || '');
+            if (name === null) return null;
+            const trimmed = name.trim();
+            if (!trimmed) {
+                alert('名稱不能空白。');
+                return null;
+            }
+            return trimmed;
+        }
+
+        function handleAddBank() {
+            const name = promptBankName('三年級甲班');
+            if (!name) return;
+            createCustomBank(name, {});
+            refreshLibraryUI();
+            setLibraryHint(`已新增詞庫「${name}」。`, false);
+        }
+
+        function handleCopyBank() {
+            const meta = getBankMeta();
+            const name = promptBankName(`${meta.name} 副本`);
+            if (!name) return;
+            const levelsMap = isSystemBank()
+                ? levelsMapFromArray(gradeFourLevels)
+                : { ...(getEditableLevelsMap() || {}) };
+            createCustomBank(name, levelsMap);
+            refreshLibraryUI();
+            setLibraryHint(`已複製為「${name}」，可以自由增刪。`, false);
+        }
+
+        function handleRenameBank() {
+            if (isSystemBank()) return;
+            const meta = getBankMeta();
+            const name = promptBankName(meta.name);
+            if (!name) return;
+            getUserRecord().libraries[meta.id].name = name;
+            saveGameData();
+            refreshLibraryUI();
+        }
+
+        function handleDeleteBank() {
+            if (isSystemBank()) return;
+            const meta = getBankMeta();
+            if (!confirm(`確定刪除詞庫「${meta.name}」？此動作無法復原。`)) return;
+            delete getUserRecord().libraries[meta.id];
+            getUserRecord().activeLibraryId = SYSTEM_BANK_ID;
+            newRowDraft = { target: '', distractors: [] };
+            saveGameData();
+            refreshLibraryUI();
+            setLibraryHint(`已刪除「${meta.name}」，已切回系統詞庫。`, false);
+        }
+
+        function allHanChars(value) {
+            return [...String(value || '')].filter((ch) => /\p{Script=Han}/u.test(ch));
+        }
+
+        function uniqueHanChars(value) {
+            return [...new Set(allHanChars(value))];
+        }
+
+        function normalizeAiSeedInput() {
+            const next = uniqueHanChars(aiSeedCharInput.value).join('');
+            if (aiSeedCharInput.value !== next) aiSeedCharInput.value = next;
+            updateAiAddBtn();
+        }
+
+        function getSelectedAiLevels() {
+            return aiGeneratedGroups
+                .map((g) => ({
+                    target: g.target,
+                    distractors: g.chars.filter((ch) => g.selected[ch])
+                }))
+                .filter((level) => level.distractors.length > 0);
+        }
+
+        function updateAiAddBtn() {
+            if (!aiAddLibraryBtn) return;
+            aiAddLibraryBtn.disabled = isSystemBank() || getSelectedAiLevels().length === 0;
+        }
+
+        function upsertAiGroup(target, chars) {
+            const selected = {};
+            chars.forEach((ch) => { selected[ch] = true; });
+            const existing = aiGeneratedGroups.find((g) => g.target === target);
+            if (existing) {
+                existing.chars = chars;
+                existing.selected = selected;
+            } else {
+                aiGeneratedGroups.push({
+                    target,
+                    chars,
+                    selected
+                });
+            }
+        }
+
+        function renderAiGroups() {
+            aiSimilarResults.innerHTML = '';
+            aiGeneratedGroups.forEach((g) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'ai-group';
+
+                const head = document.createElement('div');
+                head.className = 'ai-group-head';
+                const title = document.createElement('span');
+                title.textContent = `目標「${g.target}」`;
+                head.appendChild(title);
+
+                const chips = document.createElement('div');
+                chips.className = 'ai-group-chips';
+                g.chars.forEach((ch) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'similar-chip' + (g.selected[ch] ? ' is-selected' : '');
+                    btn.textContent = ch;
+                    btn.addEventListener('click', () => {
+                        g.selected[ch] = !g.selected[ch];
+                        btn.classList.toggle('is-selected', g.selected[ch]);
+                        updateAiAddBtn();
+                    });
+                    chips.appendChild(btn);
+                });
+
+                wrap.appendChild(head);
+                wrap.appendChild(chips);
+                aiSimilarResults.appendChild(wrap);
+            });
+            updateAiAddBtn();
+        }
+
+        async function generateSimilarChars() {
+            const seeds = uniqueHanChars(aiSeedCharInput.value);
+            if (seeds.length === 0) {
+                aiSimilarHint.textContent = '請先輸入一個或多個漢字。';
+                return;
+            }
+            const limited = seeds.slice(0, 12);
+            aiSeedCharInput.value = limited.join('');
+            aiSimilarBtn.disabled = true;
+            aiSimilarHint.textContent = limited.length > 1
+                ? `正在為 ${limited.length} 個字生成形近字組…`
+                : '正在生成形近字…';
+            const loading = document.createElement('div');
+            loading.className = 'loader mx-auto';
+            loading.id = 'ai-similar-loading';
+            const oldLoading = document.getElementById('ai-similar-loading');
+            if (oldLoading) oldLoading.remove();
+            aiSimilarResults.appendChild(loading);
+
+            const listed = limited.map((ch) => `「${ch}」`).join('、');
+            const prompt = `你是小學識字教師。請為下列每個繁體漢字各列出 4 到 6 個容易認錯或寫錯的常用繁體形近字。形近字可以是：偏旁相同、部首相同，或部首相同但偏旁不同。不要包含該目標字本身，不要簡體字，不要重複。漢字：${listed}。只回傳 JSON 物件，格式：{"groups":[{"target":"抄","chars":["沙","妙","紗","炒"]}]}`;
+            try {
+                const jsonText = await callDeepSeekAPI(prompt, true);
+                const cleaned = String(jsonText).replace(/^```(?:json)?\s*|\s*```$/g, '').trim();
+                const data = JSON.parse(cleaned);
+                let groups = Array.isArray(data.groups) ? data.groups : [];
+                if (groups.length === 0 && Array.isArray(data.chars) && limited.length === 1) {
+                    groups = [{ target: limited[0], chars: data.chars }];
+                }
+                if (groups.length === 0 && data && typeof data === 'object') {
+                    groups = limited.map((t) => ({
+                        target: t,
+                        chars: Array.isArray(data[t]) ? data[t] : []
+                    }));
+                }
+                let added = 0;
+                groups.forEach((item) => {
+                    const target = String(item.target || '').trim();
+                    if (!limited.includes(target)) return;
+                    const chars = [...new Set((item.chars || [])
+                        .map((c) => String(c).trim())
+                        .filter((c) => c.length === 1 && c !== target && /\p{Script=Han}/u.test(c)))];
+                    if (chars.length === 0) return;
+                    upsertAiGroup(target, chars);
+                    added += 1;
+                });
+                if (added === 0) throw new Error('empty');
+                renderAiGroups();
+                aiSimilarHint.textContent = seeds.length > 12
+                    ? '一次最多 12 個字。點選形近字後加入題庫，也可再輸入新字繼續生成。'
+                    : '點選要用的形近字後加入題庫，也可再輸入新字繼續生成。';
+            } catch (err) {
+                const leftover = document.getElementById('ai-similar-loading');
+                if (leftover) leftover.remove();
+                if (aiGeneratedGroups.length === 0) aiSimilarResults.innerHTML = '';
+                else renderAiGroups();
+                aiSimilarHint.textContent = '生成失敗，請稍後再試。可再次點擊紫色圖示重新生成。';
+            } finally {
+                const leftover = document.getElementById('ai-similar-loading');
+                if (leftover) leftover.remove();
+                aiSimilarBtn.disabled = false;
+            }
+        }
+
+        function addSelectedAiGroupsToLibrary() {
+            const levels = getSelectedAiLevels();
+            if (levels.length === 0) {
+                aiSimilarHint.textContent = '請先勾選至少一組形近字。';
+                return;
+            }
+            if (!saveLevelsToLibrary(levels, { merge: true })) {
+                aiSimilarHint.textContent = isSystemBank()
+                    ? '系統詞庫不能修改，請先複製成新詞庫。'
+                    : '加入題庫失敗，請稍後再試。';
+                return;
+            }
+            refreshLibraryUI();
+            aiSimilarHint.textContent = `已把 ${levels.length} 組加入「${getBankMeta().name}」，可再生成其他字。`;
+        }
+        
+        function populateLevelSelectionGrid() {
+            levelGrid.innerHTML = '';
+            const meta = getBankMeta();
+            const levels = getActivePlayableLevels();
+            if (levelSelectionTitle) levelSelectionTitle.textContent = `選擇關卡 (${meta.name})`;
+            if (meta.kind === 'system') {
+                const weeklyTargets = gradeFourLevels.filter((_, index) => index % 2 === 0);
+                weeklyTargets.forEach((level, index) => {
+                    const button = document.createElement('button');
+                    button.classList.add('p-2', 'border', 'rounded-lg', 'hover:bg-blue-100', 'transition');
+                    button.innerHTML = `<p class="font-bold">第 ${index + 1} 關</p><p class="text-sm text-slate-500">${level.target}, ${level.distractors[0]}...</p>`;
+                    button.dataset.startIndex = index * 2;
+                    button.addEventListener('click', (e) => {
+                        const startIndex = parseInt(e.currentTarget.dataset.startIndex, 10);
+                        levelSelectionScreen.classList.add('hidden');
+                        startGame('practice', gradeFourLevels, startIndex, {
+                            bankName: meta.name,
+                            weeklyPairs: true
+                        });
+                    });
+                    levelGrid.appendChild(button);
+                });
+                return;
+            }
+            levels.forEach((level, index) => {
+                const button = document.createElement('button');
+                button.classList.add('p-2', 'border', 'rounded-lg', 'hover:bg-blue-100', 'transition');
+                button.innerHTML = `<p class="font-bold">第 ${index + 1} 關</p><p class="text-sm text-slate-500">${level.target}</p>`;
+                button.addEventListener('click', () => {
+                    levelSelectionScreen.classList.add('hidden');
+                    startGame('practice', levels, index, {
+                        bankName: meta.name,
+                        weeklyPairs: false
+                    });
+                });
+                levelGrid.appendChild(button);
+            });
+        }
+
+        function resumeGame(savedGameState) {
+            startScreen.classList.add('hidden');
+            modeSelectionView.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            allMistakesInGame = [];
+
+            gameState = savedGameState;
+            if (typeof gameState.slowSkillsUsed !== 'number') gameState.slowSkillsUsed = 0;
+            gameState.slowActive = false;
+            gameState.isRunning = true;
+
+            if (gameState.mode === 'timed') {
+                timerDisplay.classList.remove('hidden');
+                hitsDisplay.classList.add('hidden');
+                comboDisplay.classList.remove('hidden');
+                skillsBar.classList.remove('hidden');
+                gameModeTitleEl.textContent = `計時比賽 (${gameState.bankName || getBankMeta().name})`;
+                saveQuitBtn.textContent = '儲存並離開';
+                applyTimedPace();
+                timerId = setInterval(updateTimer, 1000);
+            } else {
+                timerDisplay.classList.add('hidden');
+                hitsDisplay.classList.remove('hidden');
+                comboDisplay.classList.add('hidden');
+                skillsBar.classList.add('hidden');
+                saveQuitBtn.textContent = '離開遊戲';
+            }
+
+            updateUI();
+            restartPeepLoop();
+        }
+
+        // SheetJS 按需載入：只有教師用到匯入/匯出時才下載（約 900KB），加快首屏
+        let xlsxLoadPromise = null;
+        function ensureXLSX() {
+            if (window.XLSX) return Promise.resolve();
+            if (!xlsxLoadPromise) {
+                xlsxLoadPromise = new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+                    s.onload = resolve;
+                    s.onerror = () => {
+                        xlsxLoadPromise = null;
+                        reject(new Error('XLSX_LOAD_FAILED'));
+                    };
+                    document.head.appendChild(s);
+                });
+            }
+            return xlsxLoadPromise;
+        }
+
+        function handleImport(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    await ensureXLSX();
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    const newLevels = jsonData.map(row => {
+                        if (!row || row.length === 0 || !row[0]) return null;
+                        return {
+                            target: String(row[0]).trim(),
+                            distractors: row.slice(1).map(d => String(d).trim()).filter(Boolean)
+                        };
+                    }).filter(level => level && level.target.length === 1 && level.distractors.length > 0);
+
+                    if (newLevels.length === 0) {
+                        alert('Excel 檔案中沒有找到有效格式的題目。');
+                        return;
+                    }
+
+                    if (isSystemBank()) {
+                        const fallback = file.name.replace(/\.(xlsx|xls)$/i, '') || '導入詞庫';
+                        const name = promptBankName(fallback);
+                        if (!name) return;
+                        createCustomBank(name, levelsMapFromArray(newLevels));
+                        refreshLibraryUI();
+                        alert(`系統詞庫不能直接修改。已匯入 ${newLevels.length} 題到新詞庫「${name}」。`);
+                        return;
+                    }
+
+                    if (saveLevelsToLibrary(newLevels, { merge: true })) {
+                        refreshLibraryUI();
+                        alert(`已把 ${newLevels.length} 題匯入「${getBankMeta().name}」。`);
+                    } else {
+                        alert('導入失敗，請稍後再試。');
+                    }
+                } catch (error) {
+                    console.error("導入 Excel 失敗:", error);
+                    alert("讀取檔案失敗，請確認格式是否正確。");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            excelUploadInput.value = '';
+        }
+
+        async function handleExport() {
+            const meta = getBankMeta();
+            const levels = getActivePlayableLevels();
+            if (levels.length === 0) {
+                alert(`「${meta.name}」目前沒有題目可導出。`);
+                return;
+            }
+            try {
+                await ensureXLSX();
+            } catch {
+                alert('匯出元件載入失敗，請檢查網絡後再試。');
+                return;
+            }
+
+            const maxDist = Math.max(3, ...levels.map((level) => (level.distractors || []).length));
+            const headers = ['目標字'];
+            for (let i = 1; i <= maxDist; i++) headers.push(`干擾字${i}`);
+            const dataForSheet = [headers];
+            levels.forEach((level) => {
+                dataForSheet.push([level.target, ...level.distractors]);
+            });
+
+            const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
+            const workbook = XLSX.utils.book_new();
+            const sheetName = safeNamePart(meta.name).slice(0, 31);
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+            XLSX.writeFile(workbook, `${safeNamePart(meta.name)}.xlsx`);
+        }
+        
+        // --- 事件監聽器 ---
+
+        // 主流程按鈕
+        startAdventureBtn.addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            modeSelectionView.classList.remove('hidden');
+            updateHighScoreDisplay();
+        });
+        practiceModeBtn.addEventListener('click', () => {
+            const levels = getActivePlayableLevels();
+            if (levels.length === 0) {
+                alert(`「${getBankMeta().name}」還沒有題目。請先在設定裡加字，或切換到其他詞庫。`);
+                return;
+            }
+            populateLevelSelectionGrid();
+            levelSelectionScreen.classList.remove('hidden');
+        });
+        timedModeBtn.addEventListener('click', () => {
+            const savedGame = gameData.users[currentUser]?.savedTimedGame;
+            if (savedGame) {
+                gameData.users[currentUser].savedTimedGame = null;
+                saveGameData();
+                resumeGame(savedGame);
+                return;
+            }
+            const levels = getActivePlayableLevels();
+            if (levels.length === 0) {
+                alert(`「${getBankMeta().name}」還沒有題目。請先在設定裡加字，或切換到其他詞庫。`);
+                return;
+            }
+            startGame('timed', levels, 0, {
+                bankName: getBankMeta().name,
+                weeklyPairs: false
+            });
+        });
+        saveQuitBtn.addEventListener('click', () => {
+            if (gameState) gameState.isRunning = false;
+            if (practiceHintEl) practiceHintEl.classList.add('hidden');
+            if (practiceHintTimer) {
+                clearTimeout(practiceHintTimer);
+                practiceHintTimer = null;
+            }
+            if (slowSkillTimer) {
+                clearTimeout(slowSkillTimer);
+                slowSkillTimer = null;
+            }
+            setMolePopSpeed(false);
+            clearInterval(timerId);
+            timerId = null;
+            clearInterval(animalIntervalId);
+            animalIntervalId = null;
+            gameScreen.classList.add('hidden');
+
+            // Save data
+            if (currentUser && gameData.users[currentUser]) {
+                gameData.users[currentUser].skillTokens = gameState.slowSkillTokens;
+                if (gameState.mode === 'timed') {
+                    gameData.users[currentUser].savedTimedGame = gameState;
+                }
+                saveGameData();
+            }
+            
+            // Go to main menu
+            showMainMenu();
+        });
+        restartBtn.addEventListener('click', showMainMenu);
+
+        // 關卡結束流程
+        nextLevelBtn.addEventListener('click', proceedToNextLevel);
+        endGameBtn.addEventListener('click', () => {
+            levelEndScreen.classList.add('hidden');
+            endGame(false);
+        });
+        reviewMistakesBtn.addEventListener('click', async () => {
+            reviewClosesToMenu = false;
+            reviewScoreBlock.classList.add('hidden');
+            reviewAiFeedback.classList.add('hidden');
+            closeReviewBtn.textContent = '關閉';
+            reviewScreen.classList.remove('hidden');
+            await renderMistakeList(gameState.mistakesThisLevel);
+        });
+        closeReviewBtn.addEventListener('click', () => {
+            reviewScreen.classList.add('hidden');
+            if (reviewClosesToMenu) {
+                reviewClosesToMenu = false;
+                showMainMenu();
+            }
+        });
+
+        // 關卡選擇
+        closeLevelSelectionBtn.addEventListener('click', () => levelSelectionScreen.classList.add('hidden'));
+
+        // 設定頁面
+        function openSettings(fromTimed) {
+            fillTimedDurationInput();
+            loadCustomLibrary();
+            if (timedDurationBlock) timedDurationBlock.classList.toggle('hidden', !fromTimed);
+            if (timedDurationDivider) timedDurationDivider.classList.toggle('hidden', !fromTimed);
+            settingsScreen.classList.remove('hidden');
+        }
+        if (practiceSettingsBtn) practiceSettingsBtn.addEventListener('click', () => openSettings(false));
+        if (timedSettingsBtn) timedSettingsBtn.addEventListener('click', () => openSettings(true));
+        closeSettingsBtn.addEventListener('click', () => {
+            saveTimedDurationFromInput();
+            settingsScreen.classList.add('hidden');
+        });
+        aiSimilarBtn.addEventListener('click', generateSimilarChars);
+        aiSeedCharInput.addEventListener('compositionstart', () => {
+            aiSeedComposing = true;
+        });
+        aiSeedCharInput.addEventListener('compositionend', () => {
+            aiSeedComposing = false;
+            normalizeAiSeedInput();
+        });
+        aiSeedCharInput.addEventListener('input', (e) => {
+            if (aiSeedComposing || e.isComposing) {
+                updateAiAddBtn();
+                return;
+            }
+            normalizeAiSeedInput();
+        });
+        aiAddLibraryBtn.addEventListener('click', addSelectedAiGroupsToLibrary);
+        if (commitNewRowBtn) commitNewRowBtn.addEventListener('click', commitNewRowToLibrary);
+        if (activeBankSelect) {
+            activeBankSelect.addEventListener('change', () => setActiveBank(activeBankSelect.value));
+        }
+        if (addBankBtn) addBankBtn.addEventListener('click', handleAddBank);
+        if (copyBankBtn) copyBankBtn.addEventListener('click', handleCopyBank);
+        if (renameBankBtn) renameBankBtn.addEventListener('click', handleRenameBank);
+        if (deleteBankBtn) deleteBankBtn.addEventListener('click', handleDeleteBank);
+
+        playLibraryBtn.addEventListener('click', () => {
+            const selectedLevels = getActivePlayableLevels();
+            if (selectedLevels.length > 0) {
+                settingsScreen.classList.add('hidden');
+                startGame('practice', selectedLevels, 0, {
+                    bankName: getBankMeta().name,
+                    weeklyPairs: isSystemBank()
+                });
+            } else {
+                alert(`「${getBankMeta().name}」還沒有可用的題目`);
+            }
+        });
+        
+        importExcelBtn.addEventListener('click', () => excelUploadInput.click());
+        excelUploadInput.addEventListener('change', (e) => handleImport(e.target.files[0]));
+        exportExcelBtn.addEventListener('click', handleExport);
+        
+        skillSlowBtn.addEventListener('click', activateSlowSkill);
+        pronounceMandarinBtn.addEventListener('click', () => speakCurrentTarget('zh-CN', pronounceMandarinBtn));
+        pronounceCantoneseBtn.addEventListener('click', () => speakCurrentTarget('zh-HK', pronounceCantoneseBtn));
+
+        // --- 初始化 ---
+        function init() {
+             // 設定 PDF.js worker 的路徑，確保在 DOM 載入後執行
+            if (typeof window.pdfjsLib !== 'undefined') {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js`;
+            }
+            createBoard();
+            holes = Array.from(document.querySelectorAll('.hole'));
+            loadGameData();
+            ensureDefaultUser();
+            populateLevelSelectionGrid();
+            if (moleIntroVideo) {
+                moleIntroVideo.playbackRate = 1.15;
+                moleIntroVideo.loop = true;
+                moleIntroVideo.play().catch(() => {});
+                moleIntroVideo.addEventListener('canplay', () => {
+                    moleIntroVideo.play().catch(() => {});
+                }, { once: true });
+            }
+        }
+
+        init();
+    };
+})();
+</script>
+<script src="/auth-widget.js"></script>
+</body>
+</html>
+

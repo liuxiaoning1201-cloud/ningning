@@ -1,0 +1,25 @@
+# 首頁河水影片／poster：長快取。若替換檔案請改檔名，否則瀏覽器可能仍用舊檔。
+/assets/hero/*
+  Cache-Control: public, max-age=31536000
+
+# 讓瀏覽器較常重新驗證填字 SPA 入口，減少舊版 JS 快取導致 Google Client ID 錯誤
+/crossword/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 日箋：入口每次重新驗證，避免舊版快取卡住更新
+/rijian/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 靈感魔方：HTML 與自家 JS 每次重新驗證，避免舊版快取卡住更新
+/lingganmofang/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/lingganmofang/js/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# 巧手猜猜畫：入口與自家 JS/CSS 每次重新驗證，避免舊版快取卡住更新
+/巧手猜猜畫/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+/巧手猜猜畫/app.js
+  Cache-Control: public, max-age=0, must-revalidate
+/巧手猜猜畫/style.css
+  Cache-Control: public, max-age=0, must-revalidate

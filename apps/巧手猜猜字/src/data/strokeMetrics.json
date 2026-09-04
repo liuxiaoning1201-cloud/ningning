@@ -1,0 +1,87 @@
+{
+  "heng": {
+    "samples": 60,
+    "baseAngle": -4,
+    "extent": 0.464
+  },
+  "zhi": {
+    "samples": 29,
+    "baseAngle": 87,
+    "extent": 0.608
+  },
+  "zhigou": {
+    "samples": 8,
+    "baseAngle": 100,
+    "extent": 0.575
+  },
+  "dian": {
+    "samples": 17,
+    "baseAngle": 49,
+    "extent": 0.198
+  },
+  "pie": {
+    "samples": 28,
+    "baseAngle": 122,
+    "extent": 0.421
+  },
+  "na": {
+    "samples": 12,
+    "baseAngle": 39,
+    "extent": 0.484
+  },
+  "hengzhi": {
+    "samples": 6,
+    "baseAngle": 46,
+    "extent": 0.549
+  },
+  "zhizheng": {
+    "samples": 1,
+    "baseAngle": 18,
+    "extent": 0.596
+  },
+  "piedian": {
+    "samples": 2,
+    "baseAngle": 77,
+    "extent": 0.8
+  },
+  "hengpie": {
+    "samples": 7,
+    "baseAngle": 37,
+    "extent": 0.394
+  },
+  "hengzhigou": {
+    "samples": 4,
+    "baseAngle": 59,
+    "extent": 0.627
+  },
+  "zhiwangou": {
+    "samples": 2,
+    "baseAngle": 54,
+    "extent": 0.709
+  },
+  "wogou": {
+    "samples": 2,
+    "baseAngle": 19,
+    "extent": 0.488
+  },
+  "pieti": {
+    "samples": 2,
+    "baseAngle": 49,
+    "extent": 0.357
+  },
+  "xiegou": {
+    "samples": 1,
+    "baseAngle": 44,
+    "extent": 0.732
+  },
+  "ti": {
+    "samples": 1,
+    "baseAngle": -24,
+    "extent": 0.415
+  },
+  "zhiti": {
+    "samples": 1,
+    "baseAngle": 47,
+    "extent": 0.358
+  }
+}

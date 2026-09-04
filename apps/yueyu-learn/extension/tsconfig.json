@@ -1,0 +1,24 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["chrome", "vite/client"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@yueyu/shared": ["../shared/index.ts"],
+      "@yueyu/shared/*": ["../shared/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../shared/**/*",
+    "vite.config.ts"
+  ]
+}

@@ -1,0 +1,15 @@
+name = "zizi-zhuji"
+main = "src/index.ts"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[durable_objects]
+bindings = [
+  { name = "GAME_ROOM", class_name = "GameRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom"]
+
+# 部署後可在前端 VITE_ZIZI_API 指向 https://zizi-zhuji.<account>.workers.dev

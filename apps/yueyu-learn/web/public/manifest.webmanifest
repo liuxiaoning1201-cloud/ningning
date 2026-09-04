@@ -1,0 +1,56 @@
+{
+  "name": "粵語學習",
+  "short_name": "粵語學習",
+  "description": "邊睇粵劇邊學粵語口語：書面語字幕一鍵還原、生詞本、間隔複習。",
+  "start_url": "/yueyu/",
+  "scope": "/yueyu/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f3eb",
+  "theme_color": "#d4524d",
+  "lang": "zh-HK",
+  "categories": ["education", "language", "lifestyle"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "粘貼翻譯",
+      "url": "/yueyu/#/translate",
+      "icons": [{ "src": "icons/shortcut-translate.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "生詞本",
+      "url": "/yueyu/#/vocab",
+      "icons": [{ "src": "icons/shortcut-vocab.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "今日複習",
+      "url": "/yueyu/#/review",
+      "icons": [{ "src": "icons/shortcut-review.png", "sizes": "96x96" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshots/home.png",
+      "sizes": "1170x2532",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}

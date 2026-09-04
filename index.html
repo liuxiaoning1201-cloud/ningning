@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>字遊空間</title>
+    <title>清沂遊</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="image" href="/assets/hero/qingyi-river-still.webp" imagesrcset="/assets/hero/qingyi-river-still.webp 1672w, /assets/hero/qingyi-river-still-2x.webp 3344w" imagesizes="100vw">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -11,338 +15,638 @@
             box-sizing: border-box;
         }
 
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
-
         :root {
-            --cream-white: #f8f9f6;
-            --warm-beige: #f0f2ee;
-            --soft-gray: #e4e6e2;
-            --accent: #6b7c6f;
-            --accent-light: #9aa89c;
-            --dark-brown: #4a5c4a;
-            --text-dark: #3d4a3d;
+            --river:         #9ec9d0;
+            --river-mist:    #c5e4e6;
+            --river-deep:    #7eb4be;
+            --gold-path:     #f3e6c4;
+            --gold-soft:     #efe3b8;
+            --gold:          #c39a3f;
+            --gold-light:    #e0c073;
+            --gold-deep:     #7d5c1c;  /* 出處小字用，淡水面上仍可讀 */
+            --ink-water:     #1a3a38;
+            --ink:           #1a3a38;
+            --ink-soft:      #3d5c58;
+            --azure:         #2f6d8e;
+            --azure-deep:    #163a48;
+            --malachite:     #2f7d5b;
+            --cinnabar:      #b8472f;
+            --silk:          #efe6cf;
+            --hero-poster: image-set(
+                url('/assets/hero/qingyi-river-still.webp') type('image/webp') 1x,
+                url('/assets/hero/qingyi-river-still-2x.webp') type('image/webp') 2x
+            );
+
+            /* 水面淡出曲線。緩起後加速，讓羽化沒有明顯起始邊；
+               詩句落在 76%–89% 之間，仍看得見波浪，再往下才淡盡。 */
+            --water-fade: linear-gradient(to bottom,
+                #000 0%,
+                #000 46%,
+                rgba(0, 0, 0, 0.94) 56%,
+                rgba(0, 0, 0, 0.82) 66%,
+                rgba(0, 0, 0, 0.62) 76%,
+                rgba(0, 0, 0, 0.40) 84%,
+                rgba(0, 0, 0, 0.22) 90%,
+                rgba(0, 0, 0, 0.09) 95%,
+                transparent 100%);
         }
+
+        html { scroll-behavior: smooth; }
 
         body {
             font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(160deg, #f8f9f6 0%, #f2f4f0 45%, #eef0eb 100%);
+            background:
+                /* 影片中央光路的延續：暖金自上而下漸淡，貫穿整頁 */
+                radial-gradient(ellipse 42% 55% at 50% 0%,
+                    rgba(246, 235, 205, 0.94) 0%,
+                    rgba(244, 231, 196, 0.46) 38%,
+                    transparent 76%),
+                /* 詠歸暮金：頁尾回暖 */
+                linear-gradient(180deg, transparent 58%, rgba(243, 230, 196, 0.55) 100%),
+                /* 河水本色：全頁維持淡青，不被稀釋成灰綠 */
+                linear-gradient(180deg,
+                    #b9dde1 0%,
+                    #c6e3e5 26%,
+                    #cfe6e4 54%,
+                    #d6e9e5 100%);
             min-height: 100vh;
-            padding: 40px 20px;
-            color: var(--text-dark);
+            color: var(--ink-water);
             overflow-x: hidden;
             position: relative;
         }
 
-        /* 背景裝飾元素 */
+        /* 極淡水紋，讓整頁仍像同一片河面 */
         body::before {
             content: '';
             position: fixed;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 30%, rgba(107, 124, 111, 0.06) 0%, transparent 45%);
-            animation: float 20s ease-in-out infinite;
-            z-index: 0;
+            inset: 0;
+            background-image:
+                repeating-linear-gradient(
+                    180deg,
+                    rgba(255, 255, 255, 0.035) 0px,
+                    transparent 1px,
+                    transparent 9px
+                );
             pointer-events: none;
-        }
-
-        body::after {
-            content: '';
-            position: fixed;
-            bottom: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 70% 70%, rgba(154, 168, 156, 0.05) 0%, transparent 45%);
-            animation: float 25s ease-in-out infinite reverse;
             z-index: 0;
-            pointer-events: none;
+            opacity: 0.85;
         }
 
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            33% { transform: translate(30px, -30px) rotate(120deg); }
-            66% { transform: translate(-20px, 20px) rotate(240deg); }
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        /* ===== Hero · 河水源頭 ===== */
+        .hero {
             position: relative;
-            z-index: 1;
-        }
-
-        /* 標題區域 */
-        .header {
-            text-align: center;
-            margin-bottom: 60px;
-            animation: fadeInDown 0.8s ease-out;
-        }
-
-        .header h1 {
-            font-size: 3rem;
-            font-weight: 300;
-            color: var(--text-dark);
-            margin-bottom: 10px;
-            letter-spacing: 0.1em;
-            position: relative;
-            display: inline-block;
-        }
-
-        .header h1::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60px;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
-            animation: expandLine 1s ease-out 0.5s both;
-        }
-
-        @keyframes expandLine {
-            from { width: 0; opacity: 0; }
-            to { width: 60px; opacity: 1; }
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            color: var(--dark-brown);
-            font-weight: 300;
-            margin-top: 25px;
-            opacity: 0.8;
-        }
-
-        /* 軟件網格 */
-        .apps-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-top: 50px;
-        }
-
-        /* 軟件卡片 */
-        .app-card {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 24px;
-            padding: 35px 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(107, 124, 111, 0.2);
-            box-shadow: 0 8px 32px rgba(61, 74, 61, 0.06);
-            position: relative;
-            overflow: hidden;
-            opacity: 0;
-            animation: fadeInUp 0.6s ease-out forwards;
-        }
-
-        .app-card:nth-child(1) { animation-delay: 0.1s; }
-        .app-card:nth-child(2) { animation-delay: 0.2s; }
-        .app-card:nth-child(3) { animation-delay: 0.3s; }
-        .app-card:nth-child(4) { animation-delay: 0.4s; }
-        .app-card:nth-child(5) { animation-delay: 0.5s; }
-
-        .app-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
             width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.5s;
-        }
-
-        .app-card:hover::before {
-            left: 100%;
-        }
-
-        .app-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 0 20px 48px rgba(61, 74, 61, 0.12);
-            border-color: var(--accent);
-        }
-
-        .app-card:active {
-            transform: translateY(-4px) scale(1.01);
-        }
-
-        /* 圖標容器 */
-        .app-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 20px;
-            background: linear-gradient(135deg, var(--warm-beige) 0%, var(--soft-gray) 100%);
-            border-radius: 20px;
+            height: 62vh;
+            min-height: 420px;
+            max-height: 720px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5rem;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
+            z-index: 1;
+        }
+
+        /* 水面往 hero 下方多延伸 22%，穿過詩句再淡盡，波浪才會「流進」
+           下面的軟件區。裁切改掛在這一層，hero 才能讓尾巴溢出。 */
+        .hero-media {
+            position: absolute;
+            inset: 0 0 -22% 0;
+            z-index: 0;
             overflow: hidden;
+            background-color: #b9dde1;
+            background-image: var(--hero-poster);
+            background-position: center 60%;
+            background-size: cover;
+            background-repeat: no-repeat;
+            /* 只羽化下緣。多階漸層讓起點幾乎看不出來：前 10% 只掉 6%，
+               之後才逐漸加快，避免出現一條明顯的羽化邊。 */
+            -webkit-mask-image: var(--water-fade);
+            mask-image: var(--water-fade);
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-size: 100% 100%;
+            mask-size: 100% 100%;
+            transform: translateZ(0);
+            contain: paint;
         }
 
-        .app-card:hover .app-icon {
-            transform: rotate(5deg) scale(1.1);
-            background: linear-gradient(135deg, var(--accent-light) 0%, var(--soft-gray) 100%);
+        /* 水波層：以同一張底圖為材質，只對水面像素做位移取樣。
+           天空、山巒、人物是原圖直取，因此完全靜止且不損畫質。
+           初始化前先透明，讓 .hero-media 的底圖當作 fallback。 */
+        .hero-canvas {
+            position: absolute;
+            inset: 0;
+            display: block;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .hero-canvas.is-ready { opacity: 1; }
+
+        /* 只在中央光路加一層極淡暖暈；下緣淡出交給 mask，body 背景是唯一銜接色 */
+        .hero-feather {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background: radial-gradient(ellipse 48% 42% at 50% 56%,
+                rgba(243, 230, 196, 0.26) 0%,
+                transparent 74%);
         }
 
-        .app-icon::after {
+        /* ===== 站名：叠在金色光路 ===== */
+        /* 光路中心量測在影片寬度的 40%，不在正中。位移獨立一層，
+           免得和 .brand 的入場、.brand-float 的懸浮共用 transform 打架。
+           預設 -8.2vw 對應桌面（影片左右未被裁切）；窄視窗由 JS 校正。 */
+        .brand-anchor {
+            position: relative;
+            z-index: 3;
+            transform: translateX(var(--brand-shift, -8.2vw));
+        }
+
+        .brand {
+            position: relative;
+            animation: fadeInDown 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        /* 站名與印章作為一組緩慢漂浮。 */
+        .brand-float {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            animation: brandFloat 7s ease-in-out 1.05s infinite;
+        }
+
+        .brand-name {
+            font-family: 'Noto Serif TC', serif;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 4.5rem;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            line-height: 1.05;
+        }
+        .brand-name .qing { color: #143848; }
+        .brand-name .yi   { color: #1a4a44; }
+        .brand-name .you  { color: #5c4718; }
+
+        .seal {
+            width: 54px;
+            height: 54px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--cinnabar), #9c3a26);
+            color: #f8efe4;
+            font-family: 'Noto Serif TC', serif;
+            font-weight: 700;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            /* 依印章讀序排：右上→右下→左上→左下，DOM 仍是「劉曉寧製」 */
+            grid-auto-flow: column;
+            direction: rtl;
+            place-items: center;
+            font-size: 0.94rem;
+            line-height: 1;
+            box-shadow:
+                0 4px 14px rgba(184, 71, 47, 0.35),
+                inset 0 0 0 2px rgba(255,255,255,0.25);
+            transform: rotate(-2deg);
+        }
+        .seal span { display: block; }
+
+        /* ===== 河水延伸區 ===== */
+        /* 不加任何底色：字直接坐在還沒淡盡的波浪上 */
+        .river-extend {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 4px 24px 32px;
+            margin-top: -48px;
+            animation: fadeInUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+        }
+        .river-extend .verse {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.12rem;
+            letter-spacing: 0.28em;
+            line-height: 2;
+            color: var(--ink-water);
+        }
+        .river-extend .cite {
+            display: block;
+            margin-top: 6px;
+            font-family: 'Noto Serif TC', serif;
+            font-size: 0.76rem;
+            letter-spacing: 0.28em;
+            color: var(--gold-deep);
+        }
+
+        /* ===== 內容主體 ===== */
+        .container {
+            max-width: 1180px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+            padding: 12px 24px 80px;
+        }
+
+        .section { margin-top: 64px; }
+        .section-lead { margin-top: 20px; }
+        .section-lead .apps-grid { gap: 32px; }
+
+        .section-head {
+            display: flex;
+            align-items: baseline;
+            gap: 18px;
+            margin-bottom: 28px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(195, 154, 63, 0.22);
+            position: relative;
+        }
+        .section-head::after {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+            left: 0; bottom: -1px;
+            width: 72px; height: 2px;
+            background: linear-gradient(90deg, var(--gold), transparent);
+            border-radius: 2px;
+        }
+
+        .section-title {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.7rem;
+            font-weight: 600;
+            color: var(--azure-deep);
+            letter-spacing: 0.1em;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .section-title .dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: var(--river-deep);
+            box-shadow: 0 0 0 4px rgba(126, 180, 190, 0.28);
+        }
+        .section-verse {
+            font-family: 'Noto Serif TC', serif;
+            font-size: 0.92rem;
+            color: var(--ink-soft);
+            letter-spacing: 0.12em;
+        }
+
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 26px;
+        }
+
+        /* ===== 冊頁卡片 · 浮於水面 ===== */
+        .app-card {
+            background: linear-gradient(160deg,
+                rgba(255, 252, 244, 0.78) 0%,
+                rgba(197, 228, 230, 0.38) 42%,
+                rgba(243, 230, 196, 0.5) 100%);
+            border-radius: 16px;
+            padding: 32px 28px;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(126, 180, 190, 0.35);
+            box-shadow: 0 10px 30px rgba(26, 58, 56, 0.08);
+            transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.45s ease, border-color 0.45s ease;
             opacity: 0;
-            transition: opacity 0.4s;
+            animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .app-card::after {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            border: 1px solid rgba(195, 154, 63, 0.32);
+            border-radius: 10px;
+            pointer-events: none;
+            transition: border-color 0.45s ease;
+        }
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -120%;
+            width: 80%; height: 100%;
+            background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+            transition: left 0.7s ease;
+            z-index: 2;
+        }
+        .app-card:hover::before { left: 130%; }
+
+        .app-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 22px 46px rgba(26, 58, 56, 0.14);
+            border-color: var(--gold);
+        }
+        .app-card:hover::after { border-color: rgba(195, 154, 63, 0.65); }
+        .app-card:active { transform: translateY(-3px); }
+
+        .section-lead .app-card:first-child {
+            box-shadow: 0 16px 40px rgba(26, 58, 56, 0.12);
+            background: linear-gradient(160deg,
+                rgba(255, 252, 244, 0.92) 0%,
+                rgba(197, 228, 230, 0.5) 48%,
+                rgba(243, 230, 196, 0.62) 100%);
         }
 
-        .app-card:hover .app-icon::after {
-            opacity: 1;
-            animation: shine 1s ease-out;
+        .app-icon {
+            width: 78px;
+            height: 78px;
+            margin: 0 auto 18px;
+            background: linear-gradient(135deg, var(--river-deep) 0%, #d4c48a 100%);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.3rem;
+            position: relative;
+            box-shadow: 0 6px 16px rgba(26, 58, 56, 0.18), inset 0 -3px 8px rgba(0,0,0,0.1);
+            transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+        }
+        .app-icon.image-icon {
+            overflow: hidden;
+            background: var(--gold-soft);
+        }
+        .app-icon img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .app-card:hover .app-icon {
+            transform: rotate(-4deg) scale(1.08);
         }
 
-        @keyframes shine {
-            0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-
-        /* 標題 */
         .app-title {
-            font-size: 1.4rem;
-            font-weight: 500;
-            color: var(--text-dark);
+            font-family: 'Noto Serif TC', serif;
+            font-size: 1.32rem;
+            font-weight: 600;
+            color: var(--ink-water);
             margin-bottom: 10px;
+            letter-spacing: 0.04em;
             transition: color 0.3s;
         }
+        .app-card:hover .app-title { color: var(--azure-deep); }
 
-        .app-card:hover .app-title {
-            color: var(--dark-brown);
-        }
-
-        /* 描述 */
         .app-description {
-            font-size: 0.95rem;
-            color: var(--dark-brown);
-            opacity: 0.7;
-            line-height: 1.6;
+            font-size: 0.9rem;
+            color: var(--ink-soft);
+            line-height: 1.7;
+        }
+
+        /* ===== 頁尾 ===== */
+        .footer {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 28px 20px 64px;
+            font-family: 'Noto Serif TC', serif;
+        }
+        .footer .verse {
+            font-size: 1.02rem;
+            letter-spacing: 0.26em;
+            color: var(--ink-soft);
+            line-height: 2;
+        }
+        .footer .cite {
+            display: block;
             margin-top: 8px;
+            font-size: 0.76rem;
+            letter-spacing: 0.28em;
+            color: var(--gold-deep);
         }
 
-        /* 動畫定義 */
         @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-22px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-
-        /* 響應式設計 */
+        @keyframes brandFloat {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-11px); }
+        }
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
+            .hero { height: 46vh; min-height: 340px; max-height: 480px; }
+            .hero-media { inset: 0; }
+            .brand-float { gap: 11px; }
+            .brand-name { font-size: 2.85rem; letter-spacing: 0.14em; }
+            .seal { width: 42px; height: 42px; font-size: 0.76rem; }
+            .river-extend { padding: 4px 20px 22px; margin-top: -16px; }
+            .river-extend .verse {
+                font-size: 0.92rem;
+                letter-spacing: 0.12em;
+                line-height: 1.9;
             }
-
-            .apps-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-
-            .app-card {
-                padding: 25px 20px;
-            }
+            .section-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .section-title { font-size: 1.4rem; }
+            .apps-grid,
+            .section-lead .apps-grid { grid-template-columns: 1fr; gap: 18px; }
+            .app-card { padding: 26px 22px; }
+            .footer .verse { font-size: 0.9rem; letter-spacing: 0.12em; }
         }
 
-        /* 載入動畫 */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .loading {
-            animation: pulse 2s ease-in-out infinite;
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
+            .app-card { opacity: 1; }
+            .brand,
+            .river-extend { animation: none; }
+            /* 水波層不啟動，直接顯示 .hero-media 的靜態底圖 */
+            .hero-canvas { display: none; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>字遊空間</h1>
-            <p>在文字世界裡自由遊戲</p>
-        </div>
+    <header class="hero">
+        <div class="hero-media" aria-hidden="true"></div>
+        <div class="hero-feather" aria-hidden="true"></div>
 
-        <div class="apps-grid">
-            <div class="app-card" onclick="window.location.href='字詞地鼠戰/字詞地鼠戰.html'">
-                <div class="app-icon">🎯</div>
-                <h2 class="app-title">字詞地鼠戰</h2>
-                <p class="app-description">趣味字詞學習遊戲<br>通過打地鼠的方式練習字詞</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='手勢點名/index.html'">
-                <div class="app-icon">✋</div>
-                <h2 class="app-title">手勢點名系統</h2>
-                <p class="app-description">創新的手勢互動點名<br>讓點名變得更有趣</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='班級守護隊/index.html'">
-                <div class="app-icon">🐾</div>
-                <h2 class="app-title">班級守護隊</h2>
-                <p class="app-description">小組加減分與班級管理<br>動物主題、任務徽章、有效學習紀錄</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='春江花月夜/春江花月夜.html'">
-                <div class="app-icon">🌙</div>
-                <h2 class="app-title">春江花月夜</h2>
-                <p class="app-description">手勢互動詩詞體驗<br>感受古典詩詞之美</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='crossword/index.html'">
-                <div class="app-icon">📝</div>
-                <h2 class="app-title">中文填字接龍</h2>
-                <p class="app-description">詩句填字練習<br>縱橫交錯填寫古詩詞</p>
-            </div>
-
-            <div class="app-card" onclick="window.location.href='poetpal/index.html'">
-                <div class="app-icon">🏯</div>
-                <h2 class="app-title">詩友記</h2>
-                <p class="app-description">穿越時空與詩人聊天<br>50+ 位詩人等你來對話</p>
+        <div class="brand-anchor">
+            <div class="brand">
+                <div class="brand-float">
+                    <div class="brand-name">
+                        <span class="qing">清</span><span class="yi">沂</span><span class="you">遊</span>
+                    </div>
+                    <div class="seal" title="劉曉寧製">
+                        <span>劉</span><span>曉</span><span>寧</span><span>製</span>
+                    </div>
+                </div>
             </div>
         </div>
+    </header>
+
+    <div class="river-extend">
+        <p class="verse">浴乎沂，風乎舞雩，詠而歸。</p>
+        <span class="cite">《論語・先進》</span>
     </div>
 
+    <main class="container">
+
+        <section class="section section-lead">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>詠詩亭</h2>
+                <span class="section-verse">情動於中而形於言・含英咀華</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='春江花月夜/春江花月夜.html'">
+                    <div class="app-icon">🌙</div>
+                    <h3 class="app-title">春江花月夜</h3>
+                    <p class="app-description">手勢互動詩詞體驗<br>感受古典詩詞之美</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='poetpal/index.html'">
+                    <div class="app-icon">🏯</div>
+                    <h3 class="app-title">詩友記</h3>
+                    <p class="app-description">穿越時空與詩人聊天<br>50+ 位詩人等你來對話</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='zizi/index.html'">
+                    <div class="app-icon">🎴</div>
+                    <h3 class="app-title">字字珠璣</h3>
+                    <p class="app-description">中文連字棋：成語/詩詞/句子六模板<br>內容 × 連線 × 勝負，老師可自訂</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>識字渡</h2>
+                <span class="section-verse">積字成句・寓教於樂</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='字詞地鼠戰/字詞地鼠戰.html'">
+                    <div class="app-icon image-icon" aria-hidden="true">
+                        <img src="/assets/games/word-mole-logo.png" alt="">
+                    </div>
+                    <h3 class="app-title">字詞地鼠戰</h3>
+                    <p class="app-description">趣味字詞學習遊戲<br>通過打地鼠的方式練習字詞</p>
+                </div>
+                <div class="app-card" onclick="window.open('https://nie-bao-shizi-guo.pages.dev', '_blank')">
+                    <div class="app-icon">🍎</div>
+                    <h3 class="app-title">捏爆識字果</h3>
+                    <p class="app-description">手勢捏爆水果學中文<br>限時闖關、干擾詞挑戰、錯詞本複習</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='crossword/index.html'">
+                    <div class="app-icon">📝</div>
+                    <h3 class="app-title">中文填字接龍</h3>
+                    <p class="app-description">詞語、成語、語句填字練習<br>縱橫交錯，靈活訓練語文能力</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='句子排序小火車/index.html'">
+                    <div class="app-icon">🚂</div>
+                    <h3 class="app-title">句子排序小火車</h3>
+                    <p class="app-description">拖曳詞語排進季節車廂<br>排對句子，火車開往下一關</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='詞語配配樂/index.html'">
+                    <div class="app-icon">🎴</div>
+                    <h3 class="app-title">詞語配配樂</h3>
+                    <p class="app-description">詞語與解釋左右配對<br>配對成功卡牌消失，錯了會輕輕晃動提示</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>創作坊</h2>
+                <span class="section-verse">看圖寫話・含英咀華</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='lingganmofang/index.html'">
+                    <div class="app-icon">🎲</div>
+                    <h3 class="app-title">靈感魔方</h3>
+                    <p class="app-description">轉魔方組合六要素，看圖創意寫作<br>自適應詞彙挑戰、生成插圖、成書收藏</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>言語舟</h2>
+                <span class="section-verse">言之有物・相與詠歸</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='yueyu/index.html'">
+                    <div class="app-icon">🎙️</div>
+                    <h3 class="app-title">粵語學習</h3>
+                    <p class="app-description">睇劇學粵語口語<br>書面字幕一鍵還原、生詞本、間隔複習</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='誰是臥底/index.html'">
+                    <div class="app-icon">🕵️</div>
+                    <h3 class="app-title">誰是臥底</h3>
+                    <p class="app-description">線上多人文字推理遊戲<br>AI 出題、自訂詞庫，課堂互動神器</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='巧手猜猜字/index.html'">
+                    <div class="app-icon">🖐️</div>
+                    <h3 class="app-title">巧手猜猜字</h3>
+                    <p class="app-description">用生活物品拼漢字：筷子是橫、蠟燭是直<br>米字格拼字、筆順動畫、老師字簿，港式字形</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>課堂閣</h2>
+                <span class="section-verse">教學相長・各得其所</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='班級守護隊/index.html'">
+                    <div class="app-icon">🐾</div>
+                    <h3 class="app-title">班級守護隊</h3>
+                    <p class="app-description">小組加減分與班級管理<br>動物主題、任務徽章、有效學習紀錄</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='手勢點名/index.html'">
+                    <div class="app-icon">✋</div>
+                    <h3 class="app-title">手勢點名系統</h3>
+                    <p class="app-description">創新的手勢互動點名<br>讓點名變得更有趣</p>
+                </div>
+                <div class="app-card" onclick="window.location.href='rijian/index.html'">
+                    <div class="app-icon image-icon" aria-hidden="true">
+                        <img src="/assets/games/rijian-icon.png" alt="">
+                    </div>
+                    <h3 class="app-title">日箋</h3>
+                    <p class="app-description">今日待辦、隨想筆記薄與清單<br>鍵盤優先的課堂記事，資料存在本機</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title"><span class="dot"></span>遠遊記</h2>
+                <span class="section-verse">讀萬卷書・行萬里路</span>
+            </div>
+            <div class="apps-grid">
+                <div class="app-card" onclick="window.location.href='luoyang-trip/index.html'">
+                    <div class="app-icon">🏛️</div>
+                    <h3 class="app-title">洛陽鄭州訪學之旅</h3>
+                    <p class="app-description">航班、日程與住宿一覽<br>河南訪學手冊（免登入）</p>
+                </div>
+                <div class="app-card" onclick="window.open('https://ancientastro-5esfkuhc.manus.space', '_blank')">
+                    <div class="app-icon">🔭</div>
+                    <h3 class="app-title">古代天文文化</h3>
+                    <p class="app-description">探索古代天文學的奧秘<br>了解三垣二十八宿與曆法知識</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p class="verse">延目中流，悠悠清沂。</p>
+        <span class="cite">陶淵明〈時運〉</span>
+    </footer>
+
     <script>
-        // 添加點擊動畫效果
         document.querySelectorAll('.app-card').forEach(card => {
             card.addEventListener('click', function(e) {
-                // 創建波紋效果
                 const ripple = document.createElement('span');
                 const rect = this.getBoundingClientRect();
                 const size = Math.max(rect.width, rect.height);
                 const x = e.clientX - rect.left - size / 2;
                 const y = e.clientY - rect.top - size / 2;
-                
                 ripple.style.cssText = `
                     position: absolute;
                     width: ${size}px;
@@ -350,38 +654,260 @@
                     left: ${x}px;
                     top: ${y}px;
                     border-radius: 50%;
-                    background: rgba(107, 124, 111, 0.25);
+                    background: rgba(126, 180, 190, 0.35);
                     transform: scale(0);
                     animation: ripple 0.6s ease-out;
                     pointer-events: none;
+                    z-index: 1;
                 `;
-                
                 this.appendChild(ripple);
-                
                 setTimeout(() => ripple.remove(), 600);
             });
         });
 
-        // 添加波紋動畫樣式
         const style = document.createElement('style');
-        style.textContent = `
-            @keyframes ripple {
-                to {
-                    transform: scale(2);
-                    opacity: 0;
-                }
-            }
-        `;
+        style.textContent = `@keyframes ripple { to { transform: scale(2); opacity: 0; } }`;
         document.head.appendChild(style);
 
-        // 頁面載入完成後的動畫
-        window.addEventListener('load', () => {
-            document.body.style.opacity = '0';
-            setTimeout(() => {
-                document.body.style.transition = 'opacity 0.5s ease-in';
-                document.body.style.opacity = '1';
-            }, 100);
+        document.querySelectorAll('.app-card').forEach((card, i) => {
+            card.style.animationDelay = (0.06 * i + 0.12) + 's';
         });
+
+        const heroMedia = document.querySelector('.hero-media');
+
+        // 站名要壓在金色光路上。光路中心量測在底圖寬度的 40.6%，
+        // 但 cover 在窄視窗會裁掉左右，所以照實際繪製幾何換算，
+        // 不能直接用固定百分比。
+        const LIGHT_PATH_X = 0.406;
+        const HERO_IMAGE_WIDTH = 1672;
+        const HERO_IMAGE_HEIGHT = 941;
+        // .hero-media 的 background-position 縱向偏壓，水波層必須沿用同一值
+        const HERO_FOCUS_Y = 0.6;
+        const brandAnchor = document.querySelector('.brand-anchor');
+        const brandName = document.querySelector('.brand-name');
+
+        function alignBrandToLightPath() {
+            if (!heroMedia || !brandAnchor || !brandName) return;
+            const box = heroMedia.getBoundingClientRect();
+            if (!box.width || !box.height) return;
+
+            const vw = HERO_IMAGE_WIDTH;
+            const vh = HERO_IMAGE_HEIGHT;
+            const drawnW = vw * Math.max(box.width / vw, box.height / vh);
+            const pathX = (box.width - drawnW) / 2 + LIGHT_PATH_X * drawnW;
+
+            // 要對齊的是三個字，不是「字＋印章」的整體中心，
+            // 否則右邊的印章會把字推離光路。
+            let dx = 0;
+            for (let el = brandName; el && el !== brandAnchor; el = el.offsetParent) dx += el.offsetLeft;
+            const nameCenterInAnchor = dx + brandName.offsetWidth / 2;
+            const anchorLeft = (box.width - brandAnchor.offsetWidth) / 2;
+
+            let shift = pathX - anchorLeft - nameCenterInAnchor;
+            const limit = Math.max(0, anchorLeft - 12);
+            shift = Math.max(-limit, Math.min(limit, shift));
+            brandAnchor.style.setProperty('--brand-shift', shift.toFixed(1) + 'px');
+        }
+
+        let alignQueued = false;
+        function queueAlign() {
+            if (alignQueued) return;
+            alignQueued = true;
+            requestAnimationFrame(() => { alignQueued = false; alignBrandToLightPath(); });
+        }
+
+        alignBrandToLightPath();
+        window.addEventListener('resize', queueAlign);
+
+        /* ===== 水波蕩漾 =====
+           整張 hero 由同一張底圖繪製：水面以上的像素原座標直取，所以天空、
+           山巒、樹與三位人物是逐像素靜止且保有底圖原本的銳利度；只有遮罩
+           標記的水面才做位移取樣，讓已畫好的波紋與金色光路自己起伏。
+           位移量沿透視收斂，越近岸越小，故岸邊不會被拉扯。 */
+        (function water() {
+            if (!heroMedia) return;
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'hero-canvas';
+            const gl = canvas.getContext('webgl', {
+                alpha: false, antialias: false, depth: false,
+                stencil: false, powerPreference: 'low-power'
+            });
+            if (!gl) return;
+
+            const VERT = `
+                attribute vec2 aPos;
+                varying vec2 vUnit;
+                void main() {
+                    vUnit = vec2(aPos.x, 1.0 - aPos.y);
+                    gl_Position = vec4(aPos * 2.0 - 1.0, 0.0, 1.0);
+                }`;
+
+            const FRAG = `
+                precision highp float;
+                varying vec2 vUnit;
+                uniform sampler2D uImage;
+                uniform sampler2D uMask;
+                uniform vec2 uUvScale;
+                uniform vec2 uUvOffset;
+                uniform float uTime;
+                uniform float uAmp;
+
+                // 波峰在畫面上呈水平帶狀，愈近地平線愈密，故取此參考水線
+                const float Y0 = 0.575;
+
+                void main() {
+                    vec2 uv = vUnit * uUvScale + uUvOffset;
+                    float gate = texture2D(uMask, uv).r;
+                    if (gate <= 0.002) {
+                        gl_FragColor = vec4(texture2D(uImage, uv).rgb, 1.0);
+                        return;
+                    }
+
+                    float d = max(uv.y - Y0, 0.0);
+                    float pers = 1.0 / (d + 0.10);
+                    // 遠處波紋細於一個像素，若照實畫會變成雜訊，故抑制高頻
+                    float hf = smoothstep(0.02, 0.18, d);
+
+                    float w1 = sin(pers * 18.0 + uv.x * 2.6 + uTime * 1.05);
+                    float w2 = sin(pers * 30.0 - uv.x * 4.4 + uTime * 1.55);
+                    float w3 = sin(pers *  9.0 + uv.x * 1.7 - uTime * 0.68);
+                    float wave = w3 * 0.32
+                               + w1 * 0.44 * mix(0.45, 1.0, hf)
+                               + w2 * 0.24 * hf;
+
+                    float a = uAmp * gate * (0.12 + d);
+                    vec3 col = texture2D(uImage, clamp(uv + vec2(wave * a * 0.35, wave * a), 0.0, 1.0)).rgb;
+
+                    // 粼粼波光：只讓本來就亮的金色光路閃動，暗部不受影響
+                    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+                    float glint = smoothstep(0.72, 0.98, lum) * gate * mix(0.35, 1.0, hf);
+                    col *= 1.0 + glint * 0.09 * (w2 * 0.6 + w1 * 0.4);
+
+                    gl_FragColor = vec4(col, 1.0);
+                }`;
+
+            function compile(type, src) {
+                const sh = gl.createShader(type);
+                gl.shaderSource(sh, src);
+                gl.compileShader(sh);
+                if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) return null;
+                return sh;
+            }
+            const vs = compile(gl.VERTEX_SHADER, VERT);
+            const fs = compile(gl.FRAGMENT_SHADER, FRAG);
+            if (!vs || !fs) return;
+            const prog = gl.createProgram();
+            gl.attachShader(prog, vs);
+            gl.attachShader(prog, fs);
+            gl.linkProgram(prog);
+            if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+            gl.useProgram(prog);
+
+            const buf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 0,1, 1,1]), gl.STATIC_DRAW);
+            const aPos = gl.getAttribLocation(prog, 'aPos');
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+            const uUvScale = gl.getUniformLocation(prog, 'uUvScale');
+            const uUvOffset = gl.getUniformLocation(prog, 'uUvOffset');
+            const uTime = gl.getUniformLocation(prog, 'uTime');
+            gl.uniform1f(gl.getUniformLocation(prog, 'uAmp'), 0.013);
+
+            function upload(unit, img, uniformName) {
+                const tex = gl.createTexture();
+                gl.activeTexture(gl.TEXTURE0 + unit);
+                gl.bindTexture(gl.TEXTURE_2D, tex);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+                gl.uniform1i(gl.getUniformLocation(prog, uniformName), unit);
+            }
+
+            let needLayout = true;
+            function layout() {
+                const box = heroMedia.getBoundingClientRect();
+                if (!box.width || !box.height) return false;
+                needLayout = false;
+                const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                const cw = Math.max(1, Math.round(box.width * dpr));
+                const ch = Math.max(1, Math.round(box.height * dpr));
+                if (canvas.width !== cw || canvas.height !== ch) {
+                    canvas.width = cw;
+                    canvas.height = ch;
+                }
+                gl.viewport(0, 0, cw, ch);
+                // 完全複製 background-size: cover + background-position: center 60%
+                const s = Math.max(cw / HERO_IMAGE_WIDTH, ch / HERO_IMAGE_HEIGHT);
+                const dw = HERO_IMAGE_WIDTH * s, dh = HERO_IMAGE_HEIGHT * s;
+                gl.uniform2f(uUvScale, cw / dw, ch / dh);
+                gl.uniform2f(uUvOffset, -((cw - dw) / 2) / dw, -((ch - dh) * HERO_FOCUS_Y) / dh);
+                return true;
+            }
+
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const src = window.innerWidth * dpr > HERO_IMAGE_WIDTH
+                ? '/assets/hero/qingyi-river-still-2x.webp'
+                : '/assets/hero/qingyi-river-still.webp';
+
+            function load(url) {
+                return new Promise((res, rej) => {
+                    const im = new Image();
+                    im.decoding = 'sync';
+                    im.onload = () => res(im);
+                    im.onerror = rej;
+                    im.src = url;
+                });
+            }
+
+            Promise.all([load(src), load('/assets/hero/qingyi-water-mask.png')]).then(([img, mask]) => {
+                upload(0, img, 'uImage');
+                upload(1, mask, 'uMask');
+                heroMedia.appendChild(canvas);
+                if (!layout()) return;
+
+                let onScreen = true, awake = true, running = false, shown = false, raf = 0;
+                const t0 = performance.now();
+
+                function frame(now) {
+                    raf = requestAnimationFrame(frame);
+                    if (needLayout) layout();
+                    gl.uniform1f(uTime, (now - t0) / 1000);
+                    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                    if (!shown) {
+                        shown = true;
+                        requestAnimationFrame(() => canvas.classList.add('is-ready'));
+                    }
+                }
+                function sync() {
+                    const want = onScreen && awake;
+                    if (want === running) return;
+                    running = want;
+                    if (want) raf = requestAnimationFrame(frame);
+                    else cancelAnimationFrame(raf);
+                }
+                sync();
+
+                // 捲離視窗或切到別的分頁就停畫，不必白耗電
+                if ('IntersectionObserver' in window) {
+                    new IntersectionObserver(es => {
+                        onScreen = es[0].isIntersecting;
+                        sync();
+                    }).observe(heroMedia);
+                }
+                document.addEventListener('visibilitychange', () => {
+                    awake = !document.hidden;
+                    sync();
+                });
+                window.addEventListener('resize', () => { needLayout = true; });
+            }).catch(() => {});
+        })();
     </script>
+    <script src="/auth-widget.js"></script>
 </body>
 </html>

@@ -1,0 +1,35 @@
+# 本地開發環境變數模板 — 把此檔複製為 functions/.dev.vars 並填入真實值
+# .dev.vars 已被 .gitignore 排除，絕不會被提交。
+#
+# 真實的密鑰請通過以下命令注入到生產環境（永遠不要寫進任何代碼或文檔）：
+#   npx wrangler pages secret put DEEPSEEK_API_KEY --project-name zykongjian
+#   npx wrangler pages secret put AZURE_TTS_KEY    --project-name zykongjian
+#   npx wrangler pages secret put AZURE_TTS_REGION --project-name zykongjian
+
+# ── 鑑權（已存在，沿用倉庫現有設置） ──
+JWT_SECRET=replace-with-strong-random-string
+
+# ── DeepSeek（粵語翻譯 LLM） ──
+DEEPSEEK_API_KEY=replace-with-your-deepseek-key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+
+# ── Azure 認知服務 TTS（粵語朗讀） ──
+AZURE_TTS_KEY=replace-with-your-azure-key
+AZURE_TTS_REGION=southeastasia
+
+# ── Groq Whisper（粵語 ASR fallback，可選但強烈建議） ──
+#
+# 為什麼要它？Cloudflare Workers AI Whisper 對單次請求 >2MB 會返回 3006: Request is too large。
+# 即使前端已切塊壓縮，遇到極端情況（網絡抖動、單塊邊界恰好較大）仍會偶發 3006。
+# 配置了 GROQ_API_KEY 後，CF 失敗會自動 fallback 到 Groq，永遠不會空手而歸。
+#
+# 申請：https://console.groq.com → 創建 API Key（免費 14400 req/day，速度極快）
+# 設置：npx wrangler pages secret put GROQ_API_KEY --project-name zykongjian
+#
+# GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
+# GROQ_WHISPER_MODEL=whisper-large-v3-turbo   # 或 whisper-large-v3（更準但稍慢）
+# ASR_PROVIDER_ORDER=cloudflare,groq           # 默認；改成 `groq,cloudflare` 可直接走 Groq
+
+# ── Cloudflare Turnstile（人機驗證，可選） ──
+# TURNSTILE_SECRET=

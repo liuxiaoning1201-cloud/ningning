@@ -1,0 +1,15 @@
+name = "caihua-game"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[durable_objects]
+bindings = [
+  { name = "ROOMS", class_name = "GameRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom"]
+
+# AI 生詞 / 學習卡透過平台統一 DeepSeek 代理（Pages Function）取得，
+# 無需在此設定密鑰。預設代理位址見 src/index.js 的 AI_PROXY_URL。

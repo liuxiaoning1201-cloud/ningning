@@ -1,0 +1,13 @@
+{
+  "name": "日箋",
+  "short_name": "日箋",
+  "description": "今日、隨想、稍後與當日記錄簿",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4efe4",
+  "theme_color": "#f4efe4",
+  "lang": "zh-Hant",
+  "icons": [
+    { "src": "./icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}
