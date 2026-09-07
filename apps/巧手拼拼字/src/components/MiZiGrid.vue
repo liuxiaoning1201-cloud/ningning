@@ -61,9 +61,27 @@ function pieceBox(piece: Piece) {
   return { w, h, area: w * h };
 }
 
+function visualRot(piece: Piece) {
+  return renderRotation(piece.strokeId, piece.rot, piece.variantKey);
+}
+
+/** 格子座標 → 物品本地座標（已跟畫面旋轉對齊）。 */
+function toPieceLocal(piece: Piece, local: { x: number; y: number }) {
+  const rad = (visualRot(piece) * Math.PI) / 180;
+  const dx = local.x - piece.x;
+  const dy = local.y - piece.y;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  return {
+    x: dx * cos + dy * sin,
+    y: -dx * sin + dy * cos,
+  };
+}
+
 function containsPoint(piece: Piece, x: number, y: number) {
   const { w, h } = pieceBox(piece);
-  return x >= piece.x - w / 2 && x <= piece.x + w / 2 && y >= piece.y - h / 2 && y <= piece.y + h / 2;
+  const local = toPieceLocal(piece, { x, y });
+  return Math.abs(local.x) <= w / 2 && Math.abs(local.y) <= h / 2;
 }
 
 function pickPieceAt(x: number, y: number): Piece | null {
@@ -108,11 +126,12 @@ function startResize(event: PointerEvent, mode: 'se' | 'ne' | 'sw' | 'nw' | 'e' 
   const local = toLocal(event);
   if (!piece || !local) return;
   const { w, h } = pieceBox(piece);
+  const localPt = toPieceLocal(piece, local);
   drag.value = {
     kind: 'resize',
     id: piece.id,
     mode,
-    startDist: Math.hypot(local.x - piece.x, local.y - piece.y) || 0.04,
+    startDist: Math.hypot(localPt.x, localPt.y) || 0.04,
     startW: w,
     startH: h,
   };
@@ -123,7 +142,7 @@ function startRotate(event: PointerEvent) {
   event.stopPropagation();
   const piece = selectedPiece.value;
   const local = toLocal(event);
-  if (!piece || !local || piece.strokeId === 'dian') return;
+  if (!piece || !local) return;
   drag.value = {
     kind: 'rotate',
     id: piece.id,
@@ -149,14 +168,17 @@ function onPointerMove(event: PointerEvent) {
   const piece = props.pieces.find((p) => p.id === current.id);
   if (!piece) return;
   if (current.kind === 'rotate') {
-    const ang = pointerAngle(piece, local);
-    emit('transform', { id: piece.id, rot: current.startRot + (ang - current.startAngle) });
+    let delta = pointerAngle(piece, local) - current.startAngle;
+    while (delta > 180) delta -= 360;
+    while (delta < -180) delta += 360;
+    emit('transform', { id: piece.id, rot: current.startRot + delta });
     return;
   }
+  const localPt = toPieceLocal(piece, local);
   if (current.mode === 'e') {
     emit('transform', {
       id: piece.id,
-      scale: clampSize(Math.abs(local.x - piece.x) * 2),
+      scale: clampSize(Math.abs(localPt.x) * 2),
       scaleY: current.startH,
     });
     return;
@@ -165,11 +187,11 @@ function onPointerMove(event: PointerEvent) {
     emit('transform', {
       id: piece.id,
       scale: current.startW,
-      scaleY: clampSize(Math.abs(local.y - piece.y) * 2),
+      scaleY: clampSize(Math.abs(localPt.y) * 2),
     });
     return;
   }
-  const dist = Math.hypot(local.x - piece.x, local.y - piece.y);
+  const dist = Math.hypot(localPt.x, localPt.y);
   const factor = dist / current.startDist;
   emit('transform', {
     id: piece.id,
@@ -211,11 +233,16 @@ const xfStyle = computed(() => {
   const piece = selectedPiece.value;
   if (!piece) return {};
   const { w, h } = pieceBox(piece);
+  const min = 0.14;
+  const fw = Math.max(w, min);
+  const fh = Math.max(h, min);
   return {
-    left: `${(piece.x - w / 2) * 100}%`,
-    top: `${(piece.y - h / 2) * 100}%`,
-    width: `${w * 100}%`,
-    height: `${h * 100}%`,
+    left: `${(piece.x - fw / 2) * 100}%`,
+    top: `${(piece.y - fh / 2) * 100}%`,
+    width: `${fw * 100}%`,
+    height: `${fh * 100}%`,
+    transform: `rotate(${visualRot(piece)}deg)`,
+    transformOrigin: 'center center',
   };
 });
 
@@ -245,12 +272,9 @@ const pieceWrapStyle = (piece: Piece) => {
   };
 };
 
-const pieceImgStyle = (piece: Piece) => {
-  if (piece.strokeId === 'dian') return { transform: 'none' };
-  return {
-    transform: `rotate(${renderRotation(piece.strokeId, piece.rot, piece.variantKey)}deg)`,
-  };
-};
+const pieceImgStyle = (piece: Piece) => ({
+  transform: `rotate(${visualRot(piece)}deg)`,
+});
 
 const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.seq));
 </script>
@@ -298,7 +322,6 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
       :key="piece.id"
       class="piece-wrap"
       :class="{
-        'is-dian': piece.strokeId === 'dian',
         'just-placed': piece.id === poppedId,
         'is-dim': piece.id !== selectedId,
       }"
@@ -329,7 +352,6 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
         ×
       </button>
       <button
-        v-if="selectedPiece.strokeId !== 'dian'"
         class="xf-rot"
         type="button"
         title="拖動來轉角度"
@@ -339,8 +361,8 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
       <button class="xf-h xf-ne" type="button" title="等比例縮放" @pointerdown="startResize($event, 'ne')" />
       <button class="xf-h xf-sw" type="button" title="等比例縮放" @pointerdown="startResize($event, 'sw')" />
       <button class="xf-h xf-se" type="button" title="等比例縮放" @pointerdown="startResize($event, 'se')" />
-      <button class="xf-h xf-e" type="button" title="拉寬" @pointerdown="startResize($event, 'e')" />
-      <button class="xf-h xf-s" type="button" title="拉高" @pointerdown="startResize($event, 's')" />
+      <button class="xf-h xf-e" type="button" title="向右拉長筆畫" @pointerdown="startResize($event, 'e')" />
+      <button class="xf-h xf-s" type="button" title="向下壓扁筆畫" @pointerdown="startResize($event, 's')" />
     </div>
   </div>
 </template>

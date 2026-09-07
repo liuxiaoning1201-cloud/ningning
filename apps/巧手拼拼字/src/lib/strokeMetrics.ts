@@ -166,7 +166,29 @@ export function defaultObjectScale(id: StrokeId): number {
   return Math.min(0.34, objectScale({ length: m.extent, extent: m.extent, width: m.extent, height: m.extent }, id));
 }
 
-/** 拖入正確槽位時的位置、大小、角度。點永遠尖上圓下，不跟著墨跡斜。 */
+function wrapDelta(delta: number): number {
+  let n = delta;
+  while (n > 180) n -= 360;
+  while (n < -180) n += 360;
+  return n;
+}
+
+/**
+ * 吸附時先給一個認得出該物品的角度；之後老師拖旋轉鈕可以任意轉。
+ * 曲尺、衣帽鈎外形已經帶方向，只微調；複合筆最多先傾一點貼墨跡。
+ */
+function initialFitRot(id: StrokeId, slotAngle: number, variantKey?: string): number {
+  const base = baseAngleFor(id, variantKey);
+  if (id === 'dian') return base;
+  const delta = wrapDelta(slotAngle - base);
+  if (AXIS_ALIGNED.has(id)) return base + Math.max(-8, Math.min(8, delta));
+  if (STROKE_BY_ID[id].category === 'compound') {
+    return base + Math.max(-32, Math.min(32, delta));
+  }
+  return slotAngle;
+}
+
+/** 拖入正確槽位時的位置、大小、角度。點預設尖上圓下，選中後仍可旋轉。 */
 export function fitToSlot(id: StrokeId, slot: StrokeSlot, variantKey?: string) {
   const chosen = variantKey ?? pickVariant(id, slot.angle);
   const size = objectSize(slot, id, chosen);
@@ -175,7 +197,7 @@ export function fitToSlot(id: StrokeId, slot: StrokeSlot, variantKey?: string) {
     y: slot.cy,
     scale: size.sx,
     scaleY: size.sy,
-    rot: id === 'dian' ? baseAngleFor('dian') : slot.angle,
+    rot: initialFitRot(id, slot.angle, chosen),
     variantKey: chosen,
   };
 }
@@ -192,7 +214,7 @@ export function sampleCount(id: StrokeId): number {
 }
 
 /**
- * 物品被畫出來的角度。水滴圖本身尖朝上（12 點鐘），畫面上永遠不再轉。
+ * 物品被畫出來的角度。水滴圖本身尖朝上（12 點鐘），吸附時先直立，選中後可再轉。
  */
 export function baseAngleFor(id: StrokeId, variantKey?: string): number {
   if (id === 'dian') return 0;
@@ -228,8 +250,8 @@ function angleDelta(a: number, b: number): number {
 }
 
 /**
- * 折角類物品的外形已經帶著方向，轉太多就認不出來了。
- * 曲尺、衣帽鈎這類本來就是軸對齊的 ┐，幾乎不要轉，靠長寬去貼字影。
+ * 折角類物品的外形已經帶著方向。吸附時只微調；
+ * 老師拖旋轉鈕時不再夾角度，畫面要跟手走。
  */
 const AXIS_ALIGNED = new Set<StrokeId>([
   'hengzhi',
@@ -240,22 +262,8 @@ const AXIS_ALIGNED = new Set<StrokeId>([
   'zhigou',
   'henggou',
 ]);
-const COMPOUND_ROTATION_LIMIT = 32;
 
-/** 畫面上真正要套的旋轉角度。 */
+/** 畫面上真正要套的旋轉角度。老師拖過的角度原樣呈現。 */
 export function renderRotation(id: StrokeId, rot: number, variantKey?: string): number {
-  // 點＝水滴：永遠尖朝上、圓底朝下，不要跟楷書斜勢一起轉歪。
-  if (id === 'dian') return 0;
-
-  let delta = rot - baseAngleFor(id, variantKey);
-  while (delta > 180) delta -= 360;
-  while (delta < -180) delta += 360;
-
-  if (AXIS_ALIGNED.has(id)) {
-    return Math.max(-8, Math.min(8, delta));
-  }
-  if (STROKE_BY_ID[id].category === 'compound') {
-    return Math.max(-COMPOUND_ROTATION_LIMIT, Math.min(COMPOUND_ROTATION_LIMIT, delta));
-  }
-  return delta;
+  return wrapDelta(rot - baseAngleFor(id, variantKey));
 }

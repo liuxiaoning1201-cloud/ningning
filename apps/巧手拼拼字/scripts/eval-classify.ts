@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import bundled from '../src/data/chars.json';
 import { classifyMedian, describeMedian, fillStrokeTypes } from '../src/lib/classifyStroke';
 import { mergeSplitEarRadical } from '../src/lib/earRadical';
-import { mergeSplitWalkingNa } from '../src/lib/walkingRadical';
+import { mergeSplitWalkingNa, walkingTailKind } from '../src/lib/walkingRadical';
 import { applyStrokeLocks, resetStrokeLocksForTests, setStrokeLock } from '../src/lib/strokeLocks';
 import {
   applyStrokeLayout,
@@ -18,10 +18,18 @@ import {
   insertLayoutItem,
   removeLayoutItem,
   resetStrokeLayoutsForTests,
+  setLayoutItemType,
 } from '../src/lib/strokeLayouts';
 import { hitsSlot, slotsForChar } from '../src/lib/geometry';
 import { inspectChar, unusedOfficialNames } from '../src/lib/charIssues';
-import { defaultObjectScale, fitToSlot, objectSize, renderRotation, sizeForCharStroke } from '../src/lib/strokeMetrics';
+import {
+  baseAngleFor,
+  defaultObjectScale,
+  fitToSlot,
+  objectSize,
+  renderRotation,
+  sizeForCharStroke,
+} from '../src/lib/strokeMetrics';
 import type { CharData, Median, StrokeId } from '../src/types';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -186,11 +194,29 @@ for (const data of Object.values(chars)) {
 process.stdout.write(`已核對字當生字重跑，不符 ${teacherMiss} 個\n`);
 if (teacherMiss) process.exitCode = 1;
 
-if (renderRotation('dian', 49) !== 0 || renderRotation('dian', -90) !== 0 || renderRotation('dian', 180) !== 0) {
-  process.stdout.write('點的畫面旋轉應永遠是 0\n');
+if (Math.abs(renderRotation('dian', 0)) > 0.01) {
+  process.stdout.write('點未拖轉時畫面旋轉應是 0\n');
+  process.exitCode = 1;
+} else if (Math.abs(renderRotation('dian', 49) - 49) > 0.01 || Math.abs(renderRotation('dian', -90) + 90) > 0.01) {
+  process.stdout.write('點拖轉後畫面應跟著轉\n');
   process.exitCode = 1;
 } else {
-  process.stdout.write('點直立 OK\n');
+  process.stdout.write('點可旋轉 OK\n');
+}
+
+const hengzhiVisual = renderRotation('hengzhi', baseAngleFor('hengzhi') + 40);
+if (Math.abs(hengzhiVisual - 40) > 0.01) {
+  process.stdout.write(`曲尺拖轉應自由，得到 ${hengzhiVisual}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('曲尺可旋轉 OK\n');
+}
+
+if (walkingTailKind(['dian', 'hengpie', 'na']) !== 'three' || walkingTailKind(['dian', 'heng', 'pie', 'na']) !== 'four') {
+  process.stdout.write('走之底三筆／四筆辨識 FAIL\n');
+  process.exitCode = 1;
+} else {
+  process.stdout.write('走之底三筆／四筆辨識 OK\n');
 }
 
 const zhu = chars['主'];
@@ -296,9 +322,25 @@ if (jinTypes[8] !== 'dian' || jinTypes[9] !== 'hengpie' || jinTypes[10] !== 'na'
   process.stdout.write('進 走之底應為點、橫撇、捺\n');
   process.exitCode = 1;
 }
+if (walkingTailKind(jinTypes) !== 'three') {
+  process.stdout.write('進 走之底應辨成動畫三筆\n');
+  process.exitCode = 1;
+}
 
 const zhiChar = loadFixture('之');
 expectTypes('之', autoTypes(zhiChar), ['dian', 'hengpie', 'na']);
+resetStrokeLayoutsForTests();
+ensureStrokeLayout('之', autoTypes(zhiChar));
+setLayoutItemType('之', 1, 'heng');
+insertLayoutItem('之', 1, 'pie');
+const zhiFour = applyStrokeLayout({ ...zhiChar, strokeTypes: autoTypes(zhiChar) });
+if (walkingTailKind(zhiFour.strokeTypes) !== 'four' || zhiFour.strokeTypes[2] !== 'pie' || zhiFour.synthetic?.[2] !== true) {
+  process.stdout.write(`之 拆四筆 FAIL ${zhiFour.strokeTypes.join(',')}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('之 拆成點、橫、撇、捺 OK\n');
+}
+resetStrokeLayoutsForTests();
 
 const zhe = loadFixture('這');
 if (zhe.medians.length !== 10) {

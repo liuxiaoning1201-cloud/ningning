@@ -369,7 +369,8 @@ export function fillStrokeTypes(
 }
 
 /**
- * 走之底：點之後是橫撇，最後一筆是捺（常幾乎躺平）。
+ * 走之底動畫常是三筆：點、橫撇、捺（平捺常幾乎躺平）。
+ * 字表教四筆（點、橫、撇、捺）時，橫+撇會連成這一筆橫撇。
  * 字末三筆，或尚未黏合的四筆（點、折、短頓、長橫）。
  */
 function applyWalkingRadicalNames(types: StrokeId[], locked: boolean[], medians: Median[]) {
