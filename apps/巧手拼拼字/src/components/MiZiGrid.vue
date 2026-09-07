@@ -233,14 +233,11 @@ const xfStyle = computed(() => {
   const piece = selectedPiece.value;
   if (!piece) return {};
   const { w, h } = pieceBox(piece);
-  const min = 0.14;
-  const fw = Math.max(w, min);
-  const fh = Math.max(h, min);
   return {
-    left: `${(piece.x - fw / 2) * 100}%`,
-    top: `${(piece.y - fh / 2) * 100}%`,
-    width: `${fw * 100}%`,
-    height: `${fh * 100}%`,
+    left: `${(piece.x - w / 2) * 100}%`,
+    top: `${(piece.y - h / 2) * 100}%`,
+    width: `${w * 100}%`,
+    height: `${h * 100}%`,
     transform: `rotate(${visualRot(piece)}deg)`,
     transformOrigin: 'center center',
   };
