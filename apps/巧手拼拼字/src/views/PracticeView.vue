@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import CharCard from '@/components/CharCard.vue';
+import CharGloss from '@/components/CharGloss.vue';
 import MascotHint from '@/components/MascotHint.vue';
 import MiZiGrid from '@/components/MiZiGrid.vue';
 import ObjectToolbar from '@/components/ObjectToolbar.vue';
@@ -180,6 +181,7 @@ const ghostPaths = computed(() => (settings.state.ghost && data.value ? inkStrok
             </p>
             <p v-if="rejectHint" class="hint" style="color: var(--peach-deep); margin-top: 6px">{{ rejectHint }}</p>
           </div>
+          <CharGloss :char="current" />
         </div>
       </div>
     </div>
