@@ -368,7 +368,7 @@ textarea.text-input {
 .home-sub {
   color: var(--ink);
   font-size: 1.05rem;
-  max-width: 22em;
+  max-width: 38em;
   line-height: 1.85;
   font-weight: 500;
 }

@@ -44,13 +44,6 @@ const menu = [
 
     <MascotHint mood="idle" message="你看，上面這五個字，都是家裡的東西拼的。" />
 
-    <p class="home-sub">
-      筷子平放，就是橫。<br />
-      蠟燭站直，就是直。<br />
-      雨傘往下一鈎，就是鈎。<br />
-      把東西拖進米字格，對了物品、位置和順序，字就站起來了。
-    </p>
-
     <div class="home-menu">
       <button
         v-for="item in menu"
@@ -66,6 +59,12 @@ const menu = [
         <span class="menu-desc">{{ item.desc }}</span>
       </button>
     </div>
+
+    <p class="home-sub">
+      筷子平放，就是橫。<br />
+      蠟燭站直，就是直。<br />
+      雨傘往下一鈎，就是鈎。把東西拖進米字格，對了物品、位置和順序，字就站起來了。
+    </p>
 
     <p class="hint home-foot">
       正在用「{{ books.active?.name ?? '未選擇' }}」。老師在設定裡貼生字就可以練。
