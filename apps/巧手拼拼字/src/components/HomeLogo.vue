@@ -7,6 +7,7 @@ import { slotsForChar } from '@/lib/geometry';
 import { fitToSlot, pieceLayer, renderRotation } from '@/lib/strokeMetrics';
 import type { CharData, Piece } from '@/types';
 
+/** 標題這五個字，用跟練習同一套物品與槽位拼出來。 */
 const TITLE = ['巧', '手', '拼', '拼', '字'] as const;
 
 interface LogoCell {
