@@ -178,15 +178,15 @@ async function resetReviewChar() {
   toast(`已還原「${reviewChar.value}」的自動判斷`);
 }
 
-async function splitWalkingToFour() {
+/** 動畫只給三筆的字（如「之」）：在橫撇與捺之間補上字表要求的那一撇。 */
+async function addWalkingPie() {
   const ch = reviewChar.value;
   const data = reviewData.value;
   if (!ch || !data || walkingTailKind(data.strokeTypes) !== 'three') return;
   const fold = data.strokeTypes.length - 2;
-  layouts.setType(ch, fold, 'heng', data.strokeTypes);
   layouts.insert(ch, fold, 'pie', data.strokeTypes);
   await loadReview(ch);
-  toast(`「${ch}」已拆成點、橫、撇、捺。撇用羽毛。`);
+  toast(`「${ch}」已補上那一撇，成為點、橫撇、撇、捺。撇用羽毛。`);
 }
 
 function toast(text: string) {
@@ -404,19 +404,19 @@ async function onPickFile(event: Event) {
                   </div>
                   <div v-if="walkingKind" class="walking-note">
                     <p>
-                      香港小學把<strong>走之底</strong>算四筆：點（水滴）、橫（筷子）、<strong>撇（羽毛）</strong>、捺（滑梯）。
-                      橫撇與捺中間那一筆就是撇。動畫常把橫和撇連成一筆橫撇（三角旗）。
+                      <strong>走之底</strong>是四筆：點（水滴）、橫撇（三角旗）、<strong>撇（羽毛）</strong>、捺（滑梯）。
+                      橫撇與捺中間那一筆就是撇，它又短又陡，收筆停在捺的上方。
                     </p>
                     <p>常見字：{{ walkingExampleText }} 等，凡有走之／「之」的字都有這一撇。</p>
                     <button
                       v-if="walkingKind === 'three'"
                       class="btn btn-sky btn-sm"
                       type="button"
-                      @click="splitWalkingToFour"
+                      @click="addWalkingPie"
                     >
-                      拆成四筆（加入羽毛）
+                      補上那一撇（加入羽毛）
                     </button>
-                    <p v-else class="hint" style="margin: 0">已照字表拆成四筆。按「還原」可回到動畫三筆。</p>
+                    <p v-else class="hint" style="margin: 0">已照字表出四筆。按「還原」可回到動畫的筆數。</p>
                   </div>
                   <div v-if="reviewDirty" class="row" style="margin-bottom: 8px">
                     <button class="btn btn-ghost btn-sm" type="button" @click="resetReviewChar">

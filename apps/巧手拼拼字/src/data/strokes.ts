@@ -61,7 +61,7 @@ export const STROKES: StrokeDef[] = [
     material: '羽',
     stage: 1,
     examples: ['人', '竹'],
-    hint: '羽毛從右上掃到左下。長撇用較長的羽毛，並跟著那一筆的角度。',
+    hint: '羽毛從右上掃到左下。長撇用較長的羽毛，並跟著那一筆的角度；走之底那一撇又短又陡，羽毛要立起來。',
     drawScale: 0.82,
   },
   {
