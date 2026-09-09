@@ -988,6 +988,74 @@ button.char-chip {
   font-weight: 700;
 }
 
+/* ── 字義・組詞（萌典） ── */
+
+.gloss-senses {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+.gloss-senses li {
+  margin-bottom: 6px;
+}
+
+.gloss-type {
+  display: inline-block;
+  margin-right: 5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(51, 64, 58, 0.08);
+  color: var(--ink-soft);
+}
+
+.gloss-example {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.gloss-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.gloss-word {
+  border: 1px solid rgba(51, 64, 58, 0.14);
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 4px 11px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+.gloss-word:hover,
+.gloss-word.is-open {
+  background: rgba(139, 199, 235, 0.28);
+  border-color: rgba(139, 199, 235, 0.6);
+}
+
+.gloss-word-def {
+  margin-top: 8px;
+}
+
+.gloss-english {
+  margin-top: 8px;
+}
+
+.gloss-source {
+  margin-top: 12px;
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+}
+
 /* ── 錦囊與對話框 ── */
 
 .overlay {
