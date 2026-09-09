@@ -369,27 +369,41 @@ export function fillStrokeTypes(
 }
 
 /**
- * 走之底：點之後是橫撇，最後一筆是捺（常幾乎躺平）。
- * 字末三筆，或尚未黏合的四筆（點、折、短頓、長橫）。
+ * 走之底是四筆：點、橫撇、撇、捺（平捺常幾乎躺平）。
+ * 中間那一撇又短又陡、還往下偏右一點，單看幾何會判成水滴或直，
+ * 只能靠「點 + 折 + 短陡筆 + 平捺」這組鄰居關係認出來，認出後鎖住，
+ * 免得筆數少一筆的開源名稱表又把它改掉。
+ *
+ * 動畫只給三筆的字（如「之」）仍照點、橫撇、捺命名，
+ * 老師要湊足字表的四筆可在設定加一筆撇。
  */
+const WALKING_FOLDS = new Set<StrokeId>(['hengzhi', 'hengpie', 'henggou']);
+
 function applyWalkingRadicalNames(types: StrokeId[], locked: boolean[], medians: Median[]) {
   const n = types.length;
-  const mark = (fold: number, last: number) => {
-    const lastS = describeMedian(medians[last]);
-    const lastLooksNa = types[last] === 'na' || isPingNaShape(lastS);
-    if (!lastLooksNa) return;
-    if (!locked[fold] && (types[fold] === 'hengzhi' || types[fold] === 'hengpie' || types[fold] === 'henggou')) {
-      types[fold] = 'hengpie';
-    }
-    if (!locked[last]) types[last] = 'na';
+  const looksNa = (i: number) => types[i] === 'na' || isPingNaShape(describeMedian(medians[i]));
+  const name = (i: number, id: StrokeId) => {
+    if (locked[i]) return;
+    types[i] = id;
+    locked[i] = true;
   };
 
-  if (n >= 3 && types[n - 3] === 'dian') mark(n - 2, n - 1);
+  if (n >= 4 && types[n - 4] === 'dian' && WALKING_FOLDS.has(types[n - 3]) && looksNa(n - 1)) {
+    const mid = describeMedian(medians[n - 2]);
+    const midCouldBePie = types[n - 2] === 'dian' || types[n - 2] === 'zhi' || types[n - 2] === 'pie';
+    const shortSteep =
+      mid.span < 300 && mid.boxH >= mid.boxW * 0.85 && mid.startDeg >= 45 && mid.startDeg <= 130;
+    if (midCouldBePie && shortSteep) {
+      name(n - 3, 'hengpie');
+      name(n - 2, 'pie');
+      name(n - 1, 'na');
+      return;
+    }
+  }
 
-  if (n >= 4 && types[n - 4] === 'dian') {
-    const head = describeMedian(medians[n - 2]);
-    const shortHead = head.span < 280 && (types[n - 2] === 'dian' || types[n - 2] === 'zhi' || types[n - 2] === 'pie');
-    if (shortHead) mark(n - 3, n - 1);
+  if (n >= 3 && types[n - 3] === 'dian' && WALKING_FOLDS.has(types[n - 2]) && looksNa(n - 1)) {
+    name(n - 2, 'hengpie');
+    name(n - 1, 'na');
   }
 }
 

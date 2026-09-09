@@ -193,8 +193,20 @@ function cloneMedian(median: Median): Median {
   return median.map(([x, y]) => [x, y]);
 }
 
-function syntheticMedian(neighbor: Median | undefined, slotIndex: number): Median {
+/**
+ * 老師插入的筆沒有墨跡，這裡編一段中線出來當練習槽位。
+ * 撇從前一筆的收筆處往左下走，一放上去就是撇的姿態（走之底那一撇就靠它）；
+ * 其他筆型維持前一筆中點下方的一小段橫線。
+ */
+function syntheticMedian(neighbor: Median | undefined, slotIndex: number, type: StrokeId): Median {
   const pts = neighbor?.length ? neighbor : ([[400, 500], [620, 500]] as Median);
+  if (type === 'pie') {
+    const [ex, ey] = pts[pts.length - 1] ?? [512, 400];
+    return [
+      [ex + 20, ey - 20],
+      [ex - 60, ey - 180],
+    ];
+  }
   const mid = pts[Math.floor(pts.length / 2)] ?? [512, 400];
   const y = mid[1] - 28 * ((slotIndex % 6) + 1);
   return [
@@ -227,7 +239,7 @@ export function applyStrokeLayout(data: CharData): CharData {
       const neighbor =
         medians[medians.length - 1] ??
         (from != null ? data.medians[Math.min(from, data.medians.length - 1)] : data.medians[0]);
-      medians.push(syntheticMedian(neighbor, strokes.length));
+      medians.push(syntheticMedian(neighbor, strokes.length, item.type));
       strokes.push('');
       strokeTypes.push(item.type);
       synthetic.push(true);

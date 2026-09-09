@@ -15,6 +15,8 @@ const props = defineProps<{
   editable?: boolean;
   /** 老師改過、已被鎖定的筆畫索引 */
   lockedIndexes?: number[];
+  /** 設定頁修改筆畫時用：只留動畫舞台，避免把字卡整塊塞進清單 */
+  compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -99,8 +101,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="charcard">
-    <div class="card-title">
+  <div class="charcard" :class="{ 'is-compact': compact }">
+    <div v-if="!compact" class="card-title">
       <span>{{ data.char }} 的筆順</span>
     </div>
 

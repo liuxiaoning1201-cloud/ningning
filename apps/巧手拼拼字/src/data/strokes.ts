@@ -21,7 +21,7 @@ export const STROKES: StrokeDef[] = [
     material: '水',
     stage: 1,
     examples: ['主', '卜'],
-    hint: '一顆水滴。尖朝上、圓底朝下，放進格子時不會跟著墨跡轉斜。',
+    hint: '一顆水滴。吸附時尖朝上、圓底朝下；選中後可拖頂上的圓點旋轉。',
     // 水滴是一整顆，比一個點粗，縮一點才不會蓋掉旁邊的筆
     drawScale: 0.82,
   },
@@ -61,7 +61,7 @@ export const STROKES: StrokeDef[] = [
     material: '羽',
     stage: 1,
     examples: ['人', '竹'],
-    hint: '羽毛從右上掃到左下。長撇用較長的羽毛，並跟著那一筆的角度。',
+    hint: '羽毛從右上掃到左下。長撇用較長的羽毛，並跟著那一筆的角度；走之底那一撇又短又陡，羽毛要立起來。',
     drawScale: 0.82,
   },
   {

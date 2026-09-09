@@ -194,7 +194,7 @@ export function usePuzzle(options: { snap: boolean }) {
 
   function rotate(deg: number) {
     const piece = pieces.value.find((p) => p.id === selectedId.value);
-    if (!piece || piece.strokeId === 'dian') return;
+    if (!piece) return;
     piece.rot = (piece.rot + deg) % 360;
   }
 
@@ -212,7 +212,7 @@ export function usePuzzle(options: { snap: boolean }) {
     if (!piece) return;
     if (patch.scale !== undefined) piece.scale = Math.min(1.08, Math.max(0.05, patch.scale));
     if (patch.scaleY !== undefined) piece.scaleY = Math.min(1.08, Math.max(0.05, patch.scaleY));
-    if (patch.rot !== undefined && piece.strokeId !== 'dian') piece.rot = patch.rot;
+    if (patch.rot !== undefined) piece.rot = patch.rot;
   }
 
   function removeSelected() {

@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import bundled from '../src/data/chars.json';
 import { classifyMedian, describeMedian, fillStrokeTypes } from '../src/lib/classifyStroke';
 import { mergeSplitEarRadical } from '../src/lib/earRadical';
-import { mergeSplitWalkingNa } from '../src/lib/walkingRadical';
+import { mergeSplitWalkingNa, walkingTailKind } from '../src/lib/walkingRadical';
 import { applyStrokeLocks, resetStrokeLocksForTests, setStrokeLock } from '../src/lib/strokeLocks';
 import {
   applyStrokeLayout,
@@ -18,10 +18,18 @@ import {
   insertLayoutItem,
   removeLayoutItem,
   resetStrokeLayoutsForTests,
+  setLayoutItemType,
 } from '../src/lib/strokeLayouts';
 import { hitsSlot, slotsForChar } from '../src/lib/geometry';
 import { inspectChar, unusedOfficialNames } from '../src/lib/charIssues';
-import { defaultObjectScale, fitToSlot, objectSize, renderRotation, sizeForCharStroke } from '../src/lib/strokeMetrics';
+import {
+  baseAngleFor,
+  defaultObjectScale,
+  fitToSlot,
+  objectSize,
+  renderRotation,
+  sizeForCharStroke,
+} from '../src/lib/strokeMetrics';
 import type { CharData, Median, StrokeId } from '../src/types';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -186,11 +194,33 @@ for (const data of Object.values(chars)) {
 process.stdout.write(`已核對字當生字重跑，不符 ${teacherMiss} 個\n`);
 if (teacherMiss) process.exitCode = 1;
 
-if (renderRotation('dian', 49) !== 0 || renderRotation('dian', -90) !== 0 || renderRotation('dian', 180) !== 0) {
-  process.stdout.write('點的畫面旋轉應永遠是 0\n');
+if (Math.abs(renderRotation('dian', 0)) > 0.01) {
+  process.stdout.write('點未拖轉時畫面旋轉應是 0\n');
+  process.exitCode = 1;
+} else if (Math.abs(renderRotation('dian', 49) - 49) > 0.01 || Math.abs(renderRotation('dian', -90) + 90) > 0.01) {
+  process.stdout.write('點拖轉後畫面應跟著轉\n');
   process.exitCode = 1;
 } else {
-  process.stdout.write('點直立 OK\n');
+  process.stdout.write('點可旋轉 OK\n');
+}
+
+const hengzhiVisual = renderRotation('hengzhi', baseAngleFor('hengzhi') + 40);
+if (Math.abs(hengzhiVisual - 40) > 0.01) {
+  process.stdout.write(`曲尺拖轉應自由，得到 ${hengzhiVisual}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write('曲尺可旋轉 OK\n');
+}
+
+if (
+  walkingTailKind(['dian', 'hengpie', 'na']) !== 'three' ||
+  walkingTailKind(['dian', 'hengpie', 'pie', 'na']) !== 'four' ||
+  walkingTailKind(['dian', 'heng', 'pie', 'na']) !== 'four'
+) {
+  process.stdout.write('走之底三筆／四筆辨識 FAIL\n');
+  process.exitCode = 1;
+} else {
+  process.stdout.write('走之底三筆／四筆辨識 OK\n');
 }
 
 const zhu = chars['主'];
@@ -271,14 +301,49 @@ if (na.medians.length !== 6 || naTypes[4] !== 'hengpiewangou' || naTypes[5] !== 
   process.stdout.write('那 右耳 OK\n');
 }
 
-const jin = loadFixture('進');
-if (jin.medians.length !== 11) {
-  process.stdout.write(`進 走之底應黏成 11 筆，得到 ${jin.medians.length}\n`);
-  process.exitCode = 1;
-} else {
-  process.stdout.write('進 黏平捺 OK\n');
+/** 走之底四筆：教育部與港標都算四筆（進 12、這 11、遊 13、還 17）。 */
+const WALKING_FOUR: [string, number][] = [
+  ['進', 12],
+  ['這', 11],
+  ['遊', 13],
+  ['還', 17],
+];
+/** 沒抓過 fixture 的字就用打包字庫，同樣先跑黏合。 */
+function loadForWalking(ch: string): CharData {
+  const raw = chars[ch];
+  if (!raw) return loadFixture(ch);
+  const blank = raw.medians.map(() => null);
+  return mergeSplitWalkingNa(
+    mergeSplitEarRadical({ ...raw, strokeTypes: blank, verified: false })
+  );
 }
-const jinTypes = autoTypes(jin);
+
+for (const [ch, want] of WALKING_FOUR) {
+  const data = loadForWalking(ch);
+  if (data.medians.length !== want) {
+    process.stdout.write(`${ch} 應為 ${want} 筆，得到 ${data.medians.length}\n`);
+    process.exitCode = 1;
+    continue;
+  }
+  const types = autoTypes(data);
+  const tail = types.slice(-4).join(',');
+  if (tail !== 'dian,hengpie,pie,na' || walkingTailKind(types) !== 'four') {
+    process.stdout.write(`${ch} 走之底 FAIL ${types.join(',')}\n`);
+    process.exitCode = 1;
+  } else {
+    process.stdout.write(`${ch} 走之底 點、橫撇、撇、捺 OK\n`);
+  }
+  const issue = inspectChar({ ...data, strokeTypes: types, char: ch });
+  if (issue) {
+    const leftover = unusedOfficialNames(ch, types).join(',');
+    process.stdout.write(
+      `${ch} 不該進例外清單 ${issue.kind} ${issue.detail} 對不上=${leftover} 自動=${types.join(',')}\n`
+    );
+    process.exitCode = 1;
+  }
+}
+
+const jinTypes = autoTypes(loadFixture('進'));
 expectTypes('進', jinTypes, [
   'pie',
   'zhi',
@@ -290,30 +355,62 @@ expectTypes('進', jinTypes, [
   'heng',
   'dian',
   'hengpie',
+  'pie',
   'na',
 ]);
-if (jinTypes[8] !== 'dian' || jinTypes[9] !== 'hengpie' || jinTypes[10] !== 'na') {
-  process.stdout.write('進 走之底應為點、橫撇、捺\n');
+
+/** 真的被拆開的平捺（頓的末點接著長橫的起點）仍要黏回一筆。 */
+const splitNa: CharData = {
+  char: '＊',
+  strokes: ['', '', '', ''],
+  medians: [
+    [
+      [180, 700],
+      [260, 640],
+    ],
+    [
+      [120, 520],
+      [300, 470],
+      [200, 400],
+    ],
+    [
+      [200, 330],
+      [230, 180],
+    ],
+    [
+      [230, 180],
+      [600, 120],
+      [960, 90],
+    ],
+  ],
+  strokeTypes: [null, null, null, null],
+  source: 'zhhant',
+};
+const splitFixed = mergeSplitWalkingNa(splitNa);
+if (splitFixed.medians.length !== 3) {
+  process.stdout.write(`被拆開的平捺應黏回 3 筆，得到 ${splitFixed.medians.length}\n`);
   process.exitCode = 1;
+} else {
+  process.stdout.write('被拆開的平捺 黏回 OK\n');
 }
 
 const zhiChar = loadFixture('之');
 expectTypes('之', autoTypes(zhiChar), ['dian', 'hengpie', 'na']);
-
-const zhe = loadFixture('這');
-if (zhe.medians.length !== 10) {
-  process.stdout.write(`這 走之底應黏成 10 筆，得到 ${zhe.medians.length}\n`);
+resetStrokeLayoutsForTests();
+ensureStrokeLayout('之', autoTypes(zhiChar));
+insertLayoutItem('之', 1, 'pie');
+const zhiFour = applyStrokeLayout({ ...zhiChar, strokeTypes: autoTypes(zhiChar) });
+if (
+  walkingTailKind(zhiFour.strokeTypes) !== 'four' ||
+  zhiFour.strokeTypes.join(',') !== 'dian,hengpie,pie,na' ||
+  zhiFour.synthetic?.[2] !== true
+) {
+  process.stdout.write(`之 拆四筆 FAIL ${zhiFour.strokeTypes.join(',')}\n`);
   process.exitCode = 1;
 } else {
-  process.stdout.write('這 黏平捺 OK\n');
+  process.stdout.write('之 加一筆撇 點、橫撇、撇、捺 OK\n');
 }
-const zheTypes = autoTypes(zhe);
-if (zheTypes.at(-3) !== 'dian' || zheTypes.at(-2) !== 'hengpie' || zheTypes.at(-1) !== 'na') {
-  process.stdout.write(`這 走之底 FAIL ${zheTypes.join(',')}\n`);
-  process.exitCode = 1;
-} else {
-  process.stdout.write('這 走之底 點、橫撇、捺 OK\n');
-}
+resetStrokeLayoutsForTests();
 
 resetStrokeLocksForTests();
 setStrokeLock('口', 1, 'hengpie');
@@ -400,6 +497,21 @@ if (Math.abs(zhiFit.sx - zhiInk.sx) > 0.001 || Math.abs(zhiFit.sy - zhiInk.sy) >
   process.exitCode = 1;
 } else {
   process.stdout.write('同種類物品貼該筆墨跡 OK\n');
+}
+
+const walkingHengpie = objectSize({ length: 0.2, extent: 0.22, width: 0.18, height: 0.22 }, 'hengpie');
+if (walkingHengpie.sx <= walkingHengpie.sy) {
+  process.stdout.write(`橫撇應橫長撇短 FAIL ${walkingHengpie.sx.toFixed(3)}x${walkingHengpie.sy.toFixed(3)}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write(`橫撇橫長撇短 OK ${walkingHengpie.sx.toFixed(3)}x${walkingHengpie.sy.toFixed(3)}\n`);
+}
+const pingNa = objectSize({ length: 0.7, extent: 0.7, width: 0.72, height: 0.14 }, 'na');
+if (pingNa.sy >= pingNa.sx * 0.4) {
+  process.stdout.write(`平捺應壓扁 FAIL ${pingNa.sx.toFixed(3)}x${pingNa.sy.toFixed(3)}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write(`平捺壓扁 OK ${pingNa.sx.toFixed(3)}x${pingNa.sy.toFixed(3)}\n`);
 }
 
 const guiData = (bundled as Record<string, CharData>)['龜'];

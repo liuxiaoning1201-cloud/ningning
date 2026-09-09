@@ -2,13 +2,14 @@
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
+import CharCard from '@/components/CharCard.vue';
 import StrokePicker from '@/components/StrokePicker.vue';
 import { STROKE_BY_ID, strokeImage, strokeName } from '@/data/strokes';
 import { issueLabel } from '@/lib/charIssues';
 import { loadChar } from '@/lib/charData';
 import { extractHan, keepHkChars, parseImportFile } from '@/lib/importChars';
+import { WALKING_RADICAL_EXAMPLES, walkingTailKind } from '@/lib/walkingRadical';
 import { useCharPrep } from '@/stores/charPrep';
-import { useSettings } from '@/stores/settings';
 import { useStrokeLayouts } from '@/stores/strokeLayouts';
 import { useStrokeLocks } from '@/stores/strokeLocks';
 import { useWordbooks } from '@/stores/wordbooks';
@@ -16,7 +17,6 @@ import type { CharData, StrokeId } from '@/types';
 
 const router = useRouter();
 const books = useWordbooks();
-const settings = useSettings();
 const locks = useStrokeLocks();
 const layouts = useStrokeLayouts();
 const prep = useCharPrep();
@@ -46,6 +46,12 @@ const reviewLocked = computed(() =>
 const reviewDirty = computed(
   () => Boolean(reviewLayout.value) || reviewLocked.value.length > 0
 );
+
+const walkingKind = computed(() =>
+  reviewData.value ? walkingTailKind(reviewData.value.strokeTypes) : null
+);
+
+const walkingExampleText = WALKING_RADICAL_EXAMPLES.slice(0, 16).join('、');
 
 const pickerCurrent = computed(() => {
   if (picker.value?.kind !== 'revise' || !reviewData.value) return null;
@@ -170,6 +176,17 @@ async function resetReviewChar() {
   layouts.clearChar(reviewChar.value);
   await loadReview(reviewChar.value);
   toast(`已還原「${reviewChar.value}」的自動判斷`);
+}
+
+/** 動畫只給三筆的字（如「之」）：在橫撇與捺之間補上字表要求的那一撇。 */
+async function addWalkingPie() {
+  const ch = reviewChar.value;
+  const data = reviewData.value;
+  if (!ch || !data || walkingTailKind(data.strokeTypes) !== 'three') return;
+  const fold = data.strokeTypes.length - 2;
+  layouts.insert(ch, fold, 'pie', data.strokeTypes);
+  await loadReview(ch);
+  toast(`「${ch}」已補上那一撇，成為點、橫撇、撇、捺。撇用羽毛。`);
 }
 
 function toast(text: string) {
@@ -377,13 +394,29 @@ async function onPickFile(event: Event) {
                 <p v-else-if="reviewError" class="hint" style="margin-top: 12px">{{ reviewError }}</p>
                 <div v-else-if="reviewData && b.chars.includes(reviewChar)" class="stroke-editor">
                   <div class="stroke-editor-head">
-                    <span class="stroke-editor-glyph">{{ reviewChar }}</span>
+                    <CharCard :data="reviewData" :show-stroke-list="false" compact />
                     <div>
                       <div class="card-title" style="margin: 0">修改筆畫</div>
                       <p class="hint">
-                        點一筆改種類。＋在後面加一筆、－刪掉。練習會照這裡的筆數出題。
+                        左邊動畫可重播，方便對照。點一筆改種類。＋在後面加一筆、－刪掉。練習會照這裡的筆數出題。
                       </p>
                     </div>
+                  </div>
+                  <div v-if="walkingKind" class="walking-note">
+                    <p>
+                      <strong>走之底</strong>是四筆：點（水滴）、橫撇（三角旗）、<strong>撇（羽毛）</strong>、捺（滑梯）。
+                      橫撇與捺中間那一筆就是撇，它又短又陡，收筆停在捺的上方。
+                    </p>
+                    <p>常見字：{{ walkingExampleText }} 等，凡有走之／「之」的字都有這一撇。</p>
+                    <button
+                      v-if="walkingKind === 'three'"
+                      class="btn btn-sky btn-sm"
+                      type="button"
+                      @click="addWalkingPie"
+                    >
+                      補上那一撇（加入羽毛）
+                    </button>
+                    <p v-else class="hint" style="margin: 0">已照字表出四筆。按「還原」可回到動畫的筆數。</p>
                   </div>
                   <div v-if="reviewDirty" class="row" style="margin-bottom: 8px">
                     <button class="btn btn-ghost btn-sm" type="button" @click="resetReviewChar">
@@ -491,18 +524,6 @@ async function onPickFile(event: Event) {
             </p>
 
             <button class="btn btn-mint" style="width: 100%; margin-top: 14px" @click="createBook">建立字簿</button>
-          </div>
-
-          <div class="card">
-            <div class="card-title">顯示</div>
-            <label class="row" style="cursor: pointer">
-              <input v-model="settings.state.ghost" type="checkbox" />
-              <span class="hint">格子裡顯示淡淡的字影</span>
-            </label>
-            <label class="row" style="cursor: pointer; margin-top: 8px">
-              <input v-model="settings.state.mascot" type="checkbox" />
-              <span class="hint">顯示奶茶小精靈</span>
-            </label>
           </div>
         </div>
       </div>

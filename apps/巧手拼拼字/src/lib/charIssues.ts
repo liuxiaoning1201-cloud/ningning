@@ -1,6 +1,7 @@
 import { officialFitsGeometry, officialFitsReordered, officialStrokeTypes } from '@/lib/officialStrokes';
 import { hasStrokeLayout } from '@/lib/strokeLayouts';
 import { hasStrokeLocks } from '@/lib/strokeLocks';
+import { walkingTailKind } from '@/lib/walkingRadical';
 import type { CharData, StrokeId } from '@/types';
 
 export type CharIssueKind = 'missing' | 'count' | 'conflict' | 'edited';
@@ -44,6 +45,16 @@ export function unusedOfficialNames(char: string, types: (StrokeId | null)[]): S
   return unused;
 }
 
+/**
+ * 走之底照字表算四筆（點、橫撇、撇、捺），開源名稱表只給三筆。
+ * 差的就是那一撇，名稱因此整列往前挪一格、末尾多出一個對不上的名字，
+ * 兩種現象同一個成因，都不必請老師看。
+ */
+function isWalkingFourChar(data: CharData, officialLength: number): boolean {
+  if (officialLength !== data.medians.length - 1) return false;
+  return walkingTailKind(data.strokeTypes) === 'four';
+}
+
 /** 認完之後，這個字要不要請老師看一眼。 */
 export function inspectChar(data: CharData): CharIssue | null {
   const ch = data.char;
@@ -52,6 +63,7 @@ export function inspectChar(data: CharData): CharIssue | null {
   }
   const official = officialStrokeTypes(ch);
   if (official?.length && official.length !== data.medians.length) {
+    if (isWalkingFourChar(data, official.length)) return null;
     return {
       char: ch,
       kind: 'count',

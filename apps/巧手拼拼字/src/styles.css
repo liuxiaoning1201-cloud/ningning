@@ -419,6 +419,7 @@ textarea.text-input {
   touch-action: none;
   overflow: visible;
   isolation: isolate;
+  margin-top: 18px;
 }
 
 .grid-frame.is-reject {
@@ -461,12 +462,18 @@ textarea.text-input {
 }
 
 .xf-h {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
 }
 
-.xf-h::after,
+.xf-h::after {
+  content: '';
+  position: absolute;
+  inset: -16px;
+}
+
+/* 旋轉鈕與拿走鈕本身夠大了，外擴少一點，免得蓋住旁邊的物品 */
 .xf-rot::after,
 .xf-del::after {
   content: '';
@@ -478,16 +485,37 @@ textarea.text-input {
 .xf-ne { right: 0; top: 0; transform: translate(50%, -50%); cursor: nesw-resize; }
 .xf-sw { left: 0; bottom: 0; transform: translate(-50%, 50%); cursor: nesw-resize; }
 .xf-se { right: 0; bottom: 0; transform: translate(50%, 50%); cursor: nwse-resize; }
-.xf-e { right: 0; top: 50%; transform: translate(50%, -50%); cursor: ew-resize; }
-.xf-s { left: 50%; bottom: 0; transform: translate(-50%, 50%); cursor: ns-resize; }
+.xf-e { right: 0; top: 50%; transform: translate(50%, -50%); cursor: ew-resize; background: #dbeafe; }
+.xf-w { left: 0; top: 50%; transform: translate(-50%, -50%); cursor: ew-resize; background: #dbeafe; }
+.xf-n { left: 50%; top: 0; transform: translate(-50%, -50%); cursor: ns-resize; background: #dbeafe; }
+.xf-s { left: 50%; bottom: 0; transform: translate(-50%, 50%); cursor: ns-resize; background: #dbeafe; }
+
+/*
+ * 旋轉鈕與拿走鈕掛在不旋轉的外接矩形上：位置不隨角度繞圈，
+ * 而且兩顆分在上下兩端，手指不會按錯。
+ */
+.xf-tools {
+  position: absolute;
+  z-index: 230;
+  pointer-events: none;
+}
 
 .xf-rot {
   left: 50%;
-  top: 0;
-  width: 14px;
-  height: 14px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  transform: translate(-50%, calc(-100% - 22px));
+  border-width: 3px;
+  background: #3b82f6;
+  color: #fff;
+  font: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  transform: translate(-50%, calc(100% + 18px));
   cursor: grab;
 }
 
@@ -495,25 +523,51 @@ textarea.text-input {
   content: '';
   position: absolute;
   left: 50%;
-  top: 100%;
-  width: 2px;
-  height: 22px;
+  bottom: 100%;
+  width: 3px;
+  height: 18px;
   background: #3b82f6;
   transform: translateX(-50%);
 }
 
-.xf-del {
-  left: 50%;
+/* 下面沒位置就改放上面 */
+.xf-rot.is-above {
   top: 0;
-  width: 22px;
-  height: 22px;
+  bottom: auto;
+  transform: translate(-50%, calc(-100% - 18px));
+}
+
+.xf-rot.is-above::before {
+  top: 100%;
+  bottom: auto;
+}
+
+/* 上下都沒位置就貼在物品下緣裡側，牽引線收掉 */
+.xf-rot.is-inside {
+  transform: translate(-50%, 50%);
+}
+
+.xf-rot.is-inside::before {
+  display: none;
+}
+
+.xf-rot:active {
+  cursor: grabbing;
+  background: #1d4ed8;
+}
+
+.xf-del {
+  right: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  transform: translate(16px, calc(-100% - 20px));
+  transform: translate(calc(50% + 6px), calc(-50% - 6px));
   background: var(--ink);
   border-color: var(--ink);
   color: #fff;
   font: inherit;
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -568,10 +622,6 @@ textarea.text-input {
   height: 100%;
   object-fit: contain;
   pointer-events: none;
-}
-
-.piece-wrap.is-dian .piece {
-  transform: none !important;
 }
 
 .piece {
@@ -731,6 +781,23 @@ textarea.text-input {
   width: 100%;
   max-width: 210px;
   margin: 0 auto;
+}
+
+.charcard.is-compact {
+  box-shadow: none;
+  padding: 0;
+  background: transparent;
+  flex: 0 0 168px;
+  width: 168px;
+}
+
+.charcard.is-compact .charcard-stage-wrap {
+  max-width: 168px;
+}
+
+.charcard.is-compact .charcard-hint {
+  font-size: 0.72rem;
+  margin-top: 6px;
 }
 
 .charcard-stage {
@@ -1197,9 +1264,26 @@ button.char-chip {
 
 .stroke-editor-head {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: flex-start;
   margin-bottom: 10px;
+}
+
+.walking-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(126, 200, 227, 0.22);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.walking-note p {
+  margin: 0 0 8px;
+}
+
+.walking-note p:last-child {
+  margin-bottom: 0;
 }
 
 .stroke-editor-glyph {
