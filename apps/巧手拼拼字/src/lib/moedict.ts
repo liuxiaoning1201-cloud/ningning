@@ -149,6 +149,17 @@ function tidyExample(text: string): string {
   return text.replace(/\s+/g, '').replace(/^如[：:]/, '');
 }
 
+/**
+ * 只留「詞的例子」那種例句。
+ * 辭典的 example 偶爾放整句古語（人：「己所不欲，勿施於人。」），
+ * 給小學生看例詞就夠了。
+ */
+function isWordExample(line: string): boolean {
+  const quoted = [...line.matchAll(QUOTED_ANY)].map((m) => m[1]);
+  if (!quoted.length) return false;
+  return quoted.every((word) => word.length <= 5);
+}
+
 function parseSenses(raw: UniRaw, limit = MAX_SENSES): CharSense[] {
   const senses: CharSense[] = [];
   for (const heteronym of raw.heteronyms ?? []) {
@@ -158,7 +169,7 @@ function parseSenses(raw: UniRaw, limit = MAX_SENSES): CharSense[] {
       senses.push({
         type: item.type,
         def,
-        examples: (item.example ?? []).map(tidyExample).filter(Boolean),
+        examples: (item.example ?? []).map(tidyExample).filter(isWordExample),
       });
       if (senses.length >= limit) return senses;
     }
@@ -167,6 +178,7 @@ function parseSenses(raw: UniRaw, limit = MAX_SENSES): CharSense[] {
 }
 
 const QUOTED = /「([^」]{2,4})」/g;
+const QUOTED_ANY = /「([^」]+)」/g;
 const MAX_WORD_LEN = 4;
 
 function isTeachableWord(word: string, ch: string): boolean {
