@@ -60,6 +60,7 @@ const menu = [
       </button>
     </div>
 
+    <!-- 玩法說明放三張卡下面，鈎與最後一句同一行 -->
     <p class="home-sub">
       筷子平放，就是橫。<br />
       蠟燭站直，就是直。<br />
