@@ -241,6 +241,47 @@ const xfStyle = computed(() => {
   };
 });
 
+/**
+ * 選取框會跟著物品轉，旋轉鈕若也放在框上，一邊轉一邊繞著跑，很難抓。
+ * 所以旋轉鈕與拿走鈕改放在「不轉的外接矩形」上，位置固定。
+ */
+const xfBounds = computed(() => {
+  const piece = selectedPiece.value;
+  if (!piece) return null;
+  const { w, h } = pieceBox(piece);
+  const rad = (visualRot(piece) * Math.PI) / 180;
+  const cos = Math.abs(Math.cos(rad));
+  const sin = Math.abs(Math.sin(rad));
+  const bw = w * cos + h * sin;
+  const bh = w * sin + h * cos;
+  return { left: piece.x - bw / 2, top: piece.y - bh / 2, bw, bh };
+});
+
+const toolsStyle = computed(() => {
+  const box = xfBounds.value;
+  if (!box) return {};
+  return {
+    left: `${box.left * 100}%`,
+    top: `${box.top * 100}%`,
+    width: `${box.bw * 100}%`,
+    height: `${box.bh * 100}%`,
+  };
+});
+
+/**
+ * 旋轉鈕放哪一邊：預設在下面，貼著格子下緣就改上面；
+ * 上下都沒位置（物品很大又靠邊）就貼在物品下緣裡側，總之不跑出格子。
+ */
+const ROT_ROOM = 0.09;
+
+const rotPlace = computed<'below' | 'above' | 'inside'>(() => {
+  const box = xfBounds.value;
+  if (!box) return 'below';
+  if (1 - (box.top + box.bh) >= ROT_ROOM) return 'below';
+  if (box.top >= ROT_ROOM) return 'above';
+  return 'inside';
+});
+
 const ghostViewBox = '0 0 1024 1024';
 const ghostTransform = 'translate(0, 900) scale(1, -1)';
 
@@ -337,21 +378,6 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
     </div>
 
     <div v-if="selectedPiece && !readonly" class="xf" :style="xfStyle" @pointerdown.stop>
-      <button
-        class="xf-del"
-        type="button"
-        title="拿走"
-        @click.stop="emit('delete')"
-        @pointerdown.stop
-      >
-        ×
-      </button>
-      <button
-        class="xf-rot"
-        type="button"
-        title="拖動來轉角度"
-        @pointerdown="startRotate"
-      />
       <button class="xf-h xf-nw" type="button" title="分開調長寬" @pointerdown="startResize($event, 'nw')" />
       <button class="xf-h xf-ne" type="button" title="分開調長寬" @pointerdown="startResize($event, 'ne')" />
       <button class="xf-h xf-sw" type="button" title="分開調長寬" @pointerdown="startResize($event, 'sw')" />
@@ -360,6 +386,22 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
       <button class="xf-h xf-e" type="button" title="拉長或縮短橫向" @pointerdown="startResize($event, 'e')" />
       <button class="xf-h xf-n" type="button" title="壓扁或拉高" @pointerdown="startResize($event, 'n')" />
       <button class="xf-h xf-s" type="button" title="壓扁或拉高" @pointerdown="startResize($event, 's')" />
+    </div>
+
+    <div v-if="selectedPiece && !readonly" class="xf-tools" :style="toolsStyle" @pointerdown.stop>
+      <button class="xf-del" type="button" title="拿走" @click.stop="emit('delete')" @pointerdown.stop>
+        ×
+      </button>
+      <button
+        class="xf-rot"
+        :class="`is-${rotPlace}`"
+        type="button"
+        title="按住這個圈圈拖，就能轉角度"
+        aria-label="轉角度"
+        @pointerdown="startRotate"
+      >
+        ↻
+      </button>
     </div>
   </div>
 </template>
