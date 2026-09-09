@@ -480,6 +480,8 @@ textarea.text-input {
 .xf-sw { left: 0; bottom: 0; transform: translate(-50%, 50%); cursor: nesw-resize; }
 .xf-se { right: 0; bottom: 0; transform: translate(50%, 50%); cursor: nwse-resize; }
 .xf-e { right: 0; top: 50%; transform: translate(50%, -50%); cursor: ew-resize; background: #dbeafe; }
+.xf-w { left: 0; top: 50%; transform: translate(-50%, -50%); cursor: ew-resize; background: #dbeafe; }
+.xf-n { left: 50%; top: 0; transform: translate(-50%, -50%); cursor: ns-resize; background: #dbeafe; }
 .xf-s { left: 50%; bottom: 0; transform: translate(-50%, 50%); cursor: ns-resize; background: #dbeafe; }
 
 .xf-rot {

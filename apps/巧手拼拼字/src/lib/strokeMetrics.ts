@@ -94,7 +94,18 @@ export function objectSize(
     const s = clampScale(Math.max(raw * shrink, 0.12));
     return { sx: s, sy: s };
   }
-  return { sx: clampScale(w / box.w), sy: clampScale(h / box.h) };
+  let sx = w / box.w;
+  let sy = h / box.h;
+  // 三角旗：橫在上、撇下垂。預設把橫拉長一點、撇收短一點，四周點還可再調。
+  if (id === 'hengpie') {
+    sx *= 1.16;
+    sy *= 0.84;
+  }
+  // 走之底那種躺平的捺：滑梯圖本身很厚，要先壓扁才像橫捺。
+  if (id === 'na' && w > h * 2.1) {
+    sy *= 0.58;
+  }
+  return { sx: clampScale(sx), sy: clampScale(sy) };
 }
 
 /** 單一尺度，給舊呼叫與預設大小用。 */

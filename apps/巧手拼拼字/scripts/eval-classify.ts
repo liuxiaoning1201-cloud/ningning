@@ -444,6 +444,21 @@ if (Math.abs(zhiFit.sx - zhiInk.sx) > 0.001 || Math.abs(zhiFit.sy - zhiInk.sy) >
   process.stdout.write('同種類物品貼該筆墨跡 OK\n');
 }
 
+const walkingHengpie = objectSize({ length: 0.2, extent: 0.22, width: 0.18, height: 0.22 }, 'hengpie');
+if (walkingHengpie.sx <= walkingHengpie.sy) {
+  process.stdout.write(`橫撇應橫長撇短 FAIL ${walkingHengpie.sx.toFixed(3)}x${walkingHengpie.sy.toFixed(3)}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write(`橫撇橫長撇短 OK ${walkingHengpie.sx.toFixed(3)}x${walkingHengpie.sy.toFixed(3)}\n`);
+}
+const pingNa = objectSize({ length: 0.7, extent: 0.7, width: 0.72, height: 0.14 }, 'na');
+if (pingNa.sy >= pingNa.sx * 0.4) {
+  process.stdout.write(`平捺應壓扁 FAIL ${pingNa.sx.toFixed(3)}x${pingNa.sy.toFixed(3)}\n`);
+  process.exitCode = 1;
+} else {
+  process.stdout.write(`平捺壓扁 OK ${pingNa.sx.toFixed(3)}x${pingNa.sy.toFixed(3)}\n`);
+}
+
 const guiData = (bundled as Record<string, CharData>)['龜'];
 if (guiData) {
   const guiTypes = fillStrokeTypes(guiData.medians, guiData.strokeTypes, '龜');

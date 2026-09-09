@@ -35,7 +35,7 @@ type Drag =
   | {
       kind: 'resize';
       id: string;
-      mode: 'se' | 'ne' | 'sw' | 'nw' | 'e' | 's';
+      mode: 'se' | 'ne' | 'sw' | 'nw' | 'e' | 'w' | 'n' | 's';
       startDist: number;
       startW: number;
       startH: number;
@@ -120,7 +120,7 @@ function onFramePointerDown(event: PointerEvent) {
   frame.value?.setPointerCapture(event.pointerId);
 }
 
-function startResize(event: PointerEvent, mode: 'se' | 'ne' | 'sw' | 'nw' | 'e' | 's') {
+function startResize(event: PointerEvent, mode: 'se' | 'ne' | 'sw' | 'nw' | 'e' | 'w' | 'n' | 's') {
   event.stopPropagation();
   const piece = selectedPiece.value;
   const local = toLocal(event);
@@ -175,7 +175,7 @@ function onPointerMove(event: PointerEvent) {
     return;
   }
   const localPt = toPieceLocal(piece, local);
-  if (current.mode === 'e') {
+  if (current.mode === 'e' || current.mode === 'w') {
     emit('transform', {
       id: piece.id,
       scale: clampSize(Math.abs(localPt.x) * 2),
@@ -183,7 +183,7 @@ function onPointerMove(event: PointerEvent) {
     });
     return;
   }
-  if (current.mode === 's') {
+  if (current.mode === 'n' || current.mode === 's') {
     emit('transform', {
       id: piece.id,
       scale: current.startW,
@@ -191,12 +191,10 @@ function onPointerMove(event: PointerEvent) {
     });
     return;
   }
-  const dist = Math.hypot(localPt.x, localPt.y);
-  const factor = dist / current.startDist;
   emit('transform', {
     id: piece.id,
-    scale: clampSize(current.startW * factor),
-    scaleY: clampSize(current.startH * factor),
+    scale: clampSize(Math.abs(localPt.x) * 2),
+    scaleY: clampSize(Math.abs(localPt.y) * 2),
   });
 }
 
@@ -354,12 +352,14 @@ const sortedPieces = computed(() => [...props.pieces].sort((a, b) => a.seq - b.s
         title="拖動來轉角度"
         @pointerdown="startRotate"
       />
-      <button class="xf-h xf-nw" type="button" title="等比例縮放" @pointerdown="startResize($event, 'nw')" />
-      <button class="xf-h xf-ne" type="button" title="等比例縮放" @pointerdown="startResize($event, 'ne')" />
-      <button class="xf-h xf-sw" type="button" title="等比例縮放" @pointerdown="startResize($event, 'sw')" />
-      <button class="xf-h xf-se" type="button" title="等比例縮放" @pointerdown="startResize($event, 'se')" />
-      <button class="xf-h xf-e" type="button" title="向右拉長筆畫" @pointerdown="startResize($event, 'e')" />
-      <button class="xf-h xf-s" type="button" title="向下壓扁筆畫" @pointerdown="startResize($event, 's')" />
+      <button class="xf-h xf-nw" type="button" title="分開調長寬" @pointerdown="startResize($event, 'nw')" />
+      <button class="xf-h xf-ne" type="button" title="分開調長寬" @pointerdown="startResize($event, 'ne')" />
+      <button class="xf-h xf-sw" type="button" title="分開調長寬" @pointerdown="startResize($event, 'sw')" />
+      <button class="xf-h xf-se" type="button" title="分開調長寬" @pointerdown="startResize($event, 'se')" />
+      <button class="xf-h xf-w" type="button" title="拉長或縮短橫向" @pointerdown="startResize($event, 'w')" />
+      <button class="xf-h xf-e" type="button" title="拉長或縮短橫向" @pointerdown="startResize($event, 'e')" />
+      <button class="xf-h xf-n" type="button" title="壓扁或拉高" @pointerdown="startResize($event, 'n')" />
+      <button class="xf-h xf-s" type="button" title="壓扁或拉高" @pointerdown="startResize($event, 's')" />
     </div>
   </div>
 </template>
