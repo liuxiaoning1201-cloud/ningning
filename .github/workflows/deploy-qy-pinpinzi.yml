@@ -32,7 +32,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "Missing GitHub secret CLOUDFLARE_API_TOKEN" >&2
-            exit 1
+            echo "::warning::Skipping Cloudflare deploy: repo secret CLOUDFLARE_API_TOKEN is not set."
+            exit 0
           fi
           npm run deploy:live-home
