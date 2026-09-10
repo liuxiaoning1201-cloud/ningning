@@ -3,6 +3,7 @@
   // Worker 名必須 ASCII；對外路徑維持中文前綴，與首頁連結、VITE_BASE_PATH 一致。
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "qy-pinpinzi",
+  "account_id": "9e06e0f0b44c3c0ea56240d583bffe39",
   "compatibility_date": "2026-09-01",
   // 純前端靜態資產 Worker：無 main / _worker.js，僅 Workers Assets。
   // 認證／AI 若日後用到，走同源 /api/* 子請求，落到 Pages 核心。
