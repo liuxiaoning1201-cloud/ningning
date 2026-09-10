@@ -1,0 +1,38 @@
+# 把現役 qingyiu.com/巧手拼拼字 鏡像後只改首頁排列，部署到 Worker qy-pinpinzi。
+# 需要 repo secret：CLOUDFLARE_API_TOKEN（Workers 編輯權限）。
+name: Deploy qy-pinpinzi
+
+on:
+  push:
+    branches:
+      - cursor/pinzi-home-layout-350a
+    paths:
+      - "apps/巧手拼拼字/**"
+      - ".github/workflows/deploy-qy-pinpinzi.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/巧手拼拼字
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/巧手拼拼字/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Mirror live site, patch home layout, deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning::Skipping Cloudflare deploy: repo secret CLOUDFLARE_API_TOKEN is not set."
+            exit 0
+          fi
+          npm run deploy:live-home
