@@ -7,6 +7,12 @@ import {
   parseExcelBank,
   shuffle,
 } from "./bank";
+import {
+  DEPART_DURATION_MS,
+  computeDepartTranslateX,
+  isCorrectOrder,
+  nextAfterDepart,
+} from "./gameLogic";
 
 interface Token {
   id: string;
@@ -23,6 +29,8 @@ const pool = ref<Token[]>([]);
 const slots = ref<(Token | null)[]>([]);
 
 const poolEl = ref<HTMLElement | null>(null);
+const convoyEl = ref<HTMLElement | null>(null);
+const departX = ref("0px");
 const drag = ref<{
   token: Token;
   fromSlot: number | null;
@@ -36,6 +44,7 @@ const departAnim = ref(false);
 const instantTrackReset = ref(false);
 const celebrate = ref(false);
 const excelError = ref("");
+let departFallbackTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /** 火車開走時汽笛（public/train-whistle.mp3） */
 const trainWhistle = ref<HTMLAudioElement | null>(null);
@@ -114,6 +123,11 @@ function setupLevel(idx: number) {
   slots.value = words.map(() => null);
   departAnim.value = false;
   celebrate.value = false;
+  departX.value = "0px";
+  if (departFallbackTimeout) {
+    clearTimeout(departFallbackTimeout);
+    departFallbackTimeout = null;
+  }
   currentVehicle.value = VEHICLES[idx % VEHICLES.length];
 }
 
@@ -213,29 +227,45 @@ function playTrainWhistle() {
 }
 
 function checkWin() {
-  const ans = answer.value;
-  const sl = slots.value;
-  if (sl.some((s) => s === null)) return;
-  const ok = sl.every((s, i) => s!.id === ans[i].id);
-  if (!ok) return;
+  if (!isCorrectOrder(slots.value, answer.value)) return;
   celebrate.value = true;
   setTimeout(() => {
     celebrate.value = false;
+    const rect = convoyEl.value?.getBoundingClientRect();
+    const dx = computeDepartTranslateX(
+      rect ?? { left: 0, width: typeof window === "undefined" ? 800 : window.innerWidth }
+    );
+    departX.value = `${dx}px`;
     departAnim.value = true;
     playTrainWhistle();
+    startDepartFallbackTimer();
   }, 650);
 }
 
-function onTrainTransitionEnd(ev: TransitionEvent) {
-  if (ev.target !== ev.currentTarget) return;
-  if (ev.propertyName !== "transform") return;
+function startDepartFallbackTimer() {
+  if (departFallbackTimeout) {
+    clearTimeout(departFallbackTimeout);
+  }
+  departFallbackTimeout = setTimeout(() => {
+    if (departAnim.value) {
+      handleDepartComplete();
+    }
+  }, DEPART_DURATION_MS + 150);
+}
+
+function handleDepartComplete() {
   if (!departAnim.value) return;
+  if (departFallbackTimeout) {
+    clearTimeout(departFallbackTimeout);
+    departFallbackTimeout = null;
+  }
 
   departAnim.value = false;
   instantTrackReset.value = true;
 
-  if (currentIdx.value < levels.value.length - 1) {
-    currentIdx.value += 1;
+  const next = nextAfterDepart(currentIdx.value, levels.value.length);
+  if (next.kind === "next") {
+    currentIdx.value = next.index;
     setupLevel(currentIdx.value);
   } else {
     screen.value = "start";
@@ -247,6 +277,13 @@ function onTrainTransitionEnd(ev: TransitionEvent) {
       instantTrackReset.value = false;
     });
   });
+}
+
+function onTrainTransitionEnd(ev: TransitionEvent) {
+  if (ev.target !== ev.currentTarget) return;
+  if (ev.propertyName !== "transform") return;
+  if (!departAnim.value) return;
+  handleDepartComplete();
 }
 
 function closeSettings() {
@@ -307,6 +344,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (departFallbackTimeout) {
+    clearTimeout(departFallbackTimeout);
+    departFallbackTimeout = null;
+  }
   window.removeEventListener("pointermove", onPointerMove);
   window.removeEventListener("pointerup", endDrag);
   window.removeEventListener("pointercancel", endDrag);
@@ -360,48 +401,53 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div
-        class="track"
-        :class="{
-          depart: departAnim,
-          celebrate: celebrate,
-          'track-instant': instantTrackReset,
-        }"
-        @transitionend="onTrainTransitionEnd"
-      >
-        <div class="train">
-          <div class="engine" aria-hidden="true">
-            <span class="smoke">{{ currentVehicle.trail }}</span>
-            <span class="loco">{{ currentVehicle.engine }}</span>
-          </div>
+      <div class="track-stage">
+        <div class="track-scroll" :class="{ departing: departAnim }">
           <div
-            v-for="(_, i) in slots"
-            :key="i"
-            class="carriage"
-            :class="`season-${i % 4}`"
+            ref="convoyEl"
+            class="convoy"
+            :class="{
+              depart: departAnim,
+              celebrate: celebrate,
+              'track-instant': instantTrackReset,
+            }"
+            :style="{ '--depart-x': departX }"
+            @transitionend="onTrainTransitionEnd"
           >
-            <div class="season-ribbon">{{ seasonName(i) }}</div>
-            <div
-              class="drop-slot"
-              data-drop="slot"
-              :data-index="String(i)"
-            >
-              <button
-                v-if="slots[i]"
-                type="button"
-                class="chip chip-on-train"
-                :class="{ 'chip-dragging': isDraggingToken(slots[i]!, i) }"
-                @pointerdown.prevent="startDrag($event, slots[i]!, i)"
+            <div class="train">
+              <div class="engine" aria-hidden="true">
+                <span class="smoke">{{ currentVehicle.trail }}</span>
+                <span class="loco">{{ currentVehicle.engine }}</span>
+              </div>
+              <div
+                v-for="(_, i) in slots"
+                :key="i"
+                class="carriage"
+                :class="`season-${i % 4}`"
               >
-                {{ slots[i]!.text }}
-              </button>
+                <div class="season-ribbon">{{ seasonName(i) }}</div>
+                <div
+                  class="drop-slot"
+                  data-drop="slot"
+                  :data-index="String(i)"
+                >
+                  <button
+                    v-if="slots[i]"
+                    type="button"
+                    class="chip chip-on-train"
+                    :class="{ 'chip-dragging': isDraggingToken(slots[i]!, i) }"
+                    @pointerdown.prevent="startDrag($event, slots[i]!, i)"
+                  >
+                    {{ slots[i]!.text }}
+                  </button>
+                </div>
+              </div>
             </div>
+            <div class="rails" :class="`rails-${currentVehicle.ground}`" aria-hidden="true" />
           </div>
         </div>
-        <div class="rails" :class="`rails-${currentVehicle.ground}`" aria-hidden="true" />
+        <p v-if="celebrate" class="toast">太棒了！{{ currentVehicle.name }}出發！</p>
       </div>
-
-      <p v-if="celebrate" class="toast">太棒了！{{ currentVehicle.name }}出發！</p>
     </main>
 
     <div
@@ -480,10 +526,8 @@ onUnmounted(() => {
 
 .page {
   min-height: 100dvh;
-  padding: 12px 16px 28px;
+  padding: 12px 0 16px;
   position: relative;
-  max-width: 720px;
-  margin: 0 auto;
 }
 
 .gear {
@@ -505,8 +549,10 @@ onUnmounted(() => {
 }
 
 .panel {
-  padding-top: 72px;
+  padding: 72px 16px 0;
   text-align: center;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
 .logo {
@@ -563,12 +609,22 @@ h1 {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+.game {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 28px);
+}
+
 .game-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
-  padding-top: 52px;
+  margin: 0 auto 10px;
+  padding: 52px 16px 0;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 960px;
+  box-sizing: border-box;
 }
 
 .badge {
@@ -585,9 +641,13 @@ h1 {
   border-radius: 20px;
   padding: 14px 14px 18px;
   box-shadow: 0 8px 24px rgba(30, 100, 140, 0.1);
-  margin-bottom: 20px;
-  min-height: 120px;
+  margin: 0 auto 12px;
+  min-height: 100px;
   touch-action: none;
+  flex-shrink: 0;
+  width: calc(100% - 32px);
+  max-width: 960px;
+  box-sizing: border-box;
 }
 
 .pool-title {
@@ -630,9 +690,10 @@ h1 {
 }
 
 .chip-on-train {
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12);
-  font-size: 0.98rem;
-  padding: 10px 12px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.12);
+  font-size: 1.1rem;
+  padding: 12px 14px;
+  white-space: nowrap;
 }
 
 .chip.ghost {
@@ -644,23 +705,48 @@ h1 {
   cursor: grabbing;
 }
 
-.track {
+.track-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  min-height: 220px;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.track-scroll {
+  width: 100%;
   overflow-x: auto;
-  overflow-y: visible;
-  padding: 8px 0 24px;
+  overflow-y: hidden;
+  padding: 12px 0 28px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.track-scroll.departing {
+  overflow-x: hidden;
+  pointer-events: none;
+}
+
+.convoy {
+  width: max-content;
+  margin: 0 auto;
   transition: transform 1.35s cubic-bezier(0.45, 0, 0.2, 1);
   transform: translateX(0);
 }
 
-.track.track-instant {
+.convoy.track-instant {
   transition: none;
 }
 
-.track.depart {
-  transform: translateX(-130%);
+.convoy.depart {
+  transform: translateX(var(--depart-x, -120vw));
 }
 
-.track.celebrate .engine .smoke {
+.convoy.celebrate .engine .smoke {
   animation: puff 0.6s ease-out 2;
 }
 
@@ -679,63 +765,64 @@ h1 {
   display: flex;
   flex-direction: row;
   align-items: flex-end;
-  gap: 4px;
+  gap: 6px;
   width: max-content;
-  margin: 0 auto;
-  padding: 0 8px;
+  padding: 0 24px;
 }
 
 .engine {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-right: 2px;
+  margin-right: 4px;
 }
 
 .smoke {
-  font-size: 1.2rem;
+  font-size: 2rem;
   line-height: 1;
   opacity: 0.7;
 }
 
 .loco {
-  font-size: 2.6rem;
+  font-size: 4.5rem;
   line-height: 1;
-  filter: drop-shadow(2px 4px 0 rgba(0, 0, 0, 0.08));
+  filter: drop-shadow(3px 6px 0 rgba(0, 0, 0, 0.12));
 }
 
 .carriage {
-  width: 92px;
-  min-height: 118px;
-  border-radius: 12px 12px 8px 8px;
+  flex: 0 0 auto;
+  min-width: 7.5rem;
+  width: max-content;
+  min-height: 150px;
+  border-radius: 16px 16px 10px 10px;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.08), 0 6px 14px rgba(0, 0, 0, 0.12);
+  box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.1), 0 8px 18px rgba(0, 0, 0, 0.15);
   touch-action: none;
 }
 
 .season-ribbon {
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  padding: 6px 4px 4px;
+  padding: 8px 4px 6px;
   color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .drop-slot {
   flex: 1;
-  margin: 0 6px 8px;
-  border-radius: 10px;
-  border: 2px dashed rgba(255, 255, 255, 0.55);
-  background: rgba(255, 255, 255, 0.2);
+  margin: 0 8px 10px;
+  border-radius: 12px;
+  border: 3px dashed rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 64px;
-  padding: 4px;
+  min-height: 80px;
+  padding: 6px;
 }
 
 .season-0 {
@@ -752,11 +839,11 @@ h1 {
 }
 
 .rails {
-  height: 10px;
-  margin: 0 12px;
-  margin-top: -6px;
-  border-radius: 4px;
-  opacity: 0.55;
+  height: 14px;
+  margin: 0 16px;
+  margin-top: -8px;
+  border-radius: 6px;
+  opacity: 0.6;
 }
 
 /* 鐵軌：枕木 */
@@ -764,9 +851,9 @@ h1 {
   background: repeating-linear-gradient(
     90deg,
     #789 0,
-    #789 14px,
-    transparent 14px,
-    transparent 22px
+    #789 18px,
+    transparent 18px,
+    transparent 28px
   );
 }
 
@@ -828,21 +915,30 @@ h1 {
 }
 
 .toast {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
   text-align: center;
   font-weight: 700;
   font-size: 1.2rem;
   color: #0d6e3d;
-  margin-top: 8px;
+  margin: 0;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  pointer-events: none;
   animation: pop 0.45s ease;
+  white-space: nowrap;
 }
 
 @keyframes pop {
   from {
-    transform: scale(0.85);
+    transform: translateX(-50%) scale(0.85);
     opacity: 0;
   }
   to {
-    transform: scale(1);
+    transform: translateX(-50%) scale(1);
     opacity: 1;
   }
 }
