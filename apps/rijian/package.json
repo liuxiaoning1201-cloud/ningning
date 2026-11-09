@@ -7,6 +7,7 @@
     "dev": "vite --port 5175 --host",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview --host",
+    "test": "vitest run",
     "desktop": "tauri dev",
     "desktop:build": "tauri build"
   },
@@ -22,8 +23,10 @@
     "@tauri-apps/cli": "^2.8.0",
     "@types/node": "^26.4.0",
     "@vitejs/plugin-vue": "^5.2.1",
+    "jsdom": "^26.1.0",
     "typescript": "~5.6.2",
     "vite": "^6.0.1",
+    "vitest": "^3.2.7",
     "vue-tsc": "^2.1.10"
   }
 }

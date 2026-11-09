@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { listen } from "@tauri-apps/api/event";
-import { nextTick, onMounted, watch } from "vue";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { nextTick, onBeforeUnmount, onMounted, watch } from "vue";
 import CaptureModal from "./components/CaptureModal.vue";
 import CommandPalette from "./components/CommandPalette.vue";
 import InboxView from "./components/InboxView.vue";
@@ -9,12 +9,16 @@ import TodayView from "./components/TodayView.vue";
 import { useShortcuts } from "./composables/useShortcuts";
 import { formatLongDate } from "./lib/dates";
 import { isCaptureMode, isTauri } from "./lib/tauri";
+import { startTodayClock } from "./lib/todayClock";
 import { useJournal } from "./stores/journal";
 import { VIEWS } from "./types";
 
 const journal = useJournal();
 const captureMode = isCaptureMode();
 useShortcuts();
+
+let stopClock: (() => void) | undefined;
+let unlistenFocus: UnlistenFn | undefined;
 
 const headings: Record<string, string> = {
   today: "今日",
@@ -33,6 +37,12 @@ function focusComposer() {
 }
 
 onMounted(() => {
+  journal.refreshToday();
+  const clock = startTodayClock(() => {
+    journal.refreshToday();
+  });
+  stopClock = clock.stop;
+
   if (!captureMode) {
     void journal.hydrateFromDisk();
     focusComposer();
@@ -41,11 +51,25 @@ onMounted(() => {
         const raw = String(event.payload ?? "").trim();
         if (raw) journal.capture(raw, { type: "idea" });
       });
+      void import("@tauri-apps/api/window")
+        .then(async ({ getCurrentWindow }) => {
+          unlistenFocus = await getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+            if (focused) journal.refreshToday();
+          });
+        })
+        .catch(() => {
+          /* web preview */
+        });
     }
   }
   if (!isTauri() && "Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
   }
+});
+
+onBeforeUnmount(() => {
+  stopClock?.();
+  unlistenFocus?.();
 });
 
 watch(
