@@ -34,15 +34,39 @@ function save() {
   if (nb) journal.setNotebookHtml(nb.id, htmlOf());
 }
 
+function sanitizeNote(html: string) {
+  if (!html) return "";
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, "text/html");
+  doc.querySelectorAll("script,iframe,object,embed,link").forEach((n) => n.remove());
+  for (const el of [...doc.body.querySelectorAll("*")]) {
+    if (!(el instanceof HTMLElement)) continue;
+    if (el.style.position === "fixed" || el.style.position === "sticky") {
+      el.style.position = "static";
+      el.style.inset = "auto";
+      el.style.zIndex = "auto";
+    }
+  }
+  return doc.body.innerHTML;
+}
+
 function restore() {
   filling = true;
-  if (editor.value) editor.value.innerHTML = journal.activeNotebook?.html || "";
+  if (editor.value) editor.value.innerHTML = sanitizeNote(journal.activeNotebook?.html || "");
   filling = false;
 }
 
 watch(
   () => journal.activeNotebook?.id,
   () => restore(),
+);
+
+watch(
+  () => journal.activeNotebook?.html,
+  (html) => {
+    if (filling) return;
+    if (document.activeElement === editor.value) return;
+    if (editor.value && editor.value.innerHTML !== (html || "")) restore();
+  },
 );
 
 function onPick(event: Event) {
