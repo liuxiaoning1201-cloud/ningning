@@ -6,7 +6,7 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "composite": true,
-    "types": ["node"]
+    "types": ["node", "vitest/config"]
   },
   "include": ["vite.config.ts"]
 }

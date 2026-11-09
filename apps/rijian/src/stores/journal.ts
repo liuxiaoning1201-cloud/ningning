@@ -9,11 +9,20 @@ import { isCaptureMode, isTauri } from "../lib/tauri";
 import type { Item, ItemMark, JournalState, List, Notebook, Reminder, ViewId } from "../types";
 import { CATEGORIES, categoryColor, isProject } from "../types";
 
-const STORAGE_KEY = "rijian.v1";
+export const STORAGE_KEY = "rijian.v1";
 const INBOX_NOTE_KEY = "inbox";
 
 let persistEnabled = true;
 let diskTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Test-only. Restores module persistence flags. Does not touch stored journal data. */
+export function resetJournalRuntimeForTests(): void {
+  persistEnabled = true;
+  if (diskTimer) {
+    clearTimeout(diskTimer);
+    diskTimer = null;
+  }
+}
 
 function seedLists(): List[] {
   return CATEGORIES.map(({ id, name, sort }) => ({ id, name, sort }));
@@ -221,7 +230,15 @@ export const useJournal = defineStore("journal", () => {
   }
 
   const alive = computed(() => data.value.items.filter((i) => !i.deletedAt));
-  const today = computed(() => todayStr());
+  // Must be a ref that we refresh on resume/midnight. `computed(() => todayStr())`
+  // has no reactive deps, so Vue would freeze the calendar date for the whole
+  // webview lifetime (Tauri only hides the window on close).
+  const today = ref(todayStr());
+
+  function refreshToday(): string {
+    today.value = todayStr();
+    return today.value;
+  }
 
   const todayTasks = computed(() => {
     const t = today.value;
@@ -616,6 +633,7 @@ export const useJournal = defineStore("journal", () => {
     composerDraft,
     composerFocusTick,
     today,
+    refreshToday,
     todayTasks,
     todayNote,
     notebooks,

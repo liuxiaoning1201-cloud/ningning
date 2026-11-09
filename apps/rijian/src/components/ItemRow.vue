@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
-import { formatShortDate, todayStr } from "../lib/dates";
+import { formatShortDate } from "../lib/dates";
 import { highlightTime } from "../lib/highlightTime";
+import { useJournal } from "../stores/journal";
 import type { Item, ItemMark } from "../types";
 
 const props = withDefaults(
@@ -64,7 +65,8 @@ const titleParts = computed(() =>
   props.highlightTimes ? highlightTime(props.item.title) : [{ text: props.item.title, mark: false }],
 );
 
-const alreadyToday = computed(() => Boolean(props.item.dueOn && props.item.dueOn <= todayStr()));
+const journal = useJournal();
+const alreadyToday = computed(() => Boolean(props.item.dueOn && props.item.dueOn <= journal.today));
 </script>
 
 <template>

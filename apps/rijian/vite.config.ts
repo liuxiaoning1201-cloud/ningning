@@ -1,6 +1,6 @@
 import vue from "@vitejs/plugin-vue";
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -16,5 +16,10 @@ export default defineConfig({
     strictPort: true,
     host: host || true,
     hmr: host ? { protocol: "ws", host, port: 5176 } : undefined,
+  },
+  test: {
+    environment: "jsdom",
+    env: { TZ: "Asia/Hong_Kong" },
+    include: ["src/**/*.test.ts"],
   },
 });

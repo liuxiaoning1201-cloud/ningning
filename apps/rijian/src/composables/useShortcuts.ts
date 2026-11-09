@@ -54,6 +54,7 @@ export function useShortcuts() {
     window.addEventListener("keydown", onKey);
     if (isTauri()) {
       void listen("rijian-focus-composer", () => {
+        journal.refreshToday();
         journal.newForView();
       }).then((fn) => {
         unlisten = fn;
