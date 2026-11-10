@@ -23,6 +23,7 @@
 flowchart TD
   req["請求 qingyiu.com/*"] --> cf{Cloudflare 路由}
   cf -->|"/zizi/*"| wZizi["Worker: qy-zizi（靜態資產）"]
+  cf -->|"/巧手拼拼字/*"| wPinzi["Worker: qy-pinpinzi（靜態資產）"]
   cf -->|"/crossword/*"| wCross["Worker: qy-crossword"]
   cf -->|"/yueyu/*"| wYueyu["Worker: qy-yueyu"]
   cf -->|"其餘（首頁 / /api/* / 未畢業 app）"| pages["Pages: zykongjian（核心殼 + 共用 API）"]
@@ -43,7 +44,8 @@ flowchart TD
 
 | app | 前綴 prefix | 後端依賴 | 既有後端 Worker | 備註 |
 |---|---|---|---|---|
-| 字字珠璣 | `/zizi/` | `VITE_ZIZI_API` → zizi-zhuji | ✅ zizi-zhuji | **首個試點**，垂直切片最乾淨 |
+| 字字珠璣 | `/zizi/` | `VITE_ZIZI_API` → zizi-zhuji | ✅ zizi-zhuji | **已畢業** `qy-zizi` |
+| 巧手拼拼字 | `/巧手拼拼字/` | 無（純前端） | — | **已畢業** `qy-pinpinzi`。舊路徑 `/巧手猜猜字/`、`/巧手猜猜畫/` 仍由 Pages 301 |
 | 手勢切水果學中文 | `/手勢切水果學中文/` | `VITE_API_BASE` → fruit-cn-game、`/api/tts`、`/ws` | ✅ fruit-cn-game | 前綴含中文，建議日後改 ASCII |
 | 中文填字接龍 | `/crossword/` | `/api/ai/deepseek`、`/api/sessions/*`、`/api/classes/*`、google auth | （共用 functions） | 依賴共用 API |
 | yueyu-learn/web | `/yueyu/` | `/api/cantonese/*` | （共用 functions） | 子目錄 app（web/） |
@@ -58,7 +60,7 @@ flowchart TD
 | lingganmofang（靈感魔方） | `/lingganmofang/` | `/api/ai/deepseek`、`/api/image` |
 | poetpal（詩友記） | `/poetpal/` | `/api/ai/deepseek` |
 | 字詞地鼠戰 | `/字詞地鼠戰/` | `/api/ai/deepseek` |
-| 巧手猜猜畫 | `/巧手猜猜畫/` | caihua-game（workers.dev） |
+| 巧手猜猜畫／巧手猜猜字 | `/巧手猜猜畫/`、`/巧手猜猜字/` | 僅轉址頁，本體已畢業為 `qy-pinpinzi` |
 | 誰是臥底 | `/誰是臥底/` | spy-game（workers.dev） |
 | luoyang-trip | `/luoyang-trip/` | 純靜態 |
 | 手勢點名 | `/手勢點名/` | 純靜態 |
