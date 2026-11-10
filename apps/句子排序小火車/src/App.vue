@@ -10,7 +10,7 @@ import {
 import {
   DEPART_DURATION_MS,
   computeDepartTranslateX,
-  isCorrectOrder,
+  evaluateOrder,
   nextAfterDepart,
 } from "./gameLogic";
 
@@ -30,7 +30,7 @@ const slots = ref<(Token | null)[]>([]);
 
 const poolEl = ref<HTMLElement | null>(null);
 const convoyEl = ref<HTMLElement | null>(null);
-const departX = ref("0px");
+const scrollEl = ref<HTMLElement | null>(null);
 const drag = ref<{
   token: Token;
   fromSlot: number | null;
@@ -41,10 +41,13 @@ const drag = ref<{
 } | null>(null);
 
 const departAnim = ref(false);
-const instantTrackReset = ref(false);
 const celebrate = ref(false);
+const orderWrong = ref(false);
 const excelError = ref("");
 let departFallbackTimeout: ReturnType<typeof setTimeout> | null = null;
+let departDelayTimeout: ReturnType<typeof setTimeout> | null = null;
+let departAnimation: Animation | null = null;
+let orderCheckSerial = 0;
 
 /** 火車開走時汽笛（public/train-whistle.mp3） */
 const trainWhistle = ref<HTMLAudioElement | null>(null);
@@ -123,11 +126,8 @@ function setupLevel(idx: number) {
   slots.value = words.map(() => null);
   departAnim.value = false;
   celebrate.value = false;
-  departX.value = "0px";
-  if (departFallbackTimeout) {
-    clearTimeout(departFallbackTimeout);
-    departFallbackTimeout = null;
-  }
+  orderWrong.value = false;
+  clearDepartureMotion();
   currentVehicle.value = VEHICLES[idx % VEHICLES.length];
 }
 
@@ -142,6 +142,29 @@ function onPointerMove(e: PointerEvent) {
   d.y = e.clientY - d.offsetY;
 }
 
+function findDropZone(x: number, y: number): HTMLElement | null {
+  const stack = document.elementsFromPoint(x, y);
+  for (const el of stack) {
+    const zone = el.closest?.("[data-drop]") as HTMLElement | null;
+    if (zone) return zone;
+  }
+  for (const slot of document.querySelectorAll<HTMLElement>("[data-drop='slot']")) {
+    const car = slot.closest(".carriage") ?? slot;
+    const rect = car.getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+      return slot;
+    }
+  }
+  const pool = document.querySelector<HTMLElement>("[data-drop='pool']");
+  if (pool) {
+    const rect = pool.getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+      return pool;
+    }
+  }
+  return null;
+}
+
 function endDrag(e: PointerEvent) {
   window.removeEventListener("pointermove", onPointerMove);
   window.removeEventListener("pointerup", endDrag);
@@ -151,8 +174,7 @@ function endDrag(e: PointerEvent) {
   if (!d) return;
   drag.value = null;
 
-  const el = document.elementFromPoint(e.clientX, e.clientY);
-  const zone = el?.closest("[data-drop]") as HTMLElement | null;
+  const zone = findDropZone(e.clientX, e.clientY);
   const kind = zone?.dataset.drop;
 
   if (kind === "pool") {
@@ -177,15 +199,13 @@ function endDrag(e: PointerEvent) {
         pool.value.push(displaced);
       }
       slots.value[i] = d.token;
-    } else if (d.fromSlot === i) {
-      return;
-    } else {
+    } else if (d.fromSlot !== i) {
       const j = d.fromSlot;
       const other = slots.value[i];
       slots.value[j] = other;
       slots.value[i] = d.token;
     }
-    nextTick(() => checkWin());
+    checkWin();
     return;
   }
 
@@ -226,20 +246,80 @@ function playTrainWhistle() {
   }
 }
 
+function clearDepartureMotion() {
+  if (departDelayTimeout) {
+    clearTimeout(departDelayTimeout);
+    departDelayTimeout = null;
+  }
+  if (departFallbackTimeout) {
+    clearTimeout(departFallbackTimeout);
+    departFallbackTimeout = null;
+  }
+  departAnimation?.cancel();
+  departAnimation = null;
+  const scroller = scrollEl.value;
+  if (scroller) {
+    scroller.getAnimations().forEach((anim) => anim.cancel());
+    scroller.style.transform = "";
+  }
+}
+
 function checkWin() {
-  if (!isCorrectOrder(slots.value, answer.value)) return;
+  if (departAnim.value || celebrate.value) return;
+  const serial = ++orderCheckSerial;
+  const result = evaluateOrder(slots.value, answer.value);
+  if (result === "incomplete") {
+    orderWrong.value = false;
+    return;
+  }
+  if (result === "wrong") {
+    orderWrong.value = false;
+    nextTick(() => {
+      if (serial === orderCheckSerial) orderWrong.value = true;
+    });
+    return;
+  }
+  orderWrong.value = false;
   celebrate.value = true;
-  setTimeout(() => {
-    celebrate.value = false;
-    const rect = convoyEl.value?.getBoundingClientRect();
-    const dx = computeDepartTranslateX(
-      rect ?? { left: 0, width: typeof window === "undefined" ? 800 : window.innerWidth }
-    );
-    departX.value = `${dx}px`;
-    departAnim.value = true;
-    playTrainWhistle();
-    startDepartFallbackTimer();
+  if (departDelayTimeout) clearTimeout(departDelayTimeout);
+  departDelayTimeout = setTimeout(() => {
+    departDelayTimeout = null;
+    startDeparture();
   }, 650);
+}
+
+function startDeparture() {
+  if (departAnim.value) return;
+  celebrate.value = false;
+  const rect = convoyEl.value?.getBoundingClientRect();
+  const dx = computeDepartTranslateX(
+    rect ?? { left: 0, width: typeof window === "undefined" ? 800 : window.innerWidth }
+  );
+  departAnim.value = true;
+  try {
+    const scroller = scrollEl.value;
+    if (scroller) {
+      departAnimation?.cancel();
+      departAnimation = scroller.animate(
+        [
+          { transform: "translate3d(0px, 0, 0)" },
+          { transform: `translate3d(${dx}px, 0, 0)` },
+        ],
+        {
+          duration: DEPART_DURATION_MS,
+          easing: "cubic-bezier(0.45, 0, 0.2, 1)",
+          fill: "forwards",
+        }
+      );
+      departAnimation.onfinish = () => {
+        handleDepartComplete();
+      };
+    }
+  } catch {
+    /* 動畫失敗時仍靠計時器進入下一關 */
+  }
+  playTrainWhistle();
+  startDepartFallbackTimer();
 }
 
 function startDepartFallbackTimer() {
@@ -255,13 +335,8 @@ function startDepartFallbackTimer() {
 
 function handleDepartComplete() {
   if (!departAnim.value) return;
-  if (departFallbackTimeout) {
-    clearTimeout(departFallbackTimeout);
-    departFallbackTimeout = null;
-  }
-
   departAnim.value = false;
-  instantTrackReset.value = true;
+  clearDepartureMotion();
 
   const next = nextAfterDepart(currentIdx.value, levels.value.length);
   if (next.kind === "next") {
@@ -271,19 +346,6 @@ function handleDepartComplete() {
     screen.value = "start";
     currentIdx.value = 0;
   }
-
-  nextTick(() => {
-    requestAnimationFrame(() => {
-      instantTrackReset.value = false;
-    });
-  });
-}
-
-function onTrainTransitionEnd(ev: TransitionEvent) {
-  if (ev.target !== ev.currentTarget) return;
-  if (ev.propertyName !== "transform") return;
-  if (!departAnim.value) return;
-  handleDepartComplete();
 }
 
 function closeSettings() {
@@ -344,10 +406,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  if (departFallbackTimeout) {
-    clearTimeout(departFallbackTimeout);
-    departFallbackTimeout = null;
-  }
+  clearDepartureMotion();
   window.removeEventListener("pointermove", onPointerMove);
   window.removeEventListener("pointerup", endDrag);
   window.removeEventListener("pointercancel", endDrag);
@@ -402,19 +461,13 @@ onUnmounted(() => {
       </div>
 
       <div class="track-stage">
-        <div class="track-scroll" :class="{ departing: departAnim }">
+        <div ref="scrollEl" class="track-scroll" :class="{ departing: departAnim }">
           <div
             ref="convoyEl"
             class="convoy"
-            :class="{
-              depart: departAnim,
-              celebrate: celebrate,
-              'track-instant': instantTrackReset,
-            }"
-            :style="{ '--depart-x': departX }"
-            @transitionend="onTrainTransitionEnd"
+            :class="{ celebrate: celebrate }"
           >
-            <div class="train">
+            <div class="train" :class="{ wrong: orderWrong }">
               <div class="engine" aria-hidden="true">
                 <span class="smoke">{{ currentVehicle.trail }}</span>
                 <span class="loco">{{ currentVehicle.engine }}</span>
@@ -424,6 +477,8 @@ onUnmounted(() => {
                 :key="i"
                 class="carriage"
                 :class="`season-${i % 4}`"
+                data-drop="slot"
+                :data-index="String(i)"
               >
                 <div class="season-ribbon">{{ seasonName(i) }}</div>
                 <div
@@ -447,6 +502,7 @@ onUnmounted(() => {
           </div>
         </div>
         <p v-if="celebrate" class="toast">太棒了！{{ currentVehicle.name }}出發！</p>
+        <p v-else-if="orderWrong" class="toast toast-bad">順序還不對，再排排看</p>
       </div>
     </main>
 
@@ -724,6 +780,7 @@ h1 {
   padding: 12px 0 28px;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
+  overflow-anchor: none;
 }
 
 .track-scroll.departing {
@@ -734,16 +791,6 @@ h1 {
 .convoy {
   width: max-content;
   margin: 0 auto;
-  transition: transform 1.35s cubic-bezier(0.45, 0, 0.2, 1);
-  transform: translateX(0);
-}
-
-.convoy.track-instant {
-  transition: none;
-}
-
-.convoy.depart {
-  transform: translateX(var(--depart-x, -120vw));
 }
 
 .convoy.celebrate .engine .smoke {
@@ -768,6 +815,23 @@ h1 {
   gap: 6px;
   width: max-content;
   padding: 0 24px;
+}
+
+.train.wrong {
+  animation: shake 0.45s ease;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
 }
 
 .engine {
@@ -930,6 +994,10 @@ h1 {
   pointer-events: none;
   animation: pop 0.45s ease;
   white-space: nowrap;
+}
+
+.toast-bad {
+  color: #a33b12;
 }
 
 @keyframes pop {

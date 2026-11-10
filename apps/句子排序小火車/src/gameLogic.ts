@@ -6,14 +6,35 @@ export interface OrderToken {
   text: string;
 }
 
+/** 全形標點、看不見的空白，跟半形寫法視為同一個詞。 */
+export function normalizeTokenText(text: string): string {
+  return text
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+}
+
+export type OrderResult = "incomplete" | "wrong" | "correct";
+
 /** 依詞語文字比對順序；相同詞可互換車廂，避免長句裡重複的「的／了」判錯。 */
+export function evaluateOrder(
+  slots: (OrderToken | null)[],
+  answer: OrderToken[]
+): OrderResult {
+  if (!answer.length || slots.length !== answer.length) return "incomplete";
+  if (slots.some((s) => s === null)) return "incomplete";
+  const ok = slots.every(
+    (s, i) => normalizeTokenText(s!.text) === normalizeTokenText(answer[i].text)
+  );
+  return ok ? "correct" : "wrong";
+}
+
 export function isCorrectOrder(
   slots: (OrderToken | null)[],
   answer: OrderToken[]
 ): boolean {
-  if (!answer.length || slots.length !== answer.length) return false;
-  if (slots.some((s) => s === null)) return false;
-  return slots.every((s, i) => s!.text === answer[i].text);
+  return evaluateOrder(slots, answer) === "correct";
 }
 
 /** 把整列火車（含已橫向捲出畫面的部分）移到視窗左側以外。 */

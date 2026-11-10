@@ -3,6 +3,7 @@ import { parseSlashBank } from "./bank";
 import {
   computeDepartTranslateX,
   DEPART_EXIT_PADDING_PX,
+  evaluateOrder,
   isCorrectOrder,
   nextAfterDepart,
   type OrderToken,
@@ -75,6 +76,25 @@ describe("isCorrectOrder", () => {
     swapped[0] = swapped[1];
     swapped[1] = tmp;
     expect(isCorrectOrder(swapped, ans)).toBe(false);
+  });
+
+  it("accepts 坐摩天輪怎麼可能是一種運動呢？ including a separate question mark", () => {
+    const words = ["坐摩天輪", "怎麼", "可能是", "一種", "運動", "呢", "?"];
+    const ans = tokens(words);
+    expect(evaluateOrder([...ans], ans)).toBe("correct");
+    const swapped = [...ans];
+    const first = swapped[0];
+    swapped[0] = swapped[1];
+    swapped[1] = first;
+    expect(evaluateOrder(swapped, ans)).toBe("wrong");
+  });
+
+  it("treats a fullwidth question mark as the same word", () => {
+    const ans = tokens(["坐摩天輪", "怎麼", "可能是", "一種", "運動", "呢", "？"]);
+    const placed = ans.map((token, i) =>
+      i === ans.length - 1 ? { ...token, text: "?" } : token
+    );
+    expect(evaluateOrder(placed, ans)).toBe("correct");
   });
 
   it("treats duplicate words as interchangeable by text, not id", () => {
